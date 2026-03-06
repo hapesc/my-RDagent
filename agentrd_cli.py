@@ -10,8 +10,22 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from app.runtime import build_run_service, build_runtime
-from data_models import StopConditions
-from trace_store import TraceStore, TraceStoreConfig, TraceTimelineView
+from data_models import model_to_dict
+from service_contracts import (
+    ArtifactDescriptor,
+    ArtifactListResponse,
+    BranchListResponse,
+    BranchSummary,
+    ErrorCode,
+    ErrorResponse,
+    RunControlResponse,
+    RunCreateRequest,
+    RunEventPageResponse,
+    RunSummaryResponse,
+    ServiceContractError,
+    resolve_step_override_config,
+)
+from trace_store import TraceTimelineView
 
 
 class ExitCode(IntEnum):
@@ -24,10 +38,28 @@ class ExitCode(IntEnum):
     INTERNAL_ERROR = 5
 
 
+def _infer_field_from_text(message: str) -> Optional[str]:
+    for token in message.replace(",", " ").split():
+        if token.startswith("--"):
+            return token[2:].replace("-", "_")
+    return None
+
+
+class CLIArgumentParser(argparse.ArgumentParser):
+    """Argument parser that routes validation failures through structured errors."""
+
+    def error(self, message: str) -> None:
+        raise ServiceContractError(
+            code=ErrorCode.INVALID_REQUEST,
+            message=message,
+            field=_infer_field_from_text(message),
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = CLIArgumentParser(
         prog="agentrd",
-        description="Agentic R&D Platform MVP CLI",
+        description="Agentic R&D Platform CLI",
     )
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
     subparsers.required = True
@@ -100,18 +132,129 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _load_json_input(raw: str) -> Dict[str, Any]:
-    path = Path(raw)
-    if path.exists():
-        text = path.read_text(encoding="utf-8")
-        return json.loads(text)
+    path: Optional[Path] = None
     try:
-        return json.loads(raw)
+        candidate = Path(raw)
+        if candidate.exists():
+            path = candidate
+    except OSError:
+        path = None
+    if path is not None:
+        try:
+            text = path.read_text(encoding="utf-8")
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ServiceContractError(
+                code=ErrorCode.INVALID_REQUEST,
+                message="--input file must contain valid JSON",
+                field="input",
+            ) from exc
+        if not isinstance(payload, dict):
+            raise ServiceContractError(
+                code=ErrorCode.INVALID_REQUEST,
+                message="--input must deserialize to a JSON object",
+                field="input",
+            )
+        return payload
+    try:
+        payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError("--input must be inline JSON or an existing JSON file path") from exc
+        raise ServiceContractError(
+            code=ErrorCode.INVALID_REQUEST,
+            message="--input must be inline JSON or an existing JSON file path",
+            field="input",
+        ) from exc
+    if not isinstance(payload, dict):
+        raise ServiceContractError(
+            code=ErrorCode.INVALID_REQUEST,
+            message="--input must deserialize to a JSON object",
+            field="input",
+        )
+    return payload
 
 
-def _print_json(payload: Dict[str, Any]) -> None:
-    print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+def _print_json(payload: Dict[str, Any], stream=None) -> None:
+    print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=stream or sys.stdout)
+
+
+def _print_error(code: str, message: str, field: Optional[str] = None) -> None:
+    _print_json(
+        ErrorResponse.from_error(ServiceContractError(code=code, message=message, field=field)).to_dict(),
+        stream=sys.stderr,
+    )
+
+
+_RUN_REQUEST_RESERVED_KEYS = {
+    "scenario",
+    "task_summary",
+    "run_id",
+    "entry_input",
+    "stop_conditions",
+    "max_loops",
+    "max_steps",
+    "max_duration_sec",
+    "step_overrides",
+}
+
+
+def _build_entry_input(payload: Dict[str, Any]) -> Dict[str, Any]:
+    explicit_entry_input = dict(payload.get("entry_input", {}))
+    passthrough = {key: value for key, value in payload.items() if key not in _RUN_REQUEST_RESERVED_KEYS}
+    return {**explicit_entry_input, **passthrough}
+
+
+def _require_scenario_manifest(runtime, scenario: str):
+    if scenario not in runtime.plugin_registry.list_scenarios():
+        raise ServiceContractError(
+            code=ErrorCode.UNSUPPORTED_SCENARIO,
+            message=f"unsupported scenario: {scenario}",
+            field="scenario",
+        )
+    manifest = runtime.plugin_registry.get_manifest(scenario)
+    if manifest is None:
+        raise ServiceContractError(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=f"manifest not configured for scenario: {scenario}",
+            field="scenario",
+        )
+    return manifest
+
+
+def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
+    effective_step_config = resolve_step_override_config(
+        manifest.default_step_overrides,
+        request.step_overrides,
+    )
+    return {
+        "scenario": request.scenario,
+        "stop_conditions": model_to_dict(request.stop_conditions),
+        "step_overrides": effective_step_config.to_dict(),
+        "requested_step_overrides": request.step_overrides.to_dict(),
+        "scenario_manifest": manifest.to_dict(),
+        "runtime": {
+            "sandbox_timeout_sec": runtime.config.sandbox_timeout_sec,
+            "allow_local_execution": runtime.config.allow_local_execution,
+            "default_scenario": runtime.config.default_scenario,
+        },
+    }
+
+
+def _artifact_list_response(runtime, run_id: str) -> ArtifactListResponse:
+    return ArtifactListResponse(
+        run_id=run_id,
+        items=[ArtifactDescriptor(path=path) for path in _list_run_artifacts(runtime, run_id)],
+    )
+
+
+def _branch_list_response(runtime, run_id: str) -> BranchListResponse:
+    branch_heads = runtime.branch_store.get_branch_heads(run_id)
+    return BranchListResponse(
+        run_id=run_id,
+        items=[
+            BranchSummary(branch_id=branch_id, head_node_id=head_node_id)
+            for branch_id, head_node_id in sorted(branch_heads.items())
+        ],
+    )
 
 
 def _list_run_artifacts(runtime, run_id: str) -> List[str]:
@@ -132,34 +275,42 @@ def _list_run_artifacts(runtime, run_id: str) -> List[str]:
 def _handle_run(args: argparse.Namespace) -> int:
     payload = _load_json_input(args.input)
     runtime = build_runtime()
-    run_service = build_run_service(runtime, args.scenario)
-
-    task_summary = str(payload.get("task_summary", "cli run"))
-    stop_conditions = StopConditions(
-        max_loops=int(payload.get("max_loops", args.max_loops)),
-        max_steps=None,
-        max_duration_sec=int(payload.get("max_duration_sec", 300)),
+    request = RunCreateRequest.from_dict(
+        {
+            **payload,
+            "scenario": args.scenario,
+            "max_loops": payload.get("max_loops", args.max_loops),
+        }
     )
+    manifest = _require_scenario_manifest(runtime, request.scenario)
+    run_service = build_run_service(runtime, request.scenario)
+    task_summary = request.task_summary
 
     run_session = run_service.create_run(
         task_summary=task_summary,
-        scenario=args.scenario,
-        stop_conditions=stop_conditions,
-        run_id=payload.get("run_id"),
+        scenario=request.scenario,
+        stop_conditions=request.stop_conditions,
+        run_id=request.run_id,
+        entry_input=_build_entry_input(payload),
+        config_snapshot=_build_config_snapshot(runtime, request, manifest),
     )
     context = run_service.start_run(
         run_id=run_session.run_id,
         task_summary=task_summary,
         loops_per_call=args.loops_per_call,
     )
+    run_summary = RunSummaryResponse.from_run_session(context.run_session)
+    artifacts_page = _artifact_list_response(runtime, run_session.run_id)
     _print_json(
         {
             "command": "run",
-            "scenario": args.scenario,
+            "scenario": request.scenario,
             "run_id": run_session.run_id,
             "status": context.run_session.status.value if context.run_session is not None else "UNKNOWN",
             "iteration": context.loop_state.iteration,
             "artifacts": _list_run_artifacts(runtime, run_session.run_id),
+            "run": run_summary.to_dict(),
+            "artifacts_page": artifacts_page.to_dict(),
         }
     )
     return int(ExitCode.OK)
@@ -180,6 +331,12 @@ def _handle_resume(args: argparse.Namespace) -> int:
         task_summary=task_summary,
         loops_per_call=args.loops_per_call,
     )
+    control = RunControlResponse(
+        run_id=args.run_id,
+        action="resume",
+        status=context.run_session.status.value if context.run_session is not None else "UNKNOWN",
+        message="run resumed",
+    )
     _print_json(
         {
             "command": "resume",
@@ -188,6 +345,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
             "branch_id": context.run_session.active_branch_ids[0] if context.run_session.active_branch_ids else "main",
             "status": context.run_session.status.value if context.run_session is not None else "UNKNOWN",
             "iteration": context.loop_state.iteration,
+            "control": control.to_dict(),
         }
     )
     return int(ExitCode.OK)
@@ -201,7 +359,13 @@ def _handle_pause(args: argparse.Namespace) -> int:
 
     run_service = build_run_service(runtime, run_session.scenario)
     paused = run_service.pause_run(args.run_id)
-    _print_json({"command": "pause", "run_id": args.run_id, "status": paused.status.value})
+    control = RunControlResponse(
+        run_id=args.run_id,
+        action="pause",
+        status=paused.status.value,
+        message="run paused",
+    )
+    _print_json({"command": "pause", "run_id": args.run_id, "status": paused.status.value, "control": control.to_dict()})
     return int(ExitCode.OK)
 
 
@@ -213,15 +377,28 @@ def _handle_stop(args: argparse.Namespace) -> int:
 
     run_service = build_run_service(runtime, run_session.scenario)
     stopped = run_service.stop_run(args.run_id)
-    _print_json({"command": "stop", "run_id": args.run_id, "status": stopped.status.value})
+    control = RunControlResponse(
+        run_id=args.run_id,
+        action="stop",
+        status=stopped.status.value,
+        message="run stopped",
+    )
+    _print_json({"command": "stop", "run_id": args.run_id, "status": stopped.status.value, "control": control.to_dict()})
     return int(ExitCode.OK)
 
 
 def _handle_trace(args: argparse.Namespace) -> int:
     runtime = build_runtime()
+    run_session = runtime.sqlite_store.get_run(args.run_id)
+    if run_session is None:
+        raise KeyError(f"run not found: {args.run_id}")
     events = runtime.sqlite_store.query_events(run_id=args.run_id, branch_id=args.branch_id)
     nodes = runtime.branch_store.query_nodes(run_id=args.run_id, branch_id=args.branch_id)
     branch_heads = runtime.branch_store.get_branch_heads(args.run_id)
+    event_page = RunEventPageResponse(run_id=args.run_id, items=events)
+    artifact_page = _artifact_list_response(runtime, args.run_id)
+    branch_page = _branch_list_response(runtime, args.run_id)
+    run_summary = RunSummaryResponse.from_run_session(run_session)
 
     if args.format == "table":
         rows = TraceTimelineView().build_rows(events)
@@ -242,6 +419,10 @@ def _handle_trace(args: argparse.Namespace) -> int:
             "nodes": [node.to_dict() for node in nodes],
             "branch_heads": branch_heads,
             "artifacts": _list_run_artifacts(runtime, args.run_id),
+            "event_page": event_page.to_dict(),
+            "artifacts_page": artifact_page.to_dict(),
+            "branches_page": branch_page.to_dict(),
+            "run": run_summary.to_dict(),
         }
     )
     return int(ExitCode.OK)
@@ -263,6 +444,7 @@ def _handle_health_check(args: argparse.Namespace) -> int:
     runtime = build_runtime()
     sqlite_exists = Path(runtime.config.sqlite_path).exists()
     plugin_scenarios = runtime.plugin_registry.list_scenarios()
+    manifests = runtime.plugin_registry.list_manifests()
 
     checks = {
         "sqlite": "ok" if sqlite_exists else "missing",
@@ -278,6 +460,7 @@ def _handle_health_check(args: argparse.Namespace) -> int:
             "sqlite_path": runtime.config.sqlite_path,
             "trace_storage_path": runtime.config.trace_storage_path,
             "registered_scenarios": plugin_scenarios,
+            "scenario_manifests": [manifest.to_dict() for manifest in manifests],
         }
     _print_json(payload)
     return int(ExitCode.OK)
@@ -306,25 +489,35 @@ def main(argv: Optional[List[str]] = None) -> int:
     handlers = _dispatch_table()
     handler = handlers.get(args.command)
     if handler is None:
-        print(f"Unknown command: {args.command}", file=sys.stderr)
+        _print_error(ErrorCode.INVALID_REQUEST, f"unknown command: {args.command}", field="command")
         return int(ExitCode.INVALID_ARGS)
 
     try:
         return handler(args)
+    except ServiceContractError as exc:
+        _print_error(exc.code, str(exc), field=exc.field)
+        if exc.code == ErrorCode.NOT_FOUND:
+            return int(ExitCode.NOT_FOUND)
+        if exc.code == ErrorCode.INVALID_STATE:
+            return int(ExitCode.INVALID_STATE)
+        if exc.code == ErrorCode.INTERNAL_ERROR:
+            return int(ExitCode.INTERNAL_ERROR)
+        return int(ExitCode.INVALID_ARGS)
     except FileNotFoundError as exc:
-        print(str(exc), file=sys.stderr)
+        _print_error(ErrorCode.NOT_FOUND, str(exc))
         return int(ExitCode.NOT_FOUND)
     except KeyError as exc:
-        print(str(exc), file=sys.stderr)
+        message = exc.args[0] if exc.args else str(exc)
+        _print_error(ErrorCode.NOT_FOUND, str(message))
         return int(ExitCode.NOT_FOUND)
     except ValueError as exc:
-        print(str(exc), file=sys.stderr)
+        _print_error(ErrorCode.INVALID_REQUEST, str(exc), field=_infer_field_from_text(str(exc)))
         return int(ExitCode.INVALID_ARGS)
     except RuntimeError as exc:
-        print(str(exc), file=sys.stderr)
+        _print_error(ErrorCode.INVALID_STATE, str(exc))
         return int(ExitCode.INVALID_STATE)
     except Exception as exc:  # pragma: no cover - defensive guard for CLI wrapper
-        print(f"internal error: {exc}", file=sys.stderr)
+        _print_error(ErrorCode.INTERNAL_ERROR, f"internal error: {exc}")
         return int(ExitCode.INTERNAL_ERROR)
 
 

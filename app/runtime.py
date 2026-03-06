@@ -18,8 +18,13 @@ from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
-from plugins import build_default_registry
-from scenarios import DataScienceV1Config
+from plugins import PluginRegistry, build_default_registry
+from scenarios import (
+    DataScienceV1Config,
+    SyntheticResearchConfig,
+    default_data_science_step_overrides,
+    default_synthetic_research_step_overrides,
+)
 
 from .config import AppConfig, load_config
 
@@ -37,7 +42,7 @@ class RuntimeContext:
     exploration_manager: ExplorationManager
     memory_service: MemoryService
     evaluation_service: EvaluationService
-    plugin_registry: object
+    plugin_registry: PluginRegistry
 
 
 def build_runtime() -> RuntimeContext:
@@ -66,7 +71,14 @@ def build_runtime() -> RuntimeContext:
                 workspace_root=config.workspace_root,
                 trace_storage_path=config.trace_storage_path,
                 allow_local_execution=config.allow_local_execution,
-            )
+                default_step_overrides=default_data_science_step_overrides(config.sandbox_timeout_sec),
+            ),
+            SyntheticResearchConfig(
+                workspace_root=config.workspace_root,
+                default_step_overrides=default_synthetic_research_step_overrides(
+                    config.sandbox_timeout_sec
+                ),
+            ),
         ),
     )
 

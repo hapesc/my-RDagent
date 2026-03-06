@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from data_models import (
@@ -17,6 +17,7 @@ from data_models import (
     RunSession,
     Score,
 )
+from service_contracts import StepOverrideConfig
 
 
 @dataclass
@@ -27,6 +28,7 @@ class ScenarioContext:
     scenario_name: str
     input_payload: Dict[str, Any]
     task_summary: str = ""
+    step_config: StepOverrideConfig = field(default_factory=StepOverrideConfig)
 
 
 @runtime_checkable
@@ -111,3 +113,4 @@ class PluginBundle:
     coder: Coder
     runner: Runner
     feedback_analyzer: FeedbackAnalyzer
+    default_step_overrides: StepOverrideConfig = field(default_factory=StepOverrideConfig)

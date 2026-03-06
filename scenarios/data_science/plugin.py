@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -21,7 +21,7 @@ from data_models import (
     Score,
     StepState,
 )
-from llm import FeedbackDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm import CodeDraft, FeedbackDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -32,6 +32,21 @@ from plugins.contracts import (
     ScenarioContext,
     ScenarioPlugin,
 )
+from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+
+
+def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
+    return StepOverrideConfig(
+        proposal=ModelSelectorConfig(provider="mock", model="ds-proposal-default", max_retries=2),
+        coding=ModelSelectorConfig(
+            provider="mock",
+            model="ds-coding-default",
+            max_retries=2,
+            max_tokens=512,
+        ),
+        running=RunningStepConfig(timeout_sec=timeout_sec),
+        feedback=ModelSelectorConfig(provider="mock", model="ds-feedback-default", max_retries=2),
+    )
 
 
 @dataclass
@@ -43,6 +58,7 @@ class DataScienceV1Config:
     docker_image: str = "python:3.11-slim"
     prefer_docker: bool = True
     allow_local_execution: bool = False
+    default_step_overrides: StepOverrideConfig = field(default_factory=default_data_science_step_overrides)
 
 
 class DataScienceScenarioPlugin(ScenarioPlugin):
@@ -52,6 +68,7 @@ class DataScienceScenarioPlugin(ScenarioPlugin):
             scenario_name=run_session.scenario,
             input_payload=dict(input_payload),
             task_summary=str(input_payload.get("task_summary", "")),
+            step_config=StepOverrideConfig.from_dict(input_payload.get("step_config")),
         )
 
 
@@ -71,7 +88,11 @@ class DataScienceProposalEngine(ProposalEngine):
         _ = parent_ids
         _ = plan
         summary = task_summary or scenario.task_summary or "data science task"
-        draft = self._llm_adapter.generate_structured(f"proposal:{summary}", ProposalDraft)
+        draft = self._llm_adapter.generate_structured(
+            f"proposal:{summary}",
+            ProposalDraft,
+            model_config=scenario.step_config.proposal,
+        )
         return Proposal(
             proposal_id="proposal-ds-v1",
             summary=draft.summary,
@@ -110,6 +131,9 @@ class DataScienceExperimentGenerator(ExperimentGenerator):
 
 
 class DataScienceCoder(Coder):
+    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+        self._llm_adapter = llm_adapter
+
     def develop(
         self,
         experiment: ExperimentNode,
@@ -121,12 +145,22 @@ class DataScienceCoder(Coder):
 
         data_source = str(scenario.input_payload.get("data_source", ""))
         pipeline_script = self._build_pipeline_script(data_source=data_source)
+        readme_text = proposal.summary
+        artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-        (workspace / "README.txt").write_text(proposal.summary, encoding="utf-8")
+        if self._llm_adapter is not None:
+            code_draft = self._llm_adapter.generate_structured(
+                f"coding:{proposal.summary}",
+                CodeDraft,
+                model_config=scenario.step_config.coding,
+            )
+            artifact_id = code_draft.artifact_id
+            readme_text = code_draft.description
+        (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
 
         return CodeArtifact(
-            artifact_id=f"artifact-{experiment.node_id}",
-            description=proposal.summary,
+            artifact_id=artifact_id,
+            description=readme_text,
             location=str(workspace),
         )
 
@@ -162,6 +196,7 @@ class DataScienceRunner(Runner):
             loop_index=loop_index,
             workspace_path=artifact.location,
             command=command,
+            timeout_sec=scenario.step_config.running.timeout_sec,
         )
         logs = backend_result.stdout if backend_result.stdout else backend_result.stderr
         return ExecutionResult(
@@ -184,7 +219,16 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
     ) -> FeedbackRecord:
         _ = score
         prompt = f"feedback:exit_code={result.exit_code};logs={result.logs_ref[:120]}"
-        draft = self._llm_adapter.generate_structured(prompt, FeedbackDraft)
+        feedback_config = ModelSelectorConfig.from_dict(
+            experiment.hypothesis.get("_feedback_model_config")
+            if isinstance(experiment.hypothesis, dict)
+            else None
+        )
+        draft = self._llm_adapter.generate_structured(
+            prompt,
+            FeedbackDraft,
+            model_config=feedback_config,
+        )
         return FeedbackRecord(
             feedback_id=f"fb-{experiment.node_id}",
             decision=draft.decision and result.exit_code == 0,
@@ -205,6 +249,7 @@ def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -
             docker_image=plugin_config.docker_image,
             prefer_docker=plugin_config.prefer_docker,
             allow_local_execution=plugin_config.allow_local_execution,
+            default_timeout_sec=plugin_config.default_step_overrides.running.timeout_sec or 300,
             trace_storage_path=plugin_config.trace_storage_path,
         )
     )
@@ -214,7 +259,8 @@ def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -
         scenario_plugin=DataScienceScenarioPlugin(),
         proposal_engine=DataScienceProposalEngine(llm_adapter),
         experiment_generator=DataScienceExperimentGenerator(workspace_root=plugin_config.workspace_root),
-        coder=DataScienceCoder(),
+        coder=DataScienceCoder(llm_adapter),
         runner=DataScienceRunner(backend),
         feedback_analyzer=DataScienceFeedbackAnalyzer(llm_adapter),
+        default_step_overrides=plugin_config.default_step_overrides,
     )

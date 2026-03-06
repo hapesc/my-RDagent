@@ -119,6 +119,7 @@ class DockerExecutionBackend:
                 loop_index=loop_index,
                 result=result,
                 docker_available=docker_available,
+                timeout_sec=timeout,
             )
             raise RuntimeError(message)
 
@@ -176,6 +177,7 @@ class DockerExecutionBackend:
             loop_index=loop_index,
             result=result,
             docker_available=docker_available,
+            timeout_sec=timeout,
         )
         return result
 
@@ -217,6 +219,7 @@ class DockerExecutionBackend:
         loop_index: int,
         result: BackendResult,
         docker_available: bool,
+        timeout_sec: int,
     ) -> None:
         trace_store = TraceStore(TraceStoreConfig(storage_path=self._config.trace_storage_path))
         trace_store.append_event(
@@ -232,6 +235,7 @@ class DockerExecutionBackend:
                     "status": result.status.value,
                     "exit_code": result.exit_code,
                     "timed_out": result.timed_out,
+                    "timeout_sec": timeout_sec,
                     "artifact_count": len(result.artifact_paths),
                     "docker_available": docker_available,
                     "allow_local_execution": self._config.allow_local_execution,

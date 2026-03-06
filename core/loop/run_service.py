@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
@@ -105,13 +105,18 @@ class RunService:
         scenario: Optional[str] = None,
         stop_conditions: Optional[StopConditions] = None,
         run_id: Optional[str] = None,
+        entry_input: Optional[Dict[str, Any]] = None,
+        config_snapshot: Optional[Dict[str, Any]] = None,
     ) -> RunSession:
+        session_entry_input = dict(entry_input or {})
+        session_entry_input["task_summary"] = task_summary
         session = RunSession(
             run_id=run_id or f"run-{uuid.uuid4().hex[:12]}",
             scenario=scenario or self._config.default_scenario,
             status=RunStatus.CREATED,
             stop_conditions=stop_conditions or StopConditions(),
-            entry_input={"task_summary": task_summary},
+            entry_input=session_entry_input,
+            config_snapshot=dict(config_snapshot or {}),
         )
         self._run_store.create_run(session)
         return session

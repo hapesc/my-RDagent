@@ -6,13 +6,15 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional, Protocol, Type, TypeVar
 
+from service_contracts import ModelSelectorConfig
+
 T = TypeVar("T")
 
 
 class LLMProvider(Protocol):
     """Provider interface for text completion."""
 
-    def complete(self, prompt: str) -> str:
+    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
         ...
 
 
@@ -22,30 +24,50 @@ class MockLLMProvider:
     def __init__(self, responses: Optional[List[str]] = None) -> None:
         self._responses = list(responses or [])
 
-    def complete(self, prompt: str) -> str:
+    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
+        def _metadata_tokens() -> List[str]:
+            if model_config is None:
+                return []
+            tokens: List[str] = []
+            if model_config.provider:
+                tokens.append(f"provider:{model_config.provider}")
+            if model_config.model:
+                tokens.append(f"model:{model_config.model}")
+            if model_config.temperature is not None:
+                tokens.append(f"temperature:{model_config.temperature}")
+            if model_config.max_tokens is not None:
+                tokens.append(f"max_tokens:{model_config.max_tokens}")
+            return tokens
+
         if self._responses:
             return self._responses.pop(0)
 
         if prompt.startswith("proposal:"):
             summary = prompt.split("proposal:", 1)[1].strip() or "proposal"
+            constraints = ["llm-structured"] + _metadata_tokens()
             return json.dumps(
                 {
                     "summary": summary,
-                    "constraints": ["llm-structured"],
+                    "constraints": constraints,
                     "virtual_score": 0.5,
                 }
             )
         if prompt.startswith("coding:"):
             summary = prompt.split("coding:", 1)[1].strip() or "code"
+            suffix = ""
+            if model_config is not None and model_config.model:
+                suffix = f" [model={model_config.model}]"
             return json.dumps(
                 {
                     "artifact_id": "artifact-llm",
-                    "description": summary,
+                    "description": f"{summary}{suffix}",
                     "location": "/tmp/rd_agent_workspace",
                 }
             )
         if prompt.startswith("feedback:"):
             reason = prompt.split("feedback:", 1)[1].strip() or "feedback"
+            if model_config is not None and model_config.model:
+                reason = f"{reason};model={model_config.model}"
             return json.dumps(
                 {
                     "decision": True,
@@ -73,12 +95,20 @@ class LLMAdapter:
         self._provider = provider
         self._config = config or LLMAdapterConfig()
 
-    def generate_structured(self, prompt: str, schema_cls: Type[T]) -> T:
+    def generate_structured(
+        self,
+        prompt: str,
+        schema_cls: Type[T],
+        model_config: Optional[ModelSelectorConfig] = None,
+    ) -> T:
         last_error: Optional[Exception] = None
-        attempts = self._config.max_retries + 1
+        max_retries = self._config.max_retries
+        if model_config is not None and model_config.max_retries is not None:
+            max_retries = model_config.max_retries
+        attempts = max_retries + 1
 
         for _ in range(attempts):
-            raw = self._provider.complete(prompt)
+            raw = self._provider.complete(prompt, model_config=model_config)
             try:
                 payload = json.loads(raw)
                 if not hasattr(schema_cls, "from_dict"):

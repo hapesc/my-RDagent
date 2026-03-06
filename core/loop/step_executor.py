@@ -24,6 +24,7 @@ from data_models import (
 )
 from evaluation_service import EvaluationService
 from plugins.contracts import PluginBundle
+from service_contracts import StepOverrideConfig, resolve_step_override_config
 
 
 @dataclass
@@ -71,6 +72,7 @@ class StepExecutor:
             fork_parent_node_id = run_session.entry_input.pop("fork_parent_node_id", None)
             if isinstance(fork_parent_node_id, str) and fork_parent_node_id:
                 resolved_parent_ids = [fork_parent_node_id]
+        effective_step_config = self._resolve_step_config(run_session)
         workspace_id = f"loop-{loop_state.iteration:04d}"
         workspace_path = self._workspace_manager.create_workspace(
             run_session.run_id,
@@ -90,6 +92,7 @@ class StepExecutor:
                 **run_session.entry_input,
                 "task_summary": task_summary,
                 "loop_index": loop_state.iteration,
+                "step_config": effective_step_config.to_dict(),
             },
         )
 
@@ -111,7 +114,11 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="proposing",
             event_type=EventType.HYPOTHESIS_GENERATED,
-            payload={"proposal_id": proposal.proposal_id},
+            payload={
+                "proposal_id": proposal.proposal_id,
+                "constraints": proposal.constraints,
+                "model_config": effective_step_config.proposal.to_dict(),
+            },
         )
 
         experiment = self._plugin_bundle.experiment_generator.generate(
@@ -158,7 +165,11 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="coding",
             event_type=EventType.CODING_ROUND,
-            payload={"artifact_id": artifact.artifact_id},
+            payload={
+                "artifact_id": artifact.artifact_id,
+                "description": artifact.description,
+                "model_config": effective_step_config.coding.to_dict(),
+            },
         )
 
         execution_result = self._plugin_bundle.runner.run(artifact, scenario_context)
@@ -173,10 +184,15 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="running",
             event_type=EventType.EXECUTION_FINISHED,
-            payload={"exit_code": execution_result.exit_code},
+            payload={
+                "exit_code": execution_result.exit_code,
+                "timeout_sec": effective_step_config.running.timeout_sec,
+            },
         )
 
         eval_result = self._evaluation_service.evaluate_run(execution_result)
+        if isinstance(experiment.hypothesis, dict):
+            experiment.hypothesis["_feedback_model_config"] = effective_step_config.feedback.to_dict()
         feedback = self._plugin_bundle.feedback_analyzer.summarize(
             experiment=experiment,
             result=execution_result,
@@ -193,7 +209,12 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="feedback",
             event_type=EventType.FEEDBACK_GENERATED,
-            payload={"feedback_id": feedback.feedback_id, "acceptable": feedback.acceptable},
+            payload={
+                "feedback_id": feedback.feedback_id,
+                "acceptable": feedback.acceptable,
+                "reason": feedback.reason,
+                "model_config": effective_step_config.feedback.to_dict(),
+            },
         )
 
         checkpoint("record")
@@ -219,6 +240,21 @@ class StepExecutor:
             feedback=feedback,
             checkpoint_ids=checkpoint_ids,
         )
+
+    def _resolve_step_config(self, run_session: RunSession) -> StepOverrideConfig:
+        config_snapshot = run_session.config_snapshot
+        if "step_overrides" in config_snapshot:
+            effective = resolve_step_override_config(
+                self._plugin_bundle.default_step_overrides,
+                StepOverrideConfig.from_dict(config_snapshot["step_overrides"]),
+            )
+            config_snapshot["step_overrides"] = effective.to_dict()
+            return effective
+
+        requested = StepOverrideConfig.from_dict(config_snapshot.get("requested_step_overrides"))
+        effective = resolve_step_override_config(self._plugin_bundle.default_step_overrides, requested)
+        config_snapshot["step_overrides"] = effective.to_dict()
+        return effective
 
     def _append_event(
         self,

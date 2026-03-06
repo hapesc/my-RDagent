@@ -8,7 +8,7 @@ from pathlib import Path
 
 from core.storage import SQLiteMetadataStore, SQLiteStoreConfig
 from data_models import Event, EventType, RunSession, RunStatus, StopConditions
-from ui.trace_ui import build_timeline_rows, list_artifacts, load_events, load_run_ids
+from ui.trace_ui import build_timeline_rows, list_artifacts, load_events, load_run_ids, load_run_summary
 
 
 class TraceUIHelperTests(unittest.TestCase):
@@ -41,10 +41,12 @@ class TraceUIHelperTests(unittest.TestCase):
             run_ids = load_run_ids(sqlite_path)
             events = load_events(sqlite_path, "run-task-15")
             rows = build_timeline_rows(events)
+            run_summary = load_run_summary(sqlite_path, "run-task-15")
 
             self.assertEqual(run_ids, ["run-task-15"])
             self.assertEqual(len(events), 1)
             self.assertEqual(rows[0]["event_type"], "trace.recorded")
+            self.assertEqual(run_summary.run_id, "run-task-15")
 
             workspace_root = tmp_path / "workspaces"
             artifact_root = tmp_path / "artifacts"
@@ -53,7 +55,12 @@ class TraceUIHelperTests(unittest.TestCase):
             (workspace_root / "run-task-15" / "a.txt").write_text("a", encoding="utf-8")
             (artifact_root / "run-task-15" / "metrics.json").write_text("{}", encoding="utf-8")
 
-            artifacts = list_artifacts(str(workspace_root), str(artifact_root), "run-task-15")
+            artifacts = list_artifacts(
+                sqlite_path,
+                str(workspace_root),
+                str(artifact_root),
+                "run-task-15",
+            )
             self.assertEqual(len(artifacts), 2)
 
 

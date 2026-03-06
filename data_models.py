@@ -121,6 +121,7 @@ class RunSession:
     stop_conditions: StopConditions = field(default_factory=StopConditions)
     entry_input: Dict[str, Any] = field(default_factory=dict)
     active_branch_ids: List[str] = field(default_factory=lambda: ["main"])
+    config_snapshot: Dict[str, Any] = field(default_factory=dict)
 
     def update_status(self, status: RunStatus) -> None:
         self.status = status
@@ -149,6 +150,7 @@ class RunSession:
             ),
             entry_input=dict(data.get("entry_input", {})),
             active_branch_ids=list(data.get("active_branch_ids", ["main"])),
+            config_snapshot=dict(data.get("config_snapshot", {})),
         )
 
 

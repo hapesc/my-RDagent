@@ -1,9 +1,14 @@
-"""Service scaffold for the Observability module."""
+"""Structured observability service with redaction and metric snapshots."""
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
-from typing import Dict, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List
+
+from .redaction import sanitize_payload
 
 
 @dataclass
@@ -15,99 +20,69 @@ class ObservabilityConfig:
 
 
 class Observability:
-    """Collects logs, metrics, and traces for the system."""
+    """Collects structured logs, metrics, and traces for the system."""
 
     def __init__(self, config: ObservabilityConfig) -> None:
-        """Initialize observability with log retention settings."""
-
         self._config = config
+        self._logs: List[Dict[str, Any]] = []
+        self._metrics: List[Dict[str, Any]] = []
+        self._traces: List[Dict[str, Any]] = []
+        self._metric_totals: Dict[str, float] = {}
+        self._logger = logging.getLogger("observability")
+        self._logger.setLevel(getattr(logging, config.log_level.upper(), logging.INFO))
 
     def emit_log(self, message: str, context: Dict[str, str]) -> None:
-        """Emit a structured log event.
-
-        Responsibility:
-            Accept log events for system-wide observability.
-        Input semantics:
-            - message: Log message text
-            - context: Key-value context
-        Output semantics:
-            None.
-        Architecture mapping:
-            Observability -> emit_log
-        """
-
-        _ = message
-        _ = context
-        return None
+        record = {
+            "kind": "log",
+            "timestamp": self._utc_now(),
+            "message": message,
+            "context": sanitize_payload(dict(context)),
+        }
+        self._logs.append(record)
+        self._logger.info(json.dumps(record, ensure_ascii=False, sort_keys=True))
 
     def emit_metric(self, name: str, value: float, tags: Dict[str, str]) -> None:
-        """Emit a metric datapoint.
-
-        Responsibility:
-            Accept metric datapoints for monitoring.
-        Input semantics:
-            - name: Metric name
-            - value: Metric value
-            - tags: Key-value tags
-        Output semantics:
-            None.
-        Architecture mapping:
-            Observability -> emit_metric
-        """
-
-        _ = name
-        _ = value
-        _ = tags
-        return None
+        record = {
+            "kind": "metric",
+            "timestamp": self._utc_now(),
+            "name": name,
+            "value": value,
+            "tags": sanitize_payload(dict(tags)),
+        }
+        self._metrics.append(record)
+        self._metric_totals[name] = self._metric_totals.get(name, 0.0) + float(value)
+        self._logger.info(json.dumps(record, ensure_ascii=False, sort_keys=True))
 
     def emit_trace(self, trace_id: str, span_name: str, tags: Dict[str, str]) -> None:
-        """Emit a trace span.
-
-        Responsibility:
-            Accept trace spans for request correlation.
-        Input semantics:
-            - trace_id: Trace identifier
-            - span_name: Span name
-            - tags: Key-value tags
-        Output semantics:
-            None.
-        Architecture mapping:
-            Observability -> emit_trace
-        """
-
-        _ = trace_id
-        _ = span_name
-        _ = tags
-        return None
+        record = {
+            "kind": "trace",
+            "timestamp": self._utc_now(),
+            "trace_id": trace_id,
+            "span_name": span_name,
+            "tags": sanitize_payload(dict(tags)),
+        }
+        self._traces.append(record)
+        self._logger.info(json.dumps(record, ensure_ascii=False, sort_keys=True))
 
     def query_observability(self, query: Dict[str, str]) -> List[Dict[str, str]]:
-        """Query logs and metrics by criteria.
-
-        Responsibility:
-            Return placeholder observability records.
-        Input semantics:
-            - query: Filter criteria
-        Output semantics:
-            List of records.
-        Architecture mapping:
-            Observability -> query_observability
-        """
-
-        _ = query
-        return []
+        needle_run_id = query.get("run_id")
+        records: List[Dict[str, Any]] = [*self._logs, *self._metrics, *self._traces]
+        if needle_run_id:
+            records = [
+                record
+                for record in records
+                if record.get("context", {}).get("run_id") == needle_run_id
+                or record.get("tags", {}).get("run_id") == needle_run_id
+            ]
+        return records
 
     def subscribe_alerts(self, filters: Dict[str, str]) -> List[str]:
-        """Subscribe to alert streams.
-
-        Responsibility:
-            Return placeholder alert stream identifiers.
-        Input semantics:
-            - filters: Alert filter criteria
-        Output semantics:
-            List of subscription IDs.
-        Architecture mapping:
-            Observability -> subscribe_alerts
-        """
-
+        alert_id = f"alert-{len(self._logs) + len(self._metrics) + len(self._traces)}"
         _ = filters
-        return []
+        return [alert_id]
+
+    def snapshot_metrics(self) -> Dict[str, float]:
+        return dict(self._metric_totals)
+
+    def _utc_now(self) -> str:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

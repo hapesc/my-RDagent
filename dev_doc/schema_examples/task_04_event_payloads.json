@@ -1,0 +1,49 @@
+{
+  "event_types": [
+    "run.created",
+    "hypothesis.generated",
+    "experiment.generated",
+    "coding.round",
+    "execution.finished",
+    "feedback.generated",
+    "trace.recorded"
+  ],
+  "common_fields": [
+    "event_id",
+    "run_id",
+    "branch_id",
+    "loop_index",
+    "step_name",
+    "event_type",
+    "timestamp",
+    "payload"
+  ],
+  "samples": {
+    "run.created": {
+      "event_id": "run_20260306_001-event-1",
+      "run_id": "run_20260306_001",
+      "branch_id": "main",
+      "loop_index": 0,
+      "step_name": "run",
+      "event_type": "run.created",
+      "timestamp": "2026-03-06T10:00:00Z",
+      "payload": {
+        "scenario": "data_science",
+        "task_id": "task-001"
+      }
+    },
+    "trace.recorded": {
+      "event_id": "run_20260306_001-event-7",
+      "run_id": "run_20260306_001",
+      "branch_id": "main",
+      "loop_index": 0,
+      "step_name": "trace",
+      "event_type": "trace.recorded",
+      "timestamp": "2026-03-06T10:05:00Z",
+      "payload": {
+        "proposal_id": "proposal-placeholder",
+        "score_id": "score-placeholder"
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "run_session": {
+    "run_id": "run_20260306_001",
+    "scenario": "data_science",
+    "status": "RUNNING",
+    "created_at": "2026-03-06T10:00:00Z",
+    "updated_at": "2026-03-06T10:05:00Z",
+    "stop_conditions": {
+      "max_loops": 20,
+      "max_steps": null,
+      "max_duration_sec": 14400
+    },
+    "entry_input": {
+      "competition": "playground-series-s4e9"
+    },
+    "active_branch_ids": [
+      "main"
+    ]
+  },
+  "experiment_node": {
+    "node_id": "node_17",
+    "run_id": "run_20260306_001",
+    "branch_id": "main",
+    "parent_node_id": "node_12",
+    "loop_index": 5,
+    "step_state": "RECORDED",
+    "hypothesis": {
+      "text": "Add a stronger feature engineering stage for categorical leakage handling.",
+      "component": "FeatureEng"
+    },
+    "workspace_ref": "artifacts/run_20260306_001/node_17/workspace",
+    "result_ref": "artifacts/run_20260306_001/node_17/result",
+    "feedback_ref": "trace:event_1021"
+  },
+  "workspace_snapshot": {
+    "workspace_id": "ws_17",
+    "run_id": "run_20260306_001",
+    "file_manifest": [
+      {
+        "path": "main.py",
+        "sha256": "abc"
+      },
+      {
+        "path": "feature/transform.py",
+        "sha256": "def"
+      }
+    ],
+    "checkpoint_type": "zip",
+    "created_at": "2026-03-06T10:03:00Z"
+  },
+  "feedback_record": {
+    "feedback_id": "fb_17",
+    "decision": true,
+    "acceptable": true,
+    "reason": "Validation score improved from 0.811 to 0.824 with stable runtime.",
+    "observations": "New categorical preprocessing fixed a target leakage issue.",
+    "code_change_summary": "Added grouped target encoding with fit/transform separation."
+  },
+  "event": {
+    "event_id": "event_1021",
+    "run_id": "run_20260306_001",
+    "branch_id": "main",
+    "loop_index": 5,
+    "step_name": "feedback",
+    "event_type": "trace.recorded",
+    "timestamp": "2026-03-06T10:05:00Z",
+    "payload": {
+      "feedback_id": "fb_17",
+      "node_id": "node_17"
+    }
+  }
+}

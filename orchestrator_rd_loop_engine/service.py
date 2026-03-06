@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from data_models import BudgetLedger, LoopContext, LoopState, PhaseResultMeta
+from data_models import BudgetLedger, LoopContext, LoopState, PhaseResultMeta, RunSession, RunStatus, StopConditions
 
 
 @dataclass
@@ -36,9 +36,16 @@ class OrchestratorRDLoopEngine:
             Orchestrator / R&D Loop Engine -> start_loop
         """
 
-        loop_state = LoopState(loop_id=f"loop-{task_id}", iteration=0, status="running")
+        run_session = RunSession(
+            run_id=f"run-{task_id}",
+            scenario="data_science",
+            status=RunStatus.RUNNING,
+            stop_conditions=StopConditions(max_duration_sec=int(self._config.time_budget_seconds)),
+            entry_input={"task_id": task_id},
+        )
+        loop_state = LoopState(loop_id=f"loop-{task_id}", iteration=0, status=RunStatus.RUNNING)
         budget = BudgetLedger(total_time_budget=self._config.time_budget_seconds, elapsed_time=0.0)
-        return LoopContext(loop_state=loop_state, budget=budget)
+        return LoopContext(loop_state=loop_state, budget=budget, run_session=run_session)
 
     def tick_loop(self, loop_context: LoopContext, phase_result: PhaseResultMeta) -> LoopContext:
         """Advance the loop by one placeholder step.
@@ -71,5 +78,7 @@ class OrchestratorRDLoopEngine:
             Orchestrator / R&D Loop Engine -> stop_loop
         """
 
-        loop_context.loop_state.status = "stopped"
+        loop_context.loop_state.status = RunStatus.STOPPED
+        if loop_context.run_session is not None:
+            loop_context.run_session.update_status(RunStatus.STOPPED)
         return loop_context

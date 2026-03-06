@@ -12,7 +12,8 @@
 ## Semantics
 
 - Docker 优先：若本机 `docker` 可用且 `prefer_docker=true`，使用容器执行。
-- 本地回退：docker 不可用时自动回退到本地 shell 执行。
+- Fail-closed：若无可用 Docker 且未显式开启 `allow_local_execution=true`，执行直接失败。
+- 本地执行：仅在显式配置 `allow_local_execution=true` 时，才允许本地 shell 执行。
 - Timeout：超时后终止进程并返回 `TIMEOUT`。
 - Failure：非 0 退出码返回 `FAILED`。
 - Artifact：按 glob 从工作区收集产物路径。
@@ -25,4 +26,6 @@
 - `exit_code`
 - `timed_out`
 - `artifact_count`
+- `docker_available`
+- `allow_local_execution`
 - `stderr`

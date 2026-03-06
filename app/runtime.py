@@ -6,12 +6,20 @@ from dataclasses import dataclass
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, ResumeManager, RunService, RunServiceConfig, StepExecutor
-from core.storage import CheckpointStoreConfig, FileCheckpointStore, SQLiteMetadataStore, SQLiteStoreConfig
+from core.storage import (
+    BranchTraceStore,
+    BranchTraceStoreConfig,
+    CheckpointStoreConfig,
+    FileCheckpointStore,
+    SQLiteMetadataStore,
+    SQLiteStoreConfig,
+)
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from plugins import build_default_registry
+from scenarios import DataScienceV1Config
 
 from .config import AppConfig, load_config
 
@@ -22,6 +30,7 @@ class RuntimeContext:
 
     config: AppConfig
     sqlite_store: SQLiteMetadataStore
+    branch_store: BranchTraceStore
     checkpoint_store: FileCheckpointStore
     workspace_manager: WorkspaceManager
     planner: Planner
@@ -34,6 +43,7 @@ class RuntimeContext:
 def build_runtime() -> RuntimeContext:
     config = load_config()
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
+    branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
     checkpoint_store = FileCheckpointStore(
         CheckpointStoreConfig(root_dir=f"{config.artifact_root}/checkpoints")
     )
@@ -44,13 +54,20 @@ def build_runtime() -> RuntimeContext:
     return RuntimeContext(
         config=config,
         sqlite_store=sqlite_store,
+        branch_store=branch_store,
         checkpoint_store=checkpoint_store,
         workspace_manager=workspace_manager,
         planner=Planner(PlannerConfig()),
         exploration_manager=ExplorationManager(ExplorationManagerConfig()),
         memory_service=MemoryService(MemoryServiceConfig()),
         evaluation_service=EvaluationService(EvaluationServiceConfig()),
-        plugin_registry=build_default_registry(),
+        plugin_registry=build_default_registry(
+            DataScienceV1Config(
+                workspace_root=config.workspace_root,
+                trace_storage_path=config.trace_storage_path,
+                allow_local_execution=config.allow_local_execution,
+            )
+        ),
     )
 
 
@@ -61,6 +78,7 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         evaluation_service=runtime.evaluation_service,
         workspace_manager=runtime.workspace_manager,
         event_store=runtime.sqlite_store,
+        branch_store=runtime.branch_store,
     )
     loop_engine = LoopEngine(
         config=LoopEngineConfig(exception_archive_root=runtime.config.artifact_root),
@@ -80,4 +98,5 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         loop_engine=loop_engine,
         run_store=runtime.sqlite_store,
         resume_manager=resume_manager,
+        branch_store=runtime.branch_store,
     )

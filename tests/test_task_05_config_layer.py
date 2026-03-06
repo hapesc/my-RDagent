@@ -18,6 +18,7 @@ class ConfigLayerTests(unittest.TestCase):
         self.assertEqual(config.env, "dev")
         self.assertEqual(config.default_scenario, "data_science")
         self.assertEqual(config.sandbox_timeout_sec, 300)
+        self.assertFalse(config.allow_local_execution)
 
     def test_load_config_from_env_map(self) -> None:
         config = load_config(
@@ -26,12 +27,14 @@ class ConfigLayerTests(unittest.TestCase):
                 "AGENTRD_DEFAULT_SCENARIO": "custom",
                 "AGENTRD_SANDBOX_TIMEOUT_SEC": "900",
                 "AGENTRD_TRACE_STORAGE_PATH": "/tmp/custom_trace.jsonl",
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
             }
         )
         self.assertEqual(config.env, "prod")
         self.assertEqual(config.default_scenario, "custom")
         self.assertEqual(config.sandbox_timeout_sec, 900)
         self.assertEqual(config.trace_storage_path, "/tmp/custom_trace.jsonl")
+        self.assertTrue(config.allow_local_execution)
 
     def test_startup_command_prints_valid_json(self) -> None:
         out = io.StringIO()

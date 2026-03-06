@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 from data_models import Event, RunSession
 from observability import sanitize_payload
@@ -33,8 +34,20 @@ class SQLiteMetadataStore:
         connection.row_factory = sqlite3.Row
         return connection
 
+    @contextmanager
+    def _managed_connection(self) -> Iterator[sqlite3.Connection]:
+        connection = self._connect()
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
     def _initialize(self) -> None:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS runs (
@@ -66,14 +79,14 @@ class SQLiteMetadataStore:
 
     def create_run(self, run_session: RunSession) -> None:
         payload = json.dumps(run_session.to_dict(), sort_keys=True)
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO runs (run_id, payload_json) VALUES (?, ?)",
                 (run_session.run_id, payload),
             )
 
     def get_run(self, run_id: str) -> Optional[RunSession]:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             row = conn.execute("SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         if row is None:
             return None
@@ -81,7 +94,7 @@ class SQLiteMetadataStore:
 
     def list_runs(self) -> List[RunSession]:
         runs: List[RunSession] = []
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             rows = conn.execute("SELECT payload_json FROM runs ORDER BY run_id").fetchall()
         for row in rows:
             runs.append(RunSession.from_dict(json.loads(row["payload_json"])))
@@ -91,7 +104,7 @@ class SQLiteMetadataStore:
         event_dict = event.to_dict()
         event_dict["payload"] = sanitize_payload(event_dict.get("payload", {}))
         payload = json.dumps(event_dict, sort_keys=True)
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO events (event_id, run_id, branch_id, timestamp, payload_json) VALUES (?, ?, ?, ?, ?)",
                 (
@@ -104,7 +117,7 @@ class SQLiteMetadataStore:
             )
 
     def query_events(self, run_id: Optional[str] = None, branch_id: Optional[str] = None) -> List[Event]:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             if run_id is None and branch_id is None:
                 rows = conn.execute(
                     "SELECT payload_json FROM events ORDER BY timestamp, event_id"

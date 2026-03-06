@@ -94,12 +94,13 @@ class MinimalExperimentGenerator(ExperimentGenerator):
         loop_state: LoopState,
         parent_ids: List[str],
     ) -> ExperimentNode:
+        branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
         parent_node_id: Optional[str] = parent_ids[0] if parent_ids else None
-        node_id = f"node-{run_session.run_id}-{loop_state.iteration}"
+        node_id = f"node-{run_session.run_id}-{branch_id}-{loop_state.iteration}"
         return ExperimentNode(
             node_id=node_id,
             run_id=run_session.run_id,
-            branch_id=run_session.active_branch_ids[0] if run_session.active_branch_ids else "main",
+            branch_id=branch_id,
             parent_node_id=parent_node_id,
             loop_index=loop_state.iteration,
             step_state=StepState.EXPERIMENT_READY,

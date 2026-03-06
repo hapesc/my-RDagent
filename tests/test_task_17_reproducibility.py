@@ -52,6 +52,7 @@ class ReproducibilityAcceptanceTests(unittest.TestCase):
                     workspace_root=str(Path(tmpdir) / "workspace"),
                     trace_storage_path=str(Path(tmpdir) / "trace.jsonl"),
                     prefer_docker=False,
+                    allow_local_execution=True,
                 )
             )
             run_session = RunSession(

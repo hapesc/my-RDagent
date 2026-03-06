@@ -9,6 +9,7 @@
 | `AGENTRD_TRACE_STORAGE_PATH` | path | `/tmp/rd_agent_trace/events.jsonl` | Trace event JSONL path |
 | `AGENTRD_SQLITE_PATH` | path | `/tmp/rd_agent.sqlite3` | SQLite metadata path |
 | `AGENTRD_SANDBOX_TIMEOUT_SEC` | int | `300` | Sandbox timeout in seconds |
+| `AGENTRD_ALLOW_LOCAL_EXECUTION` | bool | `false` | Explicit opt-in for host local execution when Docker is unavailable or disabled |
 | `AGENTRD_LOG_LEVEL` | string | `INFO` | Log verbosity |
 
 ## Startup Validation Command

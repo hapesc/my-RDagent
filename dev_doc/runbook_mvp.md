@@ -20,6 +20,7 @@
 | `AGENTRD_TRACE_STORAGE_PATH` | `/tmp/rd_agent_trace/events.jsonl` | jsonl trace 路径 |
 | `AGENTRD_SQLITE_PATH` | `/tmp/rd_agent.sqlite3` | SQLite 元数据库 |
 | `AGENTRD_SANDBOX_TIMEOUT_SEC` | `300` | sandbox timeout（秒） |
+| `AGENTRD_ALLOW_LOCAL_EXECUTION` | `false` | 是否显式允许宿主机本地执行 |
 | `AGENTRD_LOG_LEVEL` | `INFO` | 日志级别 |
 
 配置校验命令：
@@ -79,4 +80,4 @@ streamlit run ui/trace_ui.py
 安装 `streamlit` 后重试。
 
 3. 期望 Docker 执行但实际为本地执行  
-确认本机有 `docker` 命令且插件配置 `prefer_docker=true`。
+当前默认不会静默回退到本地执行；仅当 `AGENTRD_ALLOW_LOCAL_EXECUTION=1` 时才会本地执行。若希望容器执行，确认本机有 `docker` 命令且插件配置 `prefer_docker=true`。

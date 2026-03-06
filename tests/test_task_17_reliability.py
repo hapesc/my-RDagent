@@ -38,6 +38,7 @@ class ReliabilityAcceptanceTests(unittest.TestCase):
                     workspace_root=str(tmp_path / "plugin_workspace"),
                     trace_storage_path=str(tmp_path / "trace.jsonl"),
                     prefer_docker=False,
+                    allow_local_execution=True,
                 )
             )
             step_executor = StepExecutor(plugin_bundle, evaluation_service, workspace_manager, sqlite_store)

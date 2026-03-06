@@ -50,6 +50,8 @@ def build_parser() -> argparse.ArgumentParser:
     resume_parser.add_argument("--run-id", required=True, help="Run identifier")
     resume_parser.add_argument("--checkpoint", required=False, help="Checkpoint identifier")
     resume_parser.add_argument("--loops-per-call", default=1, type=int, help="Iterations to execute now")
+    resume_parser.add_argument("--fork-branch", action="store_true", help="Resume on a new fork branch")
+    resume_parser.add_argument("--parent-node-id", required=False, help="Parent node for forked resume")
 
     pause_parser = subparsers.add_parser(
         "pause",
@@ -171,6 +173,8 @@ def _handle_resume(args: argparse.Namespace) -> int:
 
     task_summary = str(run_session.entry_input.get("task_summary", "resume"))
     run_service = build_run_service(runtime, run_session.scenario)
+    if args.fork_branch:
+        run_service.fork_branch(args.run_id, parent_node_id=args.parent_node_id)
     context = run_service.resume_run(
         run_id=args.run_id,
         task_summary=task_summary,
@@ -181,6 +185,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
             "command": "resume",
             "run_id": args.run_id,
             "checkpoint": args.checkpoint,
+            "branch_id": context.run_session.active_branch_ids[0] if context.run_session.active_branch_ids else "main",
             "status": context.run_session.status.value if context.run_session is not None else "UNKNOWN",
             "iteration": context.loop_state.iteration,
         }
@@ -215,6 +220,8 @@ def _handle_stop(args: argparse.Namespace) -> int:
 def _handle_trace(args: argparse.Namespace) -> int:
     runtime = build_runtime()
     events = runtime.sqlite_store.query_events(run_id=args.run_id, branch_id=args.branch_id)
+    nodes = runtime.branch_store.query_nodes(run_id=args.run_id, branch_id=args.branch_id)
+    branch_heads = runtime.branch_store.get_branch_heads(args.run_id)
 
     if args.format == "table":
         rows = TraceTimelineView().build_rows(events)
@@ -232,6 +239,8 @@ def _handle_trace(args: argparse.Namespace) -> int:
             "branch_id": args.branch_id,
             "format": args.format,
             "events": [event.to_dict() for event in events],
+            "nodes": [node.to_dict() for node in nodes],
+            "branch_heads": branch_heads,
             "artifacts": _list_run_artifacts(runtime, args.run_id),
         }
     )

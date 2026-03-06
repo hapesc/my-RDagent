@@ -10,7 +10,7 @@ from pathlib import Path
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutor
 from core.storage import CheckpointStoreConfig, FileCheckpointStore, SQLiteMetadataStore, SQLiteStoreConfig
-from data_models import RunSession, RunStatus, StopConditions
+from data_models import LoopState, Proposal, RunSession, RunStatus, StopConditions
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from memory_service import MemoryService, MemoryServiceConfig
@@ -53,6 +53,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
                     workspace_root=str(tmp_path / "plugin_workspace"),
                     trace_storage_path=str(tmp_path / "trace.jsonl"),
                     prefer_docker=False,
+                    allow_local_execution=True,
                 )
             )
             step_executor = StepExecutor(plugin_bundle, evaluation_service, workspace_manager, sqlite_store)
@@ -87,6 +88,39 @@ class DataSciencePluginV1Tests(unittest.TestCase):
 
             metrics_path = tmp_path / "workspaces" / "run-task-13" / "loop-0000" / "metrics.json"
             self.assertTrue(metrics_path.exists())
+
+    def test_generator_node_ids_are_branch_unique(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bundle = build_data_science_v1_bundle(
+                DataScienceV1Config(
+                    workspace_root=str(Path(tmpdir) / "plugin_workspace"),
+                    trace_storage_path=str(Path(tmpdir) / "trace.jsonl"),
+                    prefer_docker=False,
+                    allow_local_execution=True,
+                )
+            )
+            proposal = Proposal(proposal_id="proposal-1", summary="branch uniqueness")
+            loop_state = LoopState(loop_id="loop-1", iteration=1, status=RunStatus.RUNNING)
+
+            main_run = RunSession(
+                run_id="run-branch-unique",
+                scenario="data_science",
+                status=RunStatus.RUNNING,
+                stop_conditions=StopConditions(max_loops=2, max_duration_sec=60),
+                active_branch_ids=["main"],
+            )
+            fork_run = RunSession(
+                run_id="run-branch-unique",
+                scenario="data_science",
+                status=RunStatus.RUNNING,
+                stop_conditions=StopConditions(max_loops=2, max_duration_sec=60),
+                active_branch_ids=["main-fork-123"],
+            )
+
+            main_node = bundle.experiment_generator.generate(proposal, main_run, loop_state, [])
+            fork_node = bundle.experiment_generator.generate(proposal, fork_run, loop_state, [])
+
+            self.assertNotEqual(main_node.node_id, fork_node.node_id)
 
 
 if __name__ == "__main__":

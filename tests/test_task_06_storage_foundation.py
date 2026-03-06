@@ -78,6 +78,15 @@ class FileCheckpointStoreTests(unittest.TestCase):
             self.assertTrue(deleted)
             self.assertEqual(checkpoint_store.list_checkpoints(run_id), [])
 
+    def test_checkpoint_store_rejects_path_traversal_identifiers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=tmpdir))
+
+            with self.assertRaises(ValueError):
+                checkpoint_store.save_checkpoint("../run-1", "step-1", b"payload")
+            with self.assertRaises(ValueError):
+                checkpoint_store.save_checkpoint("run-1", "../step-1", b"payload")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from core.execution import WorkspaceManager
+from core.storage import BranchTraceStore
 from core.storage.interfaces import CheckpointStore, RunMetadataStore
 from data_models import LoopContext, RunSession, RunStatus, StopConditions
 
@@ -58,6 +59,9 @@ class ResumeManager:
         checkpoint_id = self.latest_checkpoint(run_id)
         if checkpoint_id is None:
             return None
+        return self.restore_checkpoint(run_id, checkpoint_id)
+
+    def restore_checkpoint(self, run_id: str, checkpoint_id: str) -> Optional[str]:
         parsed = self._parse_checkpoint_id(checkpoint_id)
         workspace_id = "resume-latest" if parsed is None else f"resume-{parsed[0]:04d}"
         workspace_path = self._workspace_manager.create_workspace(run_id, workspace_id)
@@ -87,11 +91,13 @@ class RunService:
         loop_engine,
         run_store: RunMetadataStore,
         resume_manager: ResumeManager,
+        branch_store: Optional[BranchTraceStore] = None,
     ) -> None:
         self._config = config
         self._loop_engine = loop_engine
         self._run_store = run_store
         self._resume_manager = resume_manager
+        self._branch_store = branch_store
 
     def create_run(
         self,
@@ -119,17 +125,55 @@ class RunService:
             raise RuntimeError(f"run {run_id} cannot be started from status {run_session.status}")
 
         start_iteration = self._resume_manager.next_iteration(run_id)
-        if start_iteration > 0:
-            self._resume_manager.restore_latest(run_id)
+        restored_workspace: Optional[str] = None
+        restore_checkpoint_id = run_session.entry_input.pop("fork_checkpoint_id", None)
+        fork_start_iteration = run_session.entry_input.pop("fork_start_iteration", None)
+        if restore_checkpoint_id is not None:
+            start_iteration = int(fork_start_iteration or 0)
+            restored_workspace = self._resume_manager.restore_checkpoint(run_id, str(restore_checkpoint_id))
+        elif start_iteration > 0:
+            restored_workspace = self._resume_manager.restore_latest(run_id)
 
         context = self._loop_engine.run(
             run_session=run_session,
             task_summary=task_summary,
             max_loops=loops_per_call,
             start_iteration=start_iteration,
+            restored_workspace=restored_workspace,
         )
         self._run_store.create_run(context.run_session)
+        if context.run_session.status == RunStatus.FAILED:
+            message = str(context.run_session.entry_input.get("last_error", "run failed"))
+            raise RuntimeError(message)
         return context
+
+    def fork_branch(self, run_id: str, parent_node_id: Optional[str] = None) -> RunSession:
+        if self._branch_store is None:
+            raise RuntimeError("branch store is not configured")
+
+        run_session = self._require_run(run_id)
+        current_branch = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
+        branch_heads = self._branch_store.get_branch_heads(run_id)
+        resolved_parent_node_id = parent_node_id or branch_heads.get(current_branch)
+        if resolved_parent_node_id is None:
+            raise RuntimeError(f"branch head not found for run {run_id} branch {current_branch}")
+
+        parent_node = self._branch_store.get_node(run_id, resolved_parent_node_id)
+        if parent_node is None:
+            raise KeyError(f"parent node not found: {run_id}/{resolved_parent_node_id}")
+
+        new_branch_id = f"{parent_node.branch_id}-fork-{uuid.uuid4().hex[:6]}"
+        run_session.active_branch_ids = [new_branch_id]
+        run_session.stop_conditions.max_loops = max(
+            run_session.stop_conditions.max_loops,
+            parent_node.loop_index + 2,
+        )
+        run_session.entry_input["fork_parent_node_id"] = parent_node.node_id
+        run_session.entry_input["fork_checkpoint_id"] = f"loop-{parent_node.loop_index:04d}-record"
+        run_session.entry_input["fork_start_iteration"] = parent_node.loop_index + 1
+        run_session.update_status(RunStatus.PAUSED)
+        self._run_store.create_run(run_session)
+        return run_session
 
     def pause_run(self, run_id: str) -> RunSession:
         run_session = self._require_run(run_id)

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import sqlite3
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 from data_models import ExperimentNode, StepState
 
@@ -33,8 +34,20 @@ class BranchTraceStore:
         connection.row_factory = sqlite3.Row
         return connection
 
+    @contextmanager
+    def _managed_connection(self) -> Iterator[sqlite3.Connection]:
+        connection = self._connect()
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
     def _initialize(self) -> None:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS experiment_nodes (
@@ -55,7 +68,7 @@ class BranchTraceStore:
 
     def record_node(self, node: ExperimentNode) -> None:
         payload = json.dumps(node.to_dict(), sort_keys=True)
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             conn.execute(
                 "UPDATE experiment_nodes SET is_head = 0 WHERE run_id = ? AND branch_id = ?",
                 (node.run_id, node.branch_id),
@@ -77,7 +90,7 @@ class BranchTraceStore:
             )
 
     def get_node(self, run_id: str, node_id: str) -> Optional[ExperimentNode]:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             row = conn.execute(
                 "SELECT payload_json FROM experiment_nodes WHERE run_id = ? AND node_id = ?",
                 (run_id, node_id),
@@ -120,7 +133,7 @@ class BranchTraceStore:
 
     def get_branch_heads(self, run_id: str) -> Dict[str, str]:
         heads: Dict[str, str] = {}
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             rows = conn.execute(
                 "SELECT branch_id, node_id FROM experiment_nodes WHERE run_id = ? AND is_head = 1",
                 (run_id,),
@@ -130,7 +143,7 @@ class BranchTraceStore:
         return heads
 
     def query_nodes(self, run_id: str, branch_id: Optional[str] = None) -> List[ExperimentNode]:
-        with self._connect() as conn:
+        with self._managed_connection() as conn:
             if branch_id is None:
                 rows = conn.execute(
                     "SELECT payload_json FROM experiment_nodes WHERE run_id = ? ORDER BY loop_index, node_id",

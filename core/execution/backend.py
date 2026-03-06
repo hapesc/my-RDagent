@@ -44,6 +44,7 @@ class DockerExecutionBackendConfig:
 
     docker_image: str = "python:3.11-slim"
     prefer_docker: bool = True
+    allow_local_execution: bool = False
     command_shell: str = "/bin/sh"
     default_timeout_sec: int = 300
     trace_storage_path: str = "/tmp/rd_agent_trace/events.jsonl"
@@ -78,7 +79,7 @@ class ExecutionBackend(Protocol):
 
 
 class DockerExecutionBackend:
-    """Runs commands in Docker when available, with local fallback."""
+    """Runs commands in Docker when available, with explicit local opt-in."""
 
     def __init__(self, config: DockerExecutionBackendConfig) -> None:
         self._config = config
@@ -96,7 +97,31 @@ class DockerExecutionBackend:
         workspace = Path(workspace_path).resolve()
         workspace.mkdir(parents=True, exist_ok=True)
 
-        use_docker = self._config.prefer_docker and shutil.which("docker") is not None
+        docker_available = shutil.which("docker") is not None
+        use_docker = self._config.prefer_docker and docker_available
+        use_local = not use_docker and self._config.allow_local_execution
+
+        if not use_docker and not use_local:
+            message = self._blocked_execution_message(docker_available)
+            result = BackendResult(
+                engine="blocked",
+                status=ExecutionStatus.ERROR,
+                exit_code=-1,
+                stdout="",
+                stderr=message,
+                duration_sec=0.0,
+                timed_out=False,
+                artifact_paths=[],
+            )
+            self._record_execution_event(
+                run_id=run_id,
+                branch_id=branch_id,
+                loop_index=loop_index,
+                result=result,
+                docker_available=docker_available,
+            )
+            raise RuntimeError(message)
+
         engine = "docker" if use_docker else "local"
         cmd = self._build_docker_command(workspace, command) if use_docker else self._build_local_command(command)
 
@@ -145,8 +170,19 @@ class DockerExecutionBackend:
             timed_out=timed_out,
             artifact_paths=artifact_paths,
         )
-        self._record_execution_event(run_id=run_id, branch_id=branch_id, loop_index=loop_index, result=result)
+        self._record_execution_event(
+            run_id=run_id,
+            branch_id=branch_id,
+            loop_index=loop_index,
+            result=result,
+            docker_available=docker_available,
+        )
         return result
+
+    def _blocked_execution_message(self, docker_available: bool) -> str:
+        if self._config.prefer_docker and not docker_available:
+            return "docker is unavailable and local execution is disabled; set allow_local_execution=true to opt in"
+        return "no permitted execution backend available; enable docker execution or set allow_local_execution=true"
 
     def _build_docker_command(self, workspace: Path, command: str) -> List[str]:
         return [
@@ -180,6 +216,7 @@ class DockerExecutionBackend:
         branch_id: str,
         loop_index: int,
         result: BackendResult,
+        docker_available: bool,
     ) -> None:
         trace_store = TraceStore(TraceStoreConfig(storage_path=self._config.trace_storage_path))
         trace_store.append_event(
@@ -196,6 +233,8 @@ class DockerExecutionBackend:
                     "exit_code": result.exit_code,
                     "timed_out": result.timed_out,
                     "artifact_count": len(result.artifact_paths),
+                    "docker_available": docker_available,
+                    "allow_local_execution": self._config.allow_local_execution,
                     "stderr": result.stderr,
                 },
             )

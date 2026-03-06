@@ -58,6 +58,7 @@ class LoopEngine:
         task_summary: str,
         max_loops: Optional[int] = None,
         start_iteration: int = 0,
+        restored_workspace: Optional[str] = None,
     ) -> LoopContext:
         run_session.update_status(RunStatus.RUNNING)
         self._run_store.create_run(run_session)
@@ -74,6 +75,7 @@ class LoopEngine:
         total_loop_limit = run_session.stop_conditions.max_loops or self._config.default_max_loops
         loops_this_call = max_loops if max_loops is not None else total_loop_limit
         target_iteration = min(total_loop_limit, start_iteration + max(0, loops_this_call))
+        source_workspace = restored_workspace
 
         while loop_state.iteration < target_iteration:
             planning_context = PlanningContext(loop_state=loop_state, budget=budget, history_summary={})
@@ -91,9 +93,11 @@ class LoopEngine:
                     plan=plan,
                     parent_ids=parent_ids,
                     context_pack=context_pack,
+                    source_workspace=source_workspace,
                 )
             except Exception as exc:
                 self._archive_exception(run_session.run_id, loop_state.iteration, exc)
+                run_session.entry_input["last_error"] = str(exc)
                 run_session.update_status(RunStatus.FAILED)
                 loop_state.status = RunStatus.FAILED
                 self._run_store.create_run(run_session)
@@ -114,12 +118,17 @@ class LoopEngine:
 
             node = NodeRecord(
                 node_id=step_result.experiment.node_id,
-                parent_ids=parent_ids,
+                parent_ids=(
+                    [step_result.experiment.parent_node_id]
+                    if step_result.experiment.parent_node_id is not None
+                    else parent_ids
+                ),
                 proposal_id=step_result.proposal.proposal_id,
                 artifact_id=step_result.artifact_id,
                 score_id=step_result.score.score_id,
             )
             graph = self._exploration_manager.register_node(graph, node)
+            source_workspace = None
             loop_state.iteration += 1
             self._run_store.create_run(run_session)
 

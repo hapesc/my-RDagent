@@ -5,11 +5,23 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from core.execution import WorkspaceManager
+from core.storage import BranchTraceStore
 from core.storage.interfaces import EventMetadataStore
-from data_models import Event, EventType, ExperimentNode, FeedbackRecord, LoopState, Plan, Proposal, RunSession, Score
+from data_models import (
+    Event,
+    EventType,
+    ExperimentNode,
+    FeedbackRecord,
+    LoopState,
+    Plan,
+    Proposal,
+    RunSession,
+    Score,
+    StepState,
+)
 from evaluation_service import EvaluationService
 from plugins.contracts import PluginBundle
 
@@ -35,11 +47,13 @@ class StepExecutor:
         evaluation_service: EvaluationService,
         workspace_manager: WorkspaceManager,
         event_store: EventMetadataStore,
+        branch_store: Optional[BranchTraceStore] = None,
     ) -> None:
         self._plugin_bundle = plugin_bundle
         self._evaluation_service = evaluation_service
         self._workspace_manager = workspace_manager
         self._event_store = event_store
+        self._branch_store = branch_store
 
     def execute_iteration(
         self,
@@ -49,10 +63,20 @@ class StepExecutor:
         plan: Plan,
         parent_ids: List[str],
         context_pack,
+        source_workspace: Optional[str] = None,
     ) -> StepExecutionResult:
         branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
+        resolved_parent_ids = list(parent_ids)
+        if not resolved_parent_ids:
+            fork_parent_node_id = run_session.entry_input.pop("fork_parent_node_id", None)
+            if isinstance(fork_parent_node_id, str) and fork_parent_node_id:
+                resolved_parent_ids = [fork_parent_node_id]
         workspace_id = f"loop-{loop_state.iteration:04d}"
-        workspace_path = self._workspace_manager.create_workspace(run_session.run_id, workspace_id)
+        workspace_path = self._workspace_manager.create_workspace(
+            run_session.run_id,
+            workspace_id,
+            source_path=source_workspace,
+        )
         checkpoint_ids: List[str] = []
 
         def checkpoint(step_name: str) -> None:
@@ -72,7 +96,7 @@ class StepExecutor:
         proposal = self._plugin_bundle.proposal_engine.propose(
             task_summary=task_summary,
             context=context_pack,
-            parent_ids=parent_ids,
+            parent_ids=resolved_parent_ids,
             plan=plan,
             scenario=scenario_context,
         )
@@ -94,8 +118,10 @@ class StepExecutor:
             proposal=proposal,
             run_session=run_session,
             loop_state=loop_state,
-            parent_ids=parent_ids,
+            parent_ids=resolved_parent_ids,
         )
+        experiment.branch_id = branch_id
+        experiment.parent_node_id = resolved_parent_ids[0] if resolved_parent_ids else None
         experiment.workspace_ref = workspace_path
         self._workspace_manager.inject_files(
             workspace_path,
@@ -171,6 +197,11 @@ class StepExecutor:
         )
 
         checkpoint("record")
+        experiment.step_state = StepState.RECORDED
+        experiment.result_ref = execution_result.artifacts_ref
+        experiment.feedback_ref = feedback.feedback_id
+        if self._branch_store is not None:
+            self._branch_store.record_node(experiment)
         self._append_event(
             run_id=run_session.run_id,
             branch_id=branch_id,

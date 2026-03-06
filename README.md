@@ -18,6 +18,7 @@ python3 -m app.startup
 2. 启动一次 run：
 
 ```bash
+export AGENTRD_ALLOW_LOCAL_EXECUTION=1  # 仅在需要本地执行时显式开启
 python3 agentrd_cli.py run \
   --scenario data_science \
   --loops-per-call 1 \

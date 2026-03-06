@@ -20,6 +20,7 @@ export AGENTRD_WORKSPACE_ROOT=/tmp/rd_agent_workspace
 export AGENTRD_TRACE_STORAGE_PATH=/tmp/rd_agent_trace/events.jsonl
 export AGENTRD_SQLITE_PATH=/tmp/rd_agent.sqlite3
 export AGENTRD_SANDBOX_TIMEOUT_SEC=300
+export AGENTRD_ALLOW_LOCAL_EXECUTION=0
 export AGENTRD_LOG_LEVEL=INFO
 ```
 

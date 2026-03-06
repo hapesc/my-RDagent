@@ -42,6 +42,7 @@ class DataScienceV1Config:
     trace_storage_path: str = "/tmp/rd_agent_trace/events.jsonl"
     docker_image: str = "python:3.11-slim"
     prefer_docker: bool = True
+    allow_local_execution: bool = False
 
 
 class DataScienceScenarioPlugin(ScenarioPlugin):
@@ -90,13 +91,14 @@ class DataScienceExperimentGenerator(ExperimentGenerator):
         loop_state: LoopState,
         parent_ids: List[str],
     ) -> ExperimentNode:
+        branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
         parent_node_id: Optional[str] = parent_ids[0] if parent_ids else None
-        node_id = f"node-{run_session.run_id}-{loop_state.iteration}"
+        node_id = f"node-{run_session.run_id}-{branch_id}-{loop_state.iteration}"
         workspace_ref = self._workspace_root / run_session.run_id / node_id
         return ExperimentNode(
             node_id=node_id,
             run_id=run_session.run_id,
-            branch_id=run_session.active_branch_ids[0] if run_session.active_branch_ids else "main",
+            branch_id=branch_id,
             parent_node_id=parent_node_id,
             loop_index=loop_state.iteration,
             step_state=StepState.EXPERIMENT_READY,
@@ -202,6 +204,7 @@ def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -
         DockerExecutionBackendConfig(
             docker_image=plugin_config.docker_image,
             prefer_docker=plugin_config.prefer_docker,
+            allow_local_execution=plugin_config.allow_local_execution,
             trace_storage_path=plugin_config.trace_storage_path,
         )
     )

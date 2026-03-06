@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
+from core.path_safety import ensure_within_root, resolve_relative_to_root, validate_path_component
 from core.storage import CheckpointStoreConfig, FileCheckpointStore
 from data_models import FileManifestEntry, WorkspaceSnapshot
 
@@ -35,9 +36,18 @@ class WorkspaceManager:
         self._checkpoint_store = checkpoint_store or FileCheckpointStore(CheckpointStoreConfig())
 
     def _workspace_dir(self, run_id: str, workspace_id: str) -> Path:
-        path = self._root / run_id / workspace_id
+        safe_run_id = validate_path_component(run_id, "run_id")
+        safe_workspace_id = validate_path_component(workspace_id, "workspace_id")
+        path = ensure_within_root(
+            self._root,
+            self._root / safe_run_id / safe_workspace_id,
+            "workspace_id",
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
+
+    def _resolve_workspace_path(self, workspace_path: str) -> Path:
+        return ensure_within_root(self._root, Path(workspace_path), "workspace_path")
 
     def create_workspace(
         self, run_id: str, workspace_id: str, source_path: Optional[str] = None
@@ -55,10 +65,10 @@ class WorkspaceManager:
         return self.create_workspace(run_id=run_id, workspace_id=workspace_id, source_path=source_workspace)
 
     def inject_files(self, workspace_path: str, files: Dict[str, Union[str, bytes]]) -> List[str]:
-        workspace_dir = Path(workspace_path)
+        workspace_dir = self._resolve_workspace_path(workspace_path)
         written: List[str] = []
         for relative_path, content in files.items():
-            target = workspace_dir / relative_path
+            target = resolve_relative_to_root(workspace_dir, relative_path, "relative_path")
             target.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(content, bytes):
                 target.write_bytes(content)
@@ -68,7 +78,9 @@ class WorkspaceManager:
         return written
 
     def create_checkpoint(self, run_id: str, workspace_path: str, checkpoint_id: str) -> WorkspaceSnapshot:
-        workspace_dir = Path(workspace_path)
+        validate_path_component(run_id, "run_id")
+        validate_path_component(checkpoint_id, "checkpoint_id")
+        workspace_dir = self._resolve_workspace_path(workspace_path)
         archive_bytes = self._zip_workspace(workspace_dir)
         self._checkpoint_store.save_checkpoint(run_id=run_id, checkpoint_id=checkpoint_id, payload=archive_bytes)
         manifest = self._build_manifest(workspace_dir)
@@ -80,7 +92,9 @@ class WorkspaceManager:
         )
 
     def restore_checkpoint(self, run_id: str, checkpoint_id: str, workspace_path: str) -> WorkspaceSnapshot:
-        workspace_dir = Path(workspace_path)
+        validate_path_component(run_id, "run_id")
+        validate_path_component(checkpoint_id, "checkpoint_id")
+        workspace_dir = self._resolve_workspace_path(workspace_path)
         if workspace_dir.exists():
             shutil.rmtree(workspace_dir)
         workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +118,9 @@ class WorkspaceManager:
     ) -> bool:
         """Run operation and auto-restore workspace on exception."""
 
-        workspace_dir = Path(workspace_path)
+        validate_path_component(run_id, "run_id")
+        validate_path_component(checkpoint_id, "checkpoint_id")
+        workspace_dir = self._resolve_workspace_path(workspace_path)
         try:
             operation(workspace_dir)
             return True
@@ -122,7 +138,16 @@ class WorkspaceManager:
 
     def _unzip_workspace(self, payload: bytes, workspace_dir: Path) -> None:
         with zipfile.ZipFile(io.BytesIO(payload), mode="r") as zip_file:
-            zip_file.extractall(workspace_dir)
+            for member in zip_file.infolist():
+                if not member.filename:
+                    raise ValueError("zip member filename must not be empty")
+                target = resolve_relative_to_root(workspace_dir, member.filename, "zip_member")
+                if member.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with zip_file.open(member, "r") as source:
+                    target.write_bytes(source.read())
 
     def _build_manifest(self, workspace_dir: Path) -> List[FileManifestEntry]:
         manifest: List[FileManifestEntry] = []

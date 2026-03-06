@@ -4,13 +4,39 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+from unittest.mock import patch
 
 from agentrd_cli import ExitCode, build_parser, main
 
 
 class CLIContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.TemporaryDirectory()
+        tmp_path = Path(self._tmpdir.name)
+        self._env_patch = patch.dict(
+            os.environ,
+            {
+                "AGENTRD_SQLITE_PATH": str(tmp_path / "meta.db"),
+                "AGENTRD_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
+                "AGENTRD_WORKSPACE_ROOT": str(tmp_path / "workspaces"),
+                "AGENTRD_TRACE_STORAGE_PATH": str(tmp_path / "trace.jsonl"),
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "1",
+            },
+            clear=False,
+        )
+        self._env_patch.start()
+
+    def tearDown(self) -> None:
+        self._env_patch.stop()
+        self._tmpdir.cleanup()
+
     def _run_cli(self, argv):
         out = io.StringIO()
         err = io.StringIO()
@@ -80,6 +106,29 @@ class CLIContractTests(unittest.TestCase):
     def test_help_exits_zero(self) -> None:
         code, _out, _err = self._run_cli(["--help"])
         self.assertEqual(code, 0)
+
+    def test_cli_contract_is_clean_under_resource_warning_errors(self) -> None:
+        if os.environ.get("AGENTRD_SKIP_RESOURCE_WARNING_SUBPROCESS") == "1":
+            return
+        repo_root = Path(__file__).resolve().parent.parent
+        env = dict(os.environ)
+        env["AGENTRD_SKIP_RESOURCE_WARNING_SUBPROCESS"] = "1"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-Werror::ResourceWarning",
+                "-m",
+                "unittest",
+                "tests.test_task_03_cli_contract",
+            ],
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+        self.assertNotIn("ResourceWarning", result.stderr)
 
 
 if __name__ == "__main__":

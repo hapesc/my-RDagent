@@ -17,6 +17,7 @@ class AppConfig:
     trace_storage_path: str
     sqlite_path: str
     sandbox_timeout_sec: int
+    allow_local_execution: bool
     log_level: str
 
     def to_dict(self) -> Dict[str, object]:
@@ -28,6 +29,18 @@ def _get_int(environ: Mapping[str, str], key: str, default: int) -> int:
     if raw is None or raw == "":
         return default
     return int(raw)
+
+
+def _get_bool(environ: Mapping[str, str], key: str, default: bool) -> bool:
+    raw = environ.get(key)
+    if raw is None or raw == "":
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{key} must be a boolean string")
 
 
 def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
@@ -47,5 +60,6 @@ def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
         trace_storage_path=env_map.get("AGENTRD_TRACE_STORAGE_PATH", "/tmp/rd_agent_trace/events.jsonl"),
         sqlite_path=env_map.get("AGENTRD_SQLITE_PATH", "/tmp/rd_agent.sqlite3"),
         sandbox_timeout_sec=_get_int(env_map, "AGENTRD_SANDBOX_TIMEOUT_SEC", 300),
+        allow_local_execution=_get_bool(env_map, "AGENTRD_ALLOW_LOCAL_EXECUTION", False),
         log_level=env_map.get("AGENTRD_LOG_LEVEL", "INFO"),
     )

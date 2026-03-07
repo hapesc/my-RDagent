@@ -87,9 +87,9 @@ class MockLLMProvider:
             )
         if is_feedback:
             hypothesis = self._extract_section(prompt, "feedback:", "- Hypothesis: ")
-            exit_code = self._extract_section(prompt, "", "- Exit code: ")
+            execution = self._extract_section(prompt, "", "- Execution: ")
             score = self._extract_section(prompt, "", "- Score: ")
-            parts = [p for p in [hypothesis, f"exit_code={exit_code}" if exit_code else "", score] if p]
+            parts = [p for p in [hypothesis, execution, score] if p]
             reason = "; ".join(parts) if parts else "mock-feedback"
             if model_config is not None and model_config.model:
                 reason = f"{reason};model={model_config.model}"
@@ -140,14 +140,16 @@ class LLMAdapter:
         return json.dumps(example, indent=2)
 
     def _enhance_prompt(self, prompt: str, schema_cls: Type) -> str:
-        """Wrap user prompt with JSON output instructions."""
         schema_hint = self._build_schema_hint(schema_cls)
         if not schema_hint:
             return prompt
         return (
             f"{prompt}\n\n"
-            f"You MUST respond with ONLY a valid JSON object matching this schema (no markdown, no explanation):\n"
-            f"{schema_hint}"
+            f"--- OUTPUT FORMAT ---\n"
+            f"Respond with a single raw JSON object. "
+            f"Do NOT wrap in ```json``` or any markdown. "
+            f"Do NOT include explanation before or after the JSON.\n"
+            f"Schema:\n{schema_hint}"
         )
 
     @staticmethod

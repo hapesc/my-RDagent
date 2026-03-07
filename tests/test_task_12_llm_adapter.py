@@ -86,7 +86,7 @@ class LLMAdapterTests(unittest.TestCase):
 
         self.assertEqual(proposal.proposal_id, "proposal-llm")
         self.assertEqual(artifact.artifact_id, "artifact-llm")
-        self.assertIn("exit_code=0", feedback.reason)
+        self.assertIn("succeeded", feedback.reason)
 
 
 if __name__ == "__main__":

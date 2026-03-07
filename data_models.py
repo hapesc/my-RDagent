@@ -74,6 +74,14 @@ class StepState(ValueEnum):
     STOPPED = "STOPPED"
 
 
+class BranchState(ValueEnum):
+    """Branch state for DAG exploration tracking."""
+
+    ACTIVE = "ACTIVE"
+    PRUNED = "PRUNED"
+    MERGED = "MERGED"
+
+
 class EventType(ValueEnum):
     """Canonical event types for MVP trace payloads."""
 
@@ -300,6 +308,10 @@ class ExplorationGraph:
 
     nodes: List["NodeRecord"] = field(default_factory=list)
     edges: List["GraphEdge"] = field(default_factory=list)
+    traces: List[tuple] = field(default_factory=list)
+    branch_scores: Dict[str, float] = field(default_factory=dict)
+    branch_states: Dict[str, BranchState] = field(default_factory=dict)
+    visit_counts: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -319,6 +331,8 @@ class NodeRecord:
     proposal_id: Optional[str] = None
     artifact_id: Optional[str] = None
     score_id: Optional[str] = None
+    score: Optional[float] = None
+    branch_state: BranchState = BranchState.ACTIVE
 
 
 @dataclass

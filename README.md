@@ -26,6 +26,13 @@ python3 agentrd_cli.py run \
   --input '{"task_summary":"quick start","max_loops":1}'
 ```
 
+2b. 快速启动（简化 CLI）：
+
+```bash
+python3 cli.py --scenario data_science --task "quick start" --max-steps 5
+python3 cli.py --dry-run --task "verify config"  # 仅验证配置，不运行
+```
+
 3. 查询 trace：
 
 ```bash

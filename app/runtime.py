@@ -22,6 +22,8 @@ from exploration_manager.scheduler import MCTSScheduler
 from llm import LLMAdapter, MockLLMProvider
 from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
+from memory_service.hypothesis_selector import HypothesisSelector
+from memory_service.interaction_kernel import InteractionKernel
 from planner import Planner, PlannerConfig
 from plugins import PluginRegistry, build_default_registry
 from scenarios import (
@@ -62,6 +64,17 @@ def _create_llm_provider(config: AppConfig):
     return MockLLMProvider()
 
 
+def _create_memory_service(config: AppConfig, llm_adapter: LLMAdapter) -> MemoryService:
+    mem_config = MemoryServiceConfig(
+        enable_hypothesis_storage=config.enable_hypothesis_storage,
+    )
+    if config.enable_hypothesis_storage:
+        kernel = InteractionKernel()
+        selector = HypothesisSelector(kernel, llm_adapter=llm_adapter)
+        return MemoryService(mem_config, hypothesis_selector=selector, interaction_kernel=kernel)
+    return MemoryService(mem_config)
+
+
 def build_runtime() -> RuntimeContext:
     config = load_config()
     llm_provider = _create_llm_provider(config)
@@ -84,7 +97,10 @@ def build_runtime() -> RuntimeContext:
         branch_store=branch_store,
         checkpoint_store=checkpoint_store,
         workspace_manager=workspace_manager,
-        planner=Planner(PlannerConfig()),
+        planner=Planner(
+            PlannerConfig(use_llm_planning=config.use_llm_planning),
+            llm_adapter=llm_adapter if config.use_llm_planning else None,
+        ),
         exploration_manager=ExplorationManager(
             ExplorationManagerConfig(),
             scheduler=scheduler,
@@ -92,7 +108,7 @@ def build_runtime() -> RuntimeContext:
             merger=merger,
             llm_adapter=llm_adapter,
         ),
-        memory_service=MemoryService(MemoryServiceConfig()),
+        memory_service=_create_memory_service(config, llm_adapter),
         evaluation_service=EvaluationService(EvaluationServiceConfig()),
         plugin_registry=build_default_registry(
             DataScienceV1Config(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import traceback
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -86,6 +87,7 @@ class LoopEngine:
         source_workspace = restored_workspace
 
         while loop_state.iteration < target_iteration:
+            iter_start = time.monotonic()
             planning_context = PlanningContext(loop_state=loop_state, budget=budget, history_summary={})
             plan = self._planner.generate_plan(planning_context)
             context_pack = self._memory_service.query_context(
@@ -205,6 +207,13 @@ class LoopEngine:
                     graph = self._scheduler.update_visit_count(graph, node.node_id)
 
             source_workspace = None
+            iter_elapsed = time.monotonic() - iter_start
+            budget.elapsed_time += iter_elapsed
+            budget.iteration_durations.append(iter_elapsed)
+            recent = budget.iteration_durations[-3:]
+            avg_duration = sum(recent) / len(recent)
+            remaining_iters = max(0, target_iteration - loop_state.iteration - 1)
+            budget.estimated_remaining = avg_duration * remaining_iters
             loop_state.iteration += 1
             self._run_store.create_run(run_session)
 

@@ -26,6 +26,11 @@ class AppConfig:
     costeer_max_rounds: int
     mcts_exploration_weight: float = 1.41
     prune_threshold: float = 0.5
+    debug_mode: bool = False
+    debug_sample_fraction: float = 0.1
+    debug_max_epochs: int = 5
+    enable_hypothesis_storage: bool = False
+    use_llm_planning: bool = False
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
@@ -76,4 +81,9 @@ def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
         costeer_max_rounds=_get_int(env_map, "RD_AGENT_COSTEER_MAX_ROUNDS", 1),
         mcts_exploration_weight=float(env_map.get("RD_AGENT_MCTS_WEIGHT", "1.41")),
         prune_threshold=float(env_map.get("RD_AGENT_PRUNE_THRESHOLD", "0.5")),
+        debug_mode=_get_bool(env_map, "RD_AGENT_DEBUG_MODE", False),
+        debug_sample_fraction=float(env_map.get("RD_AGENT_DEBUG_SAMPLE_FRACTION", "0.1")),
+        debug_max_epochs=_get_int(env_map, "RD_AGENT_DEBUG_MAX_EPOCHS", 5),
+        enable_hypothesis_storage=_get_bool(env_map, "RD_AGENT_HYPOTHESIS_STORAGE", False),
+        use_llm_planning=_get_bool(env_map, "RD_AGENT_LLM_PLANNING", False),
     )

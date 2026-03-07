@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from data_models import (
     CodeArtifact,
@@ -43,6 +43,10 @@ from plugins.contracts import (
 )
 from reasoning_service import ReasoningService, ReasoningServiceConfig
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+
+if TYPE_CHECKING:
+    from core.reasoning.pipeline import ReasoningPipeline
+    from core.reasoning.virtual_eval import VirtualEvaluator
 
 
 def default_synthetic_research_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
@@ -85,9 +89,13 @@ class SyntheticResearchProposalEngine(ProposalEngine):
         self,
         reasoning_service: ReasoningService,
         llm_adapter: Optional[LLMAdapter] = None,
+        reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+        virtual_evaluator: Optional["VirtualEvaluator"] = None,
     ) -> None:
         self._reasoning_service = reasoning_service
         self._llm_adapter = llm_adapter
+        self._reasoning_pipeline = reasoning_pipeline
+        self._virtual_evaluator = virtual_evaluator
 
     def propose(
         self,
@@ -98,8 +106,63 @@ class SyntheticResearchProposalEngine(ProposalEngine):
         scenario: ScenarioContext,
     ) -> Proposal:
         summary = task_summary or scenario.task_summary or "synthetic research task"
+        iteration = int(scenario.input_payload.get("loop_index", 0))
+
+        if self._virtual_evaluator is not None:
+            from core.reasoning.virtual_eval import VirtualEvaluator
+
+            evaluator = self._virtual_evaluator
+            if isinstance(evaluator, VirtualEvaluator):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                designs = evaluator.evaluate(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                if designs:
+                    best = designs[0]
+                    return Proposal(
+                        proposal_id="proposal-synthetic-fc3",
+                        summary=best.summary,
+                        constraints=best.constraints,
+                        virtual_score=best.virtual_score,
+                    )
+
+        if self._reasoning_pipeline is not None:
+            from core.reasoning.pipeline import ReasoningPipeline
+
+            pipeline = self._reasoning_pipeline
+            if isinstance(pipeline, ReasoningPipeline):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                design = pipeline.reason(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                return Proposal(
+                    proposal_id="proposal-synthetic-fc3-pipeline",
+                    summary=design.summary,
+                    constraints=design.constraints,
+                    virtual_score=design.virtual_score,
+                )
+
         if self._llm_adapter is not None:
-            iteration = int(scenario.input_payload.get("loop_index", 0))
             prompt = proposal_prompt(
                 task_summary=summary,
                 scenario_name=scenario.scenario_name,
@@ -282,6 +345,8 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
 def build_synthetic_research_bundle(
     config: Optional[SyntheticResearchConfig] = None,
     llm_adapter: Optional[LLMAdapter] = None,
+    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+    virtual_evaluator: Optional["VirtualEvaluator"] = None,
 ) -> PluginBundle:
     """Build the formal synthetic research plugin bundle."""
 
@@ -293,7 +358,12 @@ def build_synthetic_research_bundle(
     return PluginBundle(
         scenario_name="synthetic_research",
         scenario_plugin=SyntheticResearchScenarioPlugin(),
-        proposal_engine=SyntheticResearchProposalEngine(reasoning_service, llm_adapter=adapter),
+        proposal_engine=SyntheticResearchProposalEngine(
+            reasoning_service,
+            llm_adapter=adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
+        ),
         experiment_generator=SyntheticResearchExperimentGenerator(workspace_root=plugin_config.workspace_root),
         coder=SyntheticResearchCoder(llm_adapter=adapter),
         runner=SyntheticResearchRunner(),

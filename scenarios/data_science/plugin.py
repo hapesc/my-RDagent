@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from core.execution import DockerExecutionBackend, DockerExecutionBackendConfig
 from data_models import (
@@ -43,6 +43,10 @@ from plugins.contracts import (
     ScenarioPlugin,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+
+if TYPE_CHECKING:
+    from core.reasoning.pipeline import ReasoningPipeline
+    from core.reasoning.virtual_eval import VirtualEvaluator
 
 
 def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
@@ -83,8 +87,15 @@ class DataScienceScenarioPlugin(ScenarioPlugin):
 
 
 class DataScienceProposalEngine(ProposalEngine):
-    def __init__(self, llm_adapter: LLMAdapter) -> None:
+    def __init__(
+        self,
+        llm_adapter: LLMAdapter,
+        reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+        virtual_evaluator: Optional["VirtualEvaluator"] = None,
+    ) -> None:
         self._llm_adapter = llm_adapter
+        self._reasoning_pipeline = reasoning_pipeline
+        self._virtual_evaluator = virtual_evaluator
 
     def propose(
         self,
@@ -99,6 +110,61 @@ class DataScienceProposalEngine(ProposalEngine):
         _ = plan
         summary = task_summary or scenario.task_summary or "data science task"
         iteration = int(scenario.input_payload.get("loop_index", 0))
+
+        if self._virtual_evaluator is not None:
+            from core.reasoning.virtual_eval import VirtualEvaluator
+
+            evaluator = self._virtual_evaluator
+            if isinstance(evaluator, VirtualEvaluator):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                designs = evaluator.evaluate(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                if designs:
+                    best = designs[0]
+                    return Proposal(
+                        proposal_id="proposal-ds-fc3",
+                        summary=best.summary,
+                        constraints=best.constraints,
+                        virtual_score=best.virtual_score,
+                    )
+
+        if self._reasoning_pipeline is not None:
+            from core.reasoning.pipeline import ReasoningPipeline
+
+            pipeline = self._reasoning_pipeline
+            if isinstance(pipeline, ReasoningPipeline):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                design = pipeline.reason(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                return Proposal(
+                    proposal_id="proposal-ds-fc3-pipeline",
+                    summary=design.summary,
+                    constraints=design.constraints,
+                    virtual_score=design.virtual_score,
+                )
+
         prompt = proposal_prompt(
             task_summary=summary,
             scenario_name=scenario.scenario_name,
@@ -277,6 +343,8 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
 def build_data_science_v1_bundle(
     config: Optional[DataScienceV1Config] = None,
     llm_adapter: Optional[LLMAdapter] = None,
+    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+    virtual_evaluator: Optional["VirtualEvaluator"] = None,
 ) -> PluginBundle:
     """Build Data Science plugin v1 bundle."""
 
@@ -295,7 +363,11 @@ def build_data_science_v1_bundle(
     return PluginBundle(
         scenario_name="data_science",
         scenario_plugin=DataScienceScenarioPlugin(),
-        proposal_engine=DataScienceProposalEngine(adapter),
+        proposal_engine=DataScienceProposalEngine(
+            adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
+        ),
         experiment_generator=DataScienceExperimentGenerator(workspace_root=plugin_config.workspace_root),
         coder=DataScienceCoder(adapter),
         runner=DataScienceRunner(backend),

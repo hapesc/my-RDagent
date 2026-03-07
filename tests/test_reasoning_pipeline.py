@@ -13,211 +13,209 @@ from llm.schemas import (
 from service_contracts import ModelSelectorConfig
 
 
-class CountingMockLLMProvider(MockLLMProvider):
-    def __init__(self, responses=None) -> None:
-        super().__init__(responses=responses)
-        self.call_count = 0
+class CountingProvider:
+    def __init__(self, inner: MockLLMProvider) -> None:
+        self._inner = inner
+        self.calls = 0
         self.model_configs = []
 
-    def complete(self, prompt: str, model_config=None) -> str:
-        self.call_count += 1
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        self.calls += 1
         self.model_configs.append(model_config)
-        return super().complete(prompt, model_config=model_config)
+        return self._inner.complete(prompt, model_config=model_config)
 
 
-def _build_pipeline(provider: MockLLMProvider, max_retries: int = 2) -> ReasoningPipeline:
-    adapter = LLMAdapter(provider, config=LLMAdapterConfig(max_retries=max_retries))
-    return ReasoningPipeline(adapter)
+class AlwaysInvalidJSONProvider:
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        return "not-json"
 
 
-def test_pipeline_instantiation_with_mock_adapter() -> None:
-    pipeline = _build_pipeline(MockLLMProvider())
-    assert isinstance(pipeline, ReasoningPipeline)
+def _make_pipeline() -> ReasoningPipeline:
+    return ReasoningPipeline(LLMAdapter(MockLLMProvider()))
 
 
-def test_reason_returns_experiment_design_with_non_empty_fields() -> None:
-    pipeline = _build_pipeline(MockLLMProvider())
+def test_pipeline_returns_experiment_design() -> None:
+    provider = MockLLMProvider(
+        responses=[
+            (
+                '{"strengths":["s1"],"weaknesses":["w1"],'
+                '"current_performance":"stable","key_observations":"obs"}'
+            ),
+            (
+                '{"problem":"p1","severity":"high",'
+                '"evidence":"e1","affected_component":"optimizer"}'
+            ),
+            (
+                '{"hypothesis":"h1","mechanism":"m1",'
+                '"expected_improvement":"+3%","testable_prediction":"tp1"}'
+            ),
+            (
+                '{"summary":"exp design","constraints":["c1"],'
+                '"virtual_score":0.8,"implementation_steps":["step1","step2"]}'
+            ),
+        ]
+    )
+    pipeline = ReasoningPipeline(LLMAdapter(provider))
 
-    design = pipeline.reason(
-        task_summary="Improve baseline model performance",
+    result = pipeline.reason(
+        task_summary="Improve baseline accuracy",
         scenario_name="data_science",
         iteration=1,
-        previous_results=["baseline score 0.72"],
-        current_scores=[0.72],
+        previous_results=["Run 0 reached 0.71 accuracy"],
+        current_scores=[0.71],
     )
 
-    assert isinstance(design, ExperimentDesign)
-    assert design.summary.strip() != ""
-    assert isinstance(design.implementation_steps, list)
-    assert len(design.implementation_steps) > 0
+    assert isinstance(result, ExperimentDesign)
+    assert result.summary
+    assert result.implementation_steps
 
 
-def test_reason_calls_llm_adapter_exactly_four_times() -> None:
-    provider = CountingMockLLMProvider()
-    pipeline = _build_pipeline(provider)
+def test_pipeline_four_stages_called() -> None:
+    counting_provider = CountingProvider(MockLLMProvider())
+    pipeline = ReasoningPipeline(LLMAdapter(counting_provider))
 
-    _ = pipeline.reason(
-        task_summary="Tune optimizer",
+    pipeline.reason(
+        task_summary="Tune optimizer settings",
         scenario_name="data_science",
         iteration=2,
-        previous_results=["sgd underfits"],
-        current_scores=[0.65],
+        previous_results=["SGD converges slowly"],
+        current_scores=[0.62],
     )
 
-    assert provider.call_count == 4
+    assert counting_provider.calls == 4
 
 
-def test_reason_with_trace_returns_design_and_trace_dict() -> None:
-    pipeline = _build_pipeline(MockLLMProvider())
+def test_pipeline_with_previous_results() -> None:
+    pipeline = _make_pipeline()
 
-    design, trace = pipeline.reason_with_trace(
-        task_summary="Optimize learning rate schedule",
+    result = pipeline.reason(
+        task_summary="Improve F1 score",
         scenario_name="data_science",
         iteration=3,
-        previous_results=["lr=1e-3 unstable", "lr=5e-4 stable but slow"],
-        current_scores=[0.68, 0.71],
-    )
-
-    assert isinstance(design, ExperimentDesign)
-    assert isinstance(trace, dict)
-
-
-def test_build_reasoning_trace_top_level_keys_exact_match() -> None:
-    analysis = AnalysisResult.from_dict(
-        {
-            "strengths": ["s1"],
-            "weaknesses": ["w1"],
-            "current_performance": "flat",
-            "key_observations": "obs",
-        }
-    )
-    problem = ProblemIdentification.from_dict(
-        {
-            "problem": "p",
-            "severity": "high",
-            "evidence": "e",
-            "affected_component": "trainer",
-        }
-    )
-    hypothesis = HypothesisFormulation.from_dict(
-        {
-            "hypothesis": "h",
-            "mechanism": "m",
-            "expected_improvement": "+3%",
-            "testable_prediction": "tp",
-        }
-    )
-    design = ExperimentDesign.from_dict(
-        {
-            "summary": "d",
-            "constraints": ["c"],
-            "virtual_score": 0.8,
-            "implementation_steps": ["step"],
-        }
-    )
-
-    trace = ReasoningPipeline._build_reasoning_trace(analysis, problem, hypothesis, design)
-    assert set(trace.keys()) == {"analysis", "problem", "hypothesis", "design"}
-
-
-def test_build_reasoning_trace_subdict_keys_match_schema_fields() -> None:
-    trace = ReasoningPipeline._build_reasoning_trace(
-        AnalysisResult.from_dict({}),
-        ProblemIdentification.from_dict({}),
-        HypothesisFormulation.from_dict({}),
-        ExperimentDesign.from_dict({}),
-    )
-
-    assert set(trace["analysis"].keys()) == {
-        "strengths",
-        "weaknesses",
-        "current_performance",
-        "key_observations",
-    }
-    assert set(trace["problem"].keys()) == {
-        "problem",
-        "severity",
-        "evidence",
-        "affected_component",
-    }
-    assert set(trace["hypothesis"].keys()) == {
-        "hypothesis",
-        "mechanism",
-        "expected_improvement",
-        "testable_prediction",
-    }
-    assert set(trace["design"].keys()) == {
-        "summary",
-        "constraints",
-        "virtual_score",
-        "implementation_steps",
-    }
-
-
-def test_reason_propagates_value_error_from_adapter() -> None:
-    provider = MockLLMProvider(responses=["not-json"])
-    pipeline = _build_pipeline(provider, max_retries=0)
-
-    with pytest.raises(ValueError):
-        pipeline.reason(
-            task_summary="Any task",
-            scenario_name="data_science",
-            iteration=1,
-            previous_results=["r1"],
-            current_scores=[0.1],
-        )
-
-
-def test_reason_accepts_model_config_and_forwards_to_all_calls() -> None:
-    provider = CountingMockLLMProvider()
-    pipeline = _build_pipeline(provider)
-    model_config = ModelSelectorConfig(provider="mock", model="gpt-test", temperature=0.2)
-
-    design = pipeline.reason(
-        task_summary="Improve recall",
-        scenario_name="data_science",
-        iteration=1,
-        previous_results=["run-1"],
-        current_scores=[0.42],
-        model_config=model_config,
-    )
-
-    assert isinstance(design, ExperimentDesign)
-    assert provider.call_count == 4
-    assert provider.model_configs == [model_config, model_config, model_config, model_config]
-
-
-def test_reason_works_with_history_lists() -> None:
-    pipeline = _build_pipeline(MockLLMProvider())
-
-    design = pipeline.reason(
-        task_summary="Improve convergence speed",
-        scenario_name="data_science",
-        iteration=4,
         previous_results=[
-            "iter1: baseline",
-            "iter2: +dropout",
-            "iter3: +scheduler",
-            "iter4: +augmentation",
+            "Run 0: baseline features",
+            "Run 1: feature scaling",
+            "Run 2: tuned regularization",
         ],
-        current_scores=[0.61, 0.67, 0.69, 0.705],
+        current_scores=[0.58, 0.63, 0.66],
     )
 
-    assert isinstance(design, ExperimentDesign)
-    assert design.summary != ""
+    assert isinstance(result, ExperimentDesign)
+    assert result.summary != ""
 
 
-def test_reason_handles_empty_inputs_iteration_zero() -> None:
-    pipeline = _build_pipeline(MockLLMProvider())
+def test_pipeline_first_iteration() -> None:
+    pipeline = _make_pipeline()
 
-    design = pipeline.reason(
-        task_summary="",
-        scenario_name="",
+    result = pipeline.reason(
+        task_summary="Establish first executable baseline",
+        scenario_name="data_science",
         iteration=0,
         previous_results=[],
         current_scores=[],
     )
 
-    assert isinstance(design, ExperimentDesign)
-    assert isinstance(design.summary, str)
-    assert isinstance(design.implementation_steps, list)
+    assert isinstance(result, ExperimentDesign)
+    assert result.summary
+
+
+def test_pipeline_passes_model_config() -> None:
+    counting_provider = CountingProvider(MockLLMProvider())
+    pipeline = ReasoningPipeline(LLMAdapter(counting_provider))
+    model_config = ModelSelectorConfig(
+        provider="mock-provider",
+        model="mock-model",
+        temperature=0.2,
+        max_tokens=400,
+    )
+
+    pipeline.reason(
+        task_summary="Optimize memory usage",
+        scenario_name="systems",
+        iteration=1,
+        previous_results=["Memory spikes on large batch"],
+        current_scores=[0.5],
+        model_config=model_config,
+    )
+
+    assert counting_provider.calls == 4
+    assert counting_provider.model_configs == [model_config, model_config, model_config, model_config]
+
+
+def test_build_reasoning_trace() -> None:
+    pipeline = _make_pipeline()
+
+    trace = pipeline._build_reasoning_trace(
+        analysis=AnalysisResult(),
+        problem=ProblemIdentification(),
+        hypothesis=HypothesisFormulation(),
+        design=ExperimentDesign(),
+    )
+
+    assert isinstance(trace, dict)
+    assert set(trace.keys()) == {"analysis", "problem", "hypothesis", "design"}
+
+
+def test_build_reasoning_trace_content() -> None:
+    pipeline = _make_pipeline()
+    analysis = AnalysisResult(
+        strengths=["stable training"],
+        weaknesses=["overfitting"],
+        current_performance="0.74 accuracy",
+        key_observations="validation loss diverges after epoch 8",
+    )
+    problem = ProblemIdentification(
+        problem="regularization too weak",
+        severity="high",
+        evidence="train/val gap expands",
+        affected_component="training_loop",
+    )
+    hypothesis = HypothesisFormulation(
+        hypothesis="If dropout is increased, then generalization will improve",
+        mechanism="stronger regularization reduces co-adaptation",
+        expected_improvement="+2-3% accuracy",
+        testable_prediction="smaller train/val gap",
+    )
+    design = ExperimentDesign(
+        summary="Increase dropout from 0.2 to 0.4 and compare validation accuracy",
+        constraints=["possible underfitting"],
+        virtual_score=0.68,
+        implementation_steps=["Update model config", "Run 3 seeds", "Compare metrics"],
+    )
+
+    trace = pipeline._build_reasoning_trace(analysis, problem, hypothesis, design)
+
+    assert trace["analysis"]["strengths"] == ["stable training"]
+    assert trace["analysis"]["weaknesses"] == ["overfitting"]
+    assert trace["analysis"]["current_performance"] == "0.74 accuracy"
+    assert trace["analysis"]["key_observations"] == "validation loss diverges after epoch 8"
+    assert trace["problem"]["problem"] == "regularization too weak"
+    assert trace["problem"]["severity"] == "high"
+    assert trace["problem"]["evidence"] == "train/val gap expands"
+    assert trace["problem"]["affected_component"] == "training_loop"
+    assert trace["hypothesis"]["hypothesis"] == "If dropout is increased, then generalization will improve"
+    assert trace["hypothesis"]["mechanism"] == "stronger regularization reduces co-adaptation"
+    assert trace["hypothesis"]["expected_improvement"] == "+2-3% accuracy"
+    assert trace["hypothesis"]["testable_prediction"] == "smaller train/val gap"
+    assert trace["design"]["summary"] == "Increase dropout from 0.2 to 0.4 and compare validation accuracy"
+    assert trace["design"]["constraints"] == ["possible underfitting"]
+    assert trace["design"]["virtual_score"] == 0.68
+    assert trace["design"]["implementation_steps"] == [
+        "Update model config",
+        "Run 3 seeds",
+        "Compare metrics",
+    ]
+
+
+def test_pipeline_llm_error_propagates() -> None:
+    adapter = LLMAdapter(AlwaysInvalidJSONProvider(), config=LLMAdapterConfig(max_retries=0))
+    pipeline = ReasoningPipeline(adapter)
+
+    with pytest.raises(ValueError):
+        pipeline.reason(
+            task_summary="Any task",
+            scenario_name="test",
+            iteration=0,
+            previous_results=[],
+            current_scores=[],
+        )

@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 from __future__ import annotations
 
 import pytest
@@ -9,6 +10,7 @@ from llm.schemas import (
     ExperimentDesign,
     HypothesisFormulation,
     ProblemIdentification,
+    ReasoningTrace,
 )
 from service_contracts import ModelSelectorConfig
 
@@ -28,6 +30,16 @@ class CountingProvider:
 class AlwaysInvalidJSONProvider:
     def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
         return "not-json"
+
+
+class RecordingTraceStore:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.records = []
+
+    def store(self, trace: ReasoningTrace) -> None:
+        self.calls += 1
+        self.records.append(trace)
 
 
 def _make_pipeline() -> ReasoningPipeline:
@@ -219,3 +231,62 @@ def test_pipeline_llm_error_propagates() -> None:
             previous_results=[],
             current_scores=[],
         )
+
+
+def test_trace_store_receives_trace() -> None:
+    trace_store = RecordingTraceStore()
+    pipeline = ReasoningPipeline(LLMAdapter(MockLLMProvider()), trace_store=trace_store)
+
+    result = pipeline.reason(
+        task_summary="Improve baseline accuracy",
+        scenario_name="data_science",
+        iteration=1,
+        previous_results=["Run 0 reached 0.71 accuracy"],
+        current_scores=[0.71],
+    )
+
+    assert isinstance(result, ExperimentDesign)
+    assert trace_store.calls == 1
+    assert len(trace_store.records) == 1
+    stored_trace = trace_store.records[0]
+    assert isinstance(stored_trace, ReasoningTrace)
+    assert stored_trace.trace_id
+    assert set(stored_trace.stages.keys()) == {"analysis", "problem", "hypothesis", "design"}
+    assert stored_trace.timestamp
+    assert stored_trace.metadata
+
+
+def test_trace_store_none_backward_compatible() -> None:
+    pipeline = ReasoningPipeline(LLMAdapter(MockLLMProvider()))
+
+    result = pipeline.reason(
+        task_summary="Improve baseline accuracy",
+        scenario_name="data_science",
+        iteration=1,
+        previous_results=["Run 0 reached 0.71 accuracy"],
+        current_scores=[0.71],
+    )
+
+    assert isinstance(result, ExperimentDesign)
+    assert result.summary
+    assert result.implementation_steps
+
+
+def test_trace_store_metadata_contains_context() -> None:
+    trace_store = RecordingTraceStore()
+    pipeline = ReasoningPipeline(LLMAdapter(MockLLMProvider()), trace_store=trace_store)
+
+    pipeline.reason(
+        task_summary="test_task",
+        scenario_name="data_science",
+        iteration=5,
+        previous_results=["Run 4 reached 0.79 accuracy"],
+        current_scores=[0.79],
+    )
+
+    stored_trace = trace_store.records[0]
+    assert stored_trace.metadata == {
+        "task_summary": "test_task",
+        "scenario": "data_science",
+        "iteration": "5",
+    }

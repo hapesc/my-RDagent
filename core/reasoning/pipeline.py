@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from llm.adapter import LLMAdapter
@@ -17,6 +19,7 @@ from llm.schemas import (
     ExperimentDesign,
     HypothesisFormulation,
     ProblemIdentification,
+    ReasoningTrace,
 )
 from service_contracts import ModelSelectorConfig
 
@@ -31,8 +34,9 @@ class ReasoningPipeline:
     Future optimization: combine stages 1-3 into one call if latency matters.
     """
 
-    def __init__(self, llm_adapter: LLMAdapter) -> None:
+    def __init__(self, llm_adapter: LLMAdapter, trace_store=None) -> None:
         self._llm_adapter = llm_adapter
+        self._trace_store = trace_store
 
     def reason(
         self,
@@ -83,6 +87,21 @@ class ReasoningPipeline:
             "Reasoning pipeline complete: %s",
             design.summary[:80] if design.summary else "(empty)",
         )
+
+        trace_dict = self._build_reasoning_trace(analysis, problem, hypothesis, design)
+        trace_record = ReasoningTrace(
+            trace_id=str(uuid.uuid4()),
+            stages=trace_dict,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            metadata={
+                "task_summary": task_summary,
+                "scenario": scenario_name,
+                "iteration": str(iteration),
+            },
+        )
+        if self._trace_store is not None:
+            self._trace_store.store(trace_record)
+
         return design
 
     def _stage_analysis(

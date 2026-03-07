@@ -85,10 +85,10 @@ class PluginContractTests(unittest.TestCase):
 
 
 class MainFlowAcceptanceTests(unittest.TestCase):
-    def test_main_uses_registry_without_scenario_if_else(self) -> None:
-        source = Path("main.py").read_text(encoding="utf-8")
-        self.assertIn("build_default_registry", source)
-        self.assertIsNone(re.search(r"if\\s+.*scenario\\s*==", source))
+    def test_entry_point_uses_registry_without_scenario_if_else(self) -> None:
+        source = Path("agentrd_cli.py").read_text(encoding="utf-8")
+        self.assertIn("plugin_registry", source)
+        self.assertIsNone(re.search(r"if\s+.*scenario\s*==", source))
 
 
 if __name__ == "__main__":

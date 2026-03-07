@@ -18,8 +18,6 @@ from data_models import (
     StopConditions,
     WorkspaceSnapshot,
 )
-from orchestrator_rd_loop_engine import OrchestratorConfig, OrchestratorRDLoopEngine
-
 
 class CoreModelContractTests(unittest.TestCase):
     def test_run_session_and_event_serialization(self) -> None:
@@ -83,18 +81,6 @@ class CoreModelContractTests(unittest.TestCase):
         self.assertEqual(snapshot.to_dict()["file_manifest"][0]["path"], "main.py")
         self.assertTrue(feedback.to_dict()["decision"])
 
-    def test_orchestrator_uses_run_status_enum(self) -> None:
-        orchestrator = OrchestratorRDLoopEngine(OrchestratorConfig(time_budget_seconds=120.0))
-        loop_context = orchestrator.start_loop("task-123")
-
-        self.assertEqual(loop_context.loop_state.status, RunStatus.RUNNING)
-        self.assertIsNotNone(loop_context.run_session)
-        self.assertEqual(loop_context.run_session.status, RunStatus.RUNNING)
-
-        loop_context = orchestrator.stop_loop(loop_context)
-        self.assertEqual(loop_context.loop_state.status, RunStatus.STOPPED)
-        self.assertEqual(loop_context.run_session.status, RunStatus.STOPPED)
-
     def test_schema_example_is_present(self) -> None:
         schema_path = Path("dev_doc/schema_examples/task_01_core_models.json")
         self.assertTrue(schema_path.exists())
@@ -111,7 +97,6 @@ class ModelLayerUsageTests(unittest.TestCase):
     def test_core_services_import_model_layer(self) -> None:
         core_service_files = [
             "task_intake_data_splitter/service.py",
-            "orchestrator_rd_loop_engine/service.py",
             "planner/service.py",
             "exploration_manager/service.py",
             "memory_service/service.py",

@@ -421,11 +421,4 @@ class EvalResult:
     report_ref: str
 
 
-@dataclass
-class PhaseResultMeta:
-    """Minimal metadata for a completed loop phase."""
 
-    proposal_id: Optional[str] = None
-    artifact_id: Optional[str] = None
-    score_id: Optional[str] = None
-    notes: str = ""

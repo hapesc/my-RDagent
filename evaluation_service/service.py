@@ -23,12 +23,13 @@ class EvaluationService:
         """Initialize evaluation service with metric settings."""
 
         self._config = config
+        self._leaderboard: Dict[str, Dict[str, float]] = {}
 
     def evaluate_run(self, execution_result: ExecutionResult) -> EvalResult:
         """Evaluate an execution result against standardized metrics.
 
         Responsibility:
-            Produce a placeholder score and report reference.
+            Produce a multi-stage score per FC-5 paper.
         Input semantics:
             - execution_result: Output of execution service
         Output semantics:
@@ -37,9 +38,33 @@ class EvaluationService:
             Evaluation Service -> evaluate_run
         """
 
-        _ = execution_result
-        score = Score(score_id="score-placeholder", value=0.0, metric_name=self._config.metric_name)
-        return EvalResult(score=score, report_ref="report-placeholder")
+        stages = {}
+        
+        execution_score = 1.0 if execution_result.exit_code == 0 else 0.0
+        stages["execution"] = str(execution_score)
+        
+        alignment_score = 1.0 if execution_result.artifacts_ref else 0.0
+        stages["alignment"] = str(alignment_score)
+        
+        if execution_result.timed_out:
+            debug_score = 0.0
+        else:
+            debug_score = 1.0
+        stages["debug_compliance"] = str(debug_score)
+        
+        authenticity_score = 1.0 if execution_result.logs_ref else 0.5
+        stages["authenticity"] = str(authenticity_score)
+        
+        total = (0.4 * execution_score + 0.2 * alignment_score + 
+                 0.2 * debug_score + 0.2 * authenticity_score)
+        
+        score = Score(
+            score_id=f"score-{execution_result.run_id}",
+            value=total,
+            metric_name=self._config.metric_name,
+            details={"stages": f"execution={execution_score},alignment={alignment_score},debug_compliance={debug_score},authenticity={authenticity_score}"},
+        )
+        return EvalResult(score=score, report_ref=f"report-{execution_result.run_id}")
 
     def aggregate_branch_scores(self, scores: List[Score]) -> Score:
         """Aggregate scores from multiple branches.
@@ -54,8 +79,19 @@ class EvaluationService:
             Evaluation Service -> aggregate_branch_scores
         """
 
-        _ = scores
-        return Score(score_id="aggregate-score", value=0.0, metric_name=self._config.metric_name)
+        if not scores:
+            return Score(
+                score_id="aggregate-score",
+                value=0.0,
+                metric_name=self._config.metric_name,
+            )
+
+        avg = sum(score.value for score in scores) / len(scores)
+        return Score(
+            score_id="aggregate-score",
+            value=avg,
+            metric_name=self._config.metric_name,
+        )
 
     def get_leaderboard(self, task_id: str) -> Dict[str, float]:
         """Return leaderboard entries for a task.
@@ -70,5 +106,4 @@ class EvaluationService:
             Evaluation Service -> get_leaderboard
         """
 
-        _ = task_id
-        return {}
+        return dict(self._leaderboard.get(task_id, {}))

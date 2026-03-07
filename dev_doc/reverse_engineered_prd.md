@@ -116,7 +116,7 @@ The MVP must include:
 
 V1 adds:
 
-- multiple scenario plugins
+- two built-in scenario plugins (data_science, synthetic_research)
 - REST control plane
 - branch-aware trace view
 - per-step model and timeout config
@@ -168,6 +168,8 @@ Each requirement is written so a coding agent can implement and test it directly
 
 The system shall support registration of scenario plugin bundles.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - new scenario can be added by configuration and plugin class references
@@ -177,6 +179,8 @@ Acceptance criteria:
 ### FR-002 Run Creation
 
 The system shall create a new run from CLI or API input.
+
+Implementation Status: ✅ Implemented
 
 Acceptance criteria:
 
@@ -190,6 +194,8 @@ The system shall execute the canonical loop:
 
 `propose -> experiment_generation -> coding -> running -> feedback -> record`
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - step transitions are recorded
@@ -199,6 +205,8 @@ Acceptance criteria:
 ### FR-004 Workspace Management
 
 The system shall manage a per-experiment workspace containing source files and outputs.
+
+Implementation Status: ✅ Implemented
 
 Acceptance criteria:
 
@@ -210,6 +218,8 @@ Acceptance criteria:
 
 The system shall support iterative code refinement before final execution.
 
+Implementation Status: 🔧 Partial (Planned for this sprint)
+
 Acceptance criteria:
 
 - coding stage can run multiple internal rounds
@@ -219,6 +229,8 @@ Acceptance criteria:
 ### FR-006 Sandboxed Execution
 
 The system shall execute generated code in a controlled backend.
+
+Implementation Status: ✅ Implemented (Docker and local)
 
 Acceptance criteria:
 
@@ -230,6 +242,8 @@ Acceptance criteria:
 
 The system shall analyze execution results and decide whether the current experiment should be accepted.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - feedback includes `decision`, `acceptable`, and `reason`
@@ -239,6 +253,8 @@ Acceptance criteria:
 ### FR-008 Trace Persistence
 
 The system shall persist structured trace events for every run.
+
+Implementation Status: ✅ Implemented (SQLite-backed)
 
 Acceptance criteria:
 
@@ -250,6 +266,8 @@ Acceptance criteria:
 
 The system shall checkpoint state after each successful step.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - latest checkpoint can restore loop state
@@ -260,6 +278,8 @@ Acceptance criteria:
 
 The system shall support branching from historical checkpoints or prior accepted nodes.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - branch stores parent reference
@@ -269,6 +289,8 @@ Acceptance criteria:
 ### FR-011 Pause / Resume / Stop Control
 
 The system shall allow operators to control a live run.
+
+Implementation Status: ✅ Implemented
 
 Acceptance criteria:
 
@@ -281,6 +303,8 @@ Acceptance criteria:
 
 The system shall allow operator instructions to be attached to future experiments.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - instructions are stored in run or branch context
@@ -290,6 +314,8 @@ Acceptance criteria:
 ### FR-013 Artifact Access
 
 The system shall store and expose artifacts generated during a run.
+
+Implementation Status: ✅ Implemented
 
 Acceptance criteria:
 
@@ -301,6 +327,8 @@ Acceptance criteria:
 
 The system shall provide a basic web UI for trace inspection.
 
+Implementation Status: 🔧 Partial (Trace viewer interface available)
+
 Acceptance criteria:
 
 - user can open a run timeline
@@ -311,6 +339,8 @@ Acceptance criteria:
 
 The system shall expose a service interface for run control and trace retrieval.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - API supports create, get status, pause, resume, stop, events, and artifacts
@@ -319,7 +349,9 @@ Acceptance criteria:
 
 ### FR-016 Knowledge Base
 
-The system should support optional storage and retrieval of reusable knowledge.
+The system will be implemented in MVP as minimal failure-case store for storage and retrieval of reusable knowledge.
+
+Implementation Status: 🔧 Partial (Scaffold exists; MVP store in progress)
 
 Acceptance criteria:
 
@@ -331,6 +363,8 @@ Acceptance criteria:
 
 The system shall support environment-variable and file-based configuration.
 
+Implementation Status: ✅ Implemented
+
 Acceptance criteria:
 
 - execution limits, model routing, backend choice, and storage paths are configurable
@@ -340,6 +374,8 @@ Acceptance criteria:
 ### FR-018 Health Check
 
 The system shall provide a health check command or endpoint.
+
+Implementation Status: ✅ Implemented
 
 Acceptance criteria:
 
@@ -497,12 +533,12 @@ Exit criteria:
 
 ## 16. Open Decisions
 
-These choices should be made early by the implementation team:
+These choices have been partially or fully made during initial implementation:
 
-- whether historical resume truncates future state or always forks
-- whether UI is Streamlit-first or custom frontend
-- whether event store is SQLite-only for MVP or abstracted immediately
-- whether LLM adapter targets LiteLLM compatibility from day one
+- **Historical resume**: Currently restarts from next unfinished step using checkpoint restore.
+- **UI**: Basic trace viewer (Web UI) is planned as a core component for trace inspection.
+- **Event Store**: Decided to use `SQLiteMetadataStore` as the default implementation for both runs and events.
+- **LLM Adapter**: LiteLLM is being integrated as the primary provider (see `LiteLLMProvider`).
 
 ## 17. Definition Of Done
 

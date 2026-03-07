@@ -22,7 +22,7 @@ The architecture intentionally favors clear module boundaries and incremental im
 - `G2` Recoverable: every run must be resumable from the latest successful step.
 - `G3` Executable: generated code must run in a sandboxed, timeout-bound environment.
 - `G4` Observable: every proposal, code diff, execution result, and feedback decision must be inspectable.
-- `G5` Evolvable: coding is multi-round refinement, not single-shot generation.
+- `G5` Evolvable: coding is multi-round refinement, not single-shot generation. (CoSTEER multi-round code evolution is being implemented in this version).
 - `G6` Branchable: the system must support multiple experiment branches off previous checkpoints.
 - `G7` Deployable: the MVP must work on one machine; later versions may scale to multi-worker.
 
@@ -69,12 +69,19 @@ flowchart TB
         UI["Trace UI"]
     end
 
-    subgraph Orchestration["Orchestration Layer"]
+    subgraph Orchestration["Orchestration Layer (Assembled in app/runtime.py)"]
         RunSvc["Run Service"]
         LoopEngine["Loop Engine"]
         StepExecutor["Step Executor"]
         BranchMgr["Branch Manager"]
         ResumeMgr["Resume Manager"]
+        
+        subgraph CoreComponents["Injected Core Components"]
+            Planner["Planner"]
+            ExpMgr["Exploration Manager"]
+            MemSvc["Memory Service"]
+            EvalSvc["Evaluation Service"]
+        end
     end
 
     subgraph Domain["Domain Plugin Layer"]
@@ -96,6 +103,7 @@ flowchart TB
         KB["Knowledge Base"]
         Config["Config / Secrets"]
         Metrics["Logs / Metrics"]
+        WSMgr["Workspace Manager"]
     end
 
     CLI --> RunSvc
@@ -107,6 +115,12 @@ flowchart TB
     LoopEngine --> StepExecutor
     LoopEngine --> BranchMgr
     LoopEngine --> ResumeMgr
+    
+    LoopEngine -.-> Planner
+    LoopEngine -.-> ExpMgr
+    LoopEngine -.-> MemSvc
+    StepExecutor -.-> EvalSvc
+    StepExecutor -.-> WSMgr
 
     StepExecutor --> Scenario
     StepExecutor --> Proposal
@@ -256,6 +270,8 @@ Persist after each successful step, not only after each loop. This drastically r
 - show metrics trends
 
 ### 8.2 Orchestration Layer
+
+`app/runtime.py` is the real assembly point. `build_runtime()` creates and bundles all services (SQLiteMetadataStore, BranchTraceStore, FileCheckpointStore, WorkspaceManager, Planner, ExplorationManager, MemoryService, EvaluationService, PluginRegistry) into `RuntimeContext`. `build_run_service()` then injects these components into `StepExecutor` and `LoopEngine`.
 
 `RunService`
 
@@ -743,14 +759,26 @@ The following can wait until `v1`:
 - model-per-step routing
 - remote worker pool
 
-## 21. Handoff Note For Coding Agents
+## 22. Architecture Reality vs Design
 
-When implementing a similar system, do not start from UI or prompt tuning. Start from:
+This section summarizes the current implementation status compared to the design goals.
 
-- durable state model
-- workspace lifecycle
-- execution backend
-- plugin contracts
-- loop persistence
+### 21.1 Implemented vs Stubs
 
-If those are correct, the LLM prompting layer can evolve. If those are weak, the system will remain a demo.
+| Component | Status | Note |
+|-----------|--------|------|
+| `app/runtime.py` | **Implemented** | Real assembly point using dependency injection. |
+| `LoopEngine` | **Implemented** | Orchestrates iterations and persists state. |
+| `Planner` | **Implemented** | Generates plans for each iteration. |
+| `ExplorationManager` | **Implemented** | Manages the exploration graph and parent selection. |
+| `MemoryService` | **Implemented** | Handles context querying and historical memory. |
+| `EvaluationService` | **Implemented** | Evaluates generated code and results. |
+| `WorkspaceManager` | **Implemented** | Manages file snapshots and checkpoints. |
+| `StepExecutor` | **Implemented** | Executes individual steps via plugins. |
+| `CoSTEER` | **In-Progress** | Multi-round code evolution logic. |
+| `Web UI` | **Stub** | Minimal trace inspection provided via CLI/logs for now. |
+| `Multi-Worker` | **Planned** | Current focus is on single-host stability. |
+
+### 21.2 Dependency Injection Model
+
+The system does NOT treat the core services as a disconnected architecture from the orchestration layer. Instead, components like the Planner, ExplorationManager, MemoryService, and EvaluationService are designed as standalone, dependency-injected modules that the Orchestration Layer initializes and consumes. This ensures modularity without the overhead of maintaining two disjoint implementations.

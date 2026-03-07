@@ -107,18 +107,41 @@
 
 ### 6.3 代码生成与演化机制
 
-当前实现的主要编码内核是 `CoSTEER`：
+当前实现的编码内核正逐步从单一生成向 `CoSTEER` 演化：
 
 - 输入：任务描述、已有代码、先前反馈、检索知识
-- 机制：`RAGEvoAgent` 多轮 evolve + evaluate
+- 机制：
+  - 本版本中，`StepExecutor` 正在接入 `CoSTEER` 协议。
+  - 当前 `coding` 阶段主要由 `coder.develop()` 执行（参考 `core/loop/step_executor.py`）。
+  - 核心逻辑由 `plugins.contracts.Coder` 协议定义，未来将支持 `RAGEvoAgent` 的多轮 evolve + evaluate。
 - 特点：
-  - 可迭代多轮修改代码
-  - 可使用知识库 / 失败案例 / 先前 trace 做 RAG
-  - 会保留“可接受的最佳 fallback 版本”，而不是盲目提交最后一轮结果
+  - 能够根据任务描述产出结构化的 `CodeArtifact`。
+  - 支持多轮迭代修改代码（计划中）。
+  - 会保留“可接受的最佳 fallback 版本”，确保系统稳健性。
 
-## 7. 对外能力边界
+## 7. 实现映射 (Implementation Mapping)
 
-### 7.1 CLI 能力
+| 功能特性 | 核心代码文件 | 状态 |
+| :--- | :--- | :--- |
+| 循环引擎 (Loop Engine) | `core/loop/engine.py` | 已实现 |
+| 步骤执行器 (Step Executor) | `core/loop/step_executor.py` | 已实现 |
+| LLM 抽象层 (LLM Adapter) | `llm/adapter.py` | 已实现 |
+| LiteLLM 适配器 | `llm/providers/litellm_provider.py` | 已实现 |
+| 编码器协议 (Coder Protocol) | `plugins/contracts.py` | 已实现 |
+| 数据科学场景 | `scenarios/data_science/` | 已实现 |
+| 工作区管理 | `core/execution/workspace_manager.py` | 已实现 |
+
+## 8. 对外能力边界
+
+### 8.1 LLM 基础能力
+
+系统通过 `LLMProvider` 协议支持多种模型供应商：
+
+- `MockLLMProvider`: 用于测试的确定性 Mock 提供商，支持 `proposal:`, `coding:`, `feedback:` 等前缀触发。
+- `LiteLLMProvider`: 基于 `litellm` 的真实供应商实现，支持 GPT 等主流大模型，具备重试机制（通过 `LLMAdapter`）。
+- 结构化输出：`llm/adapter.py` 负责将 LLM 输出解析为 `llm/schemas.py` 中的 `ProposalDraft`, `CodeDraft`, `FeedbackDraft`。
+
+### 8.2 CLI 能力
 
 当前对外公开的主要命令为：
 
@@ -377,12 +400,16 @@ Data Science 是当前最复杂的场景，额外支持：
 - 可演化：编码过程不是一次性生成，而是多轮演化
 - 可恢复：工作区支持 checkpoint 与 fallback
 
-工程质量方面，仓库本身也体现出以下约束：
+系统的代码质量通过单元测试保障，目前的覆盖情况如下：
 
-- `ruff`
-- `mypy`
-- `pytest`
-- 覆盖率阈值 `80%`
+- 测试文件数：23+ 个任务测试文件 (`tests/test_task_*.py`)，以及 `test_litellm_provider.py` 等功能测试。
+- 总测试用例：约 96 个核心测试用例（基于历史版本，当前正在持续演进）。
+- 测试覆盖点：从 `core_models` 到 `loop_engine`，再到 `data_science_plugin`。
+- 工程规范约束：
+  - `ruff`
+  - `mypy`
+  - `pytest`
+  - 覆盖率阈值 `80%`
 
 ## 12. 扩展规格
 
@@ -427,8 +454,7 @@ Data Science 是当前最复杂的场景，额外支持：
 - `README.md`
 - `pyproject.toml`
 - `rdagent/app/cli.py`
-- `rdagent/utils/workflow/loop.py`
-- `rdagent/components/workflow/rd_loop.py`
+- `rdagent/core/loop/engine.py`
 - `rdagent/core/scenario.py`
 - `rdagent/core/proposal.py`
 - `rdagent/core/experiment.py`

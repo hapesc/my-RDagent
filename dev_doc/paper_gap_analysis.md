@@ -100,18 +100,25 @@ Our implementation uses a single sequential chain only:
 
 **Architecture**: The 6-stage plugin pipeline (`build_context → propose → generate → develop → run → summarize`) runs linearly, advancing one step at a time. There is no DAG scheduler or branch manager.
 
-### Gap Rating: **CRITICAL**
+### Gap Rating: **SIGNIFICANT**
 
 **Evidence**:
 - Ablation study shows **-28% performance** when removed (largest impact of all 6 FCs)
-- Core capability completely missing: no DAG, no branches, no merging
-- Sequential execution fundamentally incompatible with paper's parallelism
+- Implemented: MCTS/PUCT scheduler (`exploration_manager/scheduler.py`), branch pruning (`exploration_manager/pruning.py`), trace merging via LLM (`exploration_manager/merging.py`)
+- Wired into `ExplorationManager`, `LoopEngine`, and `app/runtime.py` with config-driven enablement
+- Remaining: async parallel execution (Phase 2), advanced pruning heuristics
 
 **Impact**:
-- Cannot explore multiple approaches in parallel (huge opportunity cost)
-- Forced to commit early to one solution direction (no hedging)
-- Cannot leverage best ideas from multiple branches
-- This is the single biggest capability gap vs. the paper
+- Core DAG-based multi-branch exploration now functional (sequential execution)
+- PUCT formula balances exploration/exploitation per paper's Algorithm 1
+- Branch pruning filters low-scoring paths; trace merging synthesizes best ideas
+- Parallel execution across branches deferred to Phase 2 (currently sequential)
+
+#### Implementation Status
+- **Branch**: `feat/paper-fc-implementation`
+- **Date**: 2026-03-07
+- **Tasks**: T1 (data models), T8 (MCTS scheduler), T9 (multi-branch engine), T10 (pruning), T11 (merging), T12 (wiring)
+- **Tests**: 53+ tests covering scheduler, pruning, merging, engine, and integration wiring
 
 ---
 
@@ -150,17 +157,26 @@ Our implementation uses single-step LLM generation:
 
 **Current prompt structure** (`llm/prompts.py:proposal_prompt()`): Single unified prompt with task summary, previous proposals, and iteration strategy. No structured reasoning steps, no multi-candidate generation.
 
-### Gap Rating: **MAJOR**
+### Gap Rating: **MINOR**
 
 **Evidence**:
-- Missing: Structured 4-step reasoning pipeline
-- Missing: Virtual evaluation stage
-- Missing: Multi-candidate generation + LLM ranking
+- Implemented: 4-stage scientific reasoning pipeline (`core/reasoning/pipeline.py`) — Analyze → Identify → Hypothesize → Design
+- Implemented: Virtual evaluation with N=5 candidates, K=2 forward selection (`core/reasoning/virtual_eval.py`)
+- Integrated into both `DataScienceProposalEngine` and `SyntheticResearchProposalEngine`
+- Prompt structure follows Appendix E.3 multi-turn dialogue pattern
+- Remaining: prompt tuning with real data, production LLM validation
 
 **Impact**:
-- Lower quality proposals (no systematic problem decomposition)
-- No filtering before expensive coding stage (wastes compute on bad ideas)
-- Cannot leverage LLM's reasoning about solution quality before implementation
+- Proposals now go through structured scientific reasoning before generation
+- Virtual evaluation filters low-quality ideas before expensive coding stage
+- Multi-candidate generation with LLM ranking reduces wasted compute
+- Quality gap vs. paper primarily in prompt refinement, not architecture
+
+#### Implementation Status
+- **Branch**: `feat/paper-fc-implementation`
+- **Date**: 2026-03-07
+- **Tasks**: T2 (prompts), T3 (schemas), T4 (mock), T5 (pipeline), T6 (virtual eval), T7 (scenario integration)
+- **Tests**: 77+ tests covering schemas, prompts, mock, pipeline, virtual eval, and scenario integration
 
 ---
 

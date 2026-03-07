@@ -284,6 +284,8 @@ Persist after each successful step, not only after each loop. This drastically r
 - coordinate iterations
 - enforce stop conditions
 - manage semaphores and per-step concurrency
+- dual-path execution: single-branch (scheduler=None) or multi-branch via MCTSScheduler (FC-2)
+- post-loop trace merging when merger is present
 
 `StepExecutor`
 
@@ -301,6 +303,25 @@ Persist after each successful step, not only after each loop. This drastically r
 
 - restore a run from latest or requested checkpoint
 - optionally truncate future state when resuming from history
+
+`ExplorationManager` (FC-2)
+
+- delegates branch selection to `MCTSScheduler` (PUCT formula)
+- delegates low-scoring branch removal to `BranchPruner` (relative threshold)
+- delegates multi-trace synthesis to `TraceMerger` (LLM-based)
+- manages the `ExplorationGraph` DAG (adjacency list, no NetworkX)
+
+`ReasoningPipeline` (FC-3)
+
+- 4-stage scientific reasoning: Analyze → Identify Problem → Hypothesize → Design Experiment
+- each stage is a separate LLM call with structured output schema
+- located in `core/reasoning/pipeline.py`
+
+`VirtualEvaluator` (FC-3)
+
+- generates N=5 diversified candidate ideas via prompt perturbation
+- LLM-ranks each candidate and forwards top K=2 to coding stage
+- located in `core/reasoning/virtual_eval.py`
 
 ### 8.3 Domain Plugin Layer
 
@@ -652,6 +673,7 @@ agentrd/
   core/
     models/
     loop/
+    reasoning/
     plugins/
     storage/
     events/
@@ -674,6 +696,7 @@ Suggested ownership:
 
 - `core/models`: run session, experiment node, feedback, artifacts
 - `core/loop`: scheduler, step executor, resume logic, branching
+- `core/reasoning`: 4-stage scientific reasoning pipeline, virtual evaluation (FC-3)
 - `core/plugins`: plugin protocols and registry
 - `core/storage`: metadata, checkpoints, artifacts
 - `execution/backends`: docker / conda / local execution
@@ -770,12 +793,17 @@ This section summarizes the current implementation status compared to the design
 | `app/runtime.py` | **Implemented** | Real assembly point using dependency injection. |
 | `LoopEngine` | **Implemented** | Orchestrates iterations and persists state. |
 | `Planner` | **Implemented** | Generates plans for each iteration. |
-| `ExplorationManager` | **Implemented** | Manages the exploration graph and parent selection. |
+| `ExplorationManager` | **Implemented** | Manages the exploration graph, parent selection, and delegates to MCTS scheduler, branch pruner, and trace merger (FC-2). |
 | `MemoryService` | **Implemented** | Handles context querying and historical memory. |
 | `EvaluationService` | **Implemented** | Evaluates generated code and results. |
 | `WorkspaceManager` | **Implemented** | Manages file snapshots and checkpoints. |
 | `StepExecutor` | **Implemented** | Executes individual steps via plugins. |
 | `CoSTEER` | **In-Progress** | Multi-round code evolution logic. |
+| `ReasoningPipeline` | **Implemented** | 4-stage scientific reasoning (Analyze → Identify → Hypothesize → Design) per FC-3. Located in `core/reasoning/pipeline.py`. |
+| `VirtualEvaluator` | **Implemented** | Generates N=5 candidate ideas and selects top K=2 via LLM evaluation (FC-3). Located in `core/reasoning/virtual_eval.py`. |
+| `MCTSScheduler` | **Implemented** | MCTS/PUCT-based branch selection for DAG exploration (FC-2). Located in `exploration_manager/scheduler.py`. |
+| `BranchPruner` | **Implemented** | Score-based branch pruning with relative threshold (FC-2). Located in `exploration_manager/pruning.py`. |
+| `TraceMerger` | **Implemented** | LLM-based synthesis of best ideas from multiple branch traces (FC-2). Located in `exploration_manager/merging.py`. |
 | `Web UI` | **Stub** | Minimal trace inspection provided via CLI/logs for now. |
 | `Multi-Worker` | **Planned** | Current focus is on single-host stability. |
 

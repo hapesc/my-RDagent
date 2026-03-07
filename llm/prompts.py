@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from llm.schemas import ExperimentDesign
+from llm.schemas import ExperimentDesign, PlanningStrategy, HypothesisModification
 
 
 def _build_schema_hint(schema_cls: type) -> str:
@@ -94,6 +94,55 @@ def proposal_prompt(
         f"- `virtual_score`: Feasibility estimate 0.0-1.0. "
         f"0.0=impossible, 0.3=risky, 0.6=likely, 0.9=near-certain. Justify briefly in the summary.\n"
     )
+
+
+def planning_strategy_prompt(
+    task_summary: str,
+    scenario_name: str,
+    progress: float,
+    stage: str,
+    iteration: int,
+    history_summary: Dict[str, str],
+    budget_remaining: float,
+) -> str:
+    schema_hint = _build_schema_hint(PlanningStrategy)
+    
+    history_block = ""
+    if history_summary:
+        items = "\n".join(f"  - {k}: {v}" for k, v in history_summary.items())
+        history_block = f"\n## Exploration History\n{items}\n"
+    
+    return (
+        f"You are a research strategist planning the next exploration direction in an iterative R&D loop.\n"
+        f"\n"
+        f"## Task\n"
+        f"{task_summary}\n"
+        f"\n"
+        f"## Context\n"
+        f"- Scenario: {scenario_name}\n"
+        f"- Iteration: {iteration}\n"
+        f"- Progress: {progress:.1%}\n"
+        f"- Stage: {stage}\n"
+        f"- Budget Remaining: {budget_remaining:.1f} units\n"
+        f"{history_block}"
+        f"\n"
+        f"## Instructions\n"
+        f"Choose an exploration strategy for the next phase:\n"
+        f"1. Assess current progress and identify bottlenecks.\n"
+        f"2. Decide between exploration (trying new approaches) and exploitation (refining current best).\n"
+        f"3. Select a method that balances risk and information gain.\n"
+        f"4. Justify your selection based on exploration state and remaining budget.\n"
+        f"\n"
+        f"## Output Fields\n"
+        f"- `strategy_name`: Name of the chosen strategy (e.g., 'focused_refinement', 'broad_exploration').\n"
+        f"- `method_selection`: Specific method or technique to apply next.\n"
+        f"- `exploration_weight`: Weight for exploration vs exploitation (0.0=pure exploit, 1.0=pure explore).\n"
+        f"- `reasoning`: Justification for this strategy choice given current progress and budget.\n"
+        f"\n"
+        f"## Schema\n"
+        f"```json\n{schema_hint}\n```"
+    )
+
 
 
 def coding_prompt(
@@ -425,3 +474,53 @@ def merge_traces_prompt(
         traces_text=traces_text,
         schema_hint=schema_hint,
     )
+
+
+def hypothesis_modification_prompt(
+    source_hypothesis: str,
+    action: str,
+    context_items: List[str],
+    task_summary: str,
+    scenario_name: str,
+) -> str:
+    schema_hint = _build_schema_hint(HypothesisModification)
+    
+    context_block = ""
+    if context_items:
+        items = "\n".join(f"  - {item}" for item in context_items)
+        context_block = f"\n## Context Items\n{items}\n"
+    
+    return (
+        f"You are a research scientist refining hypotheses in an iterative exploration.\n"
+        f"\n"
+        f"## Task\n"
+        f"{task_summary}\n"
+        f"\n"
+        f"## Scenario\n"
+        f"{scenario_name}\n"
+        f"\n"
+        f"## Source Hypothesis\n"
+        f"{source_hypothesis}\n"
+        f"{context_block}"
+        f"\n"
+        f"## Action\n"
+        f"Modify or refine the hypothesis based on: {action}\n"
+        f"\n"
+        f"## Instructions\n"
+        f"Generate a modified version of the hypothesis:\n"
+        f"1. Identify the type of modification needed (refinement, pivot, narrowing, broadening).\n"
+        f"2. Preserve the core insight if it's still valid.\n"
+        f"3. Incorporate lessons from context items.\n"
+        f"4. Ensure the modified hypothesis is testable and more specific than the original.\n"
+        f"5. Clearly explain the reasoning behind the modification.\n"
+        f"\n"
+        f"## Output Fields\n"
+        f"- `modified_hypothesis`: The refined hypothesis statement (2-3 sentences).\n"
+        f"- `modification_type`: Category of change (e.g., 'refinement', 'pivot', 'narrowing').\n"
+        f"- `source_hypothesis`: The original hypothesis that was modified (for reference).\n"
+        f"- `reasoning`: Explanation of why this modification improves upon the original.\n"
+        f"\n"
+        f"## Schema\n"
+        f"```json\n{schema_hint}\n```"
+    )
+

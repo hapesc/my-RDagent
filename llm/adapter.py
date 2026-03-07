@@ -148,6 +148,30 @@ class MockLLMProvider:
                 }
             )
 
+        # FC-1 Planning Strategy
+        is_planning = "`strategy_name`" in prompt and "`method_selection`" in prompt
+        if is_planning:
+            return json.dumps(
+                {
+                    "strategy_name": "balanced_exploration",
+                    "method_selection": "targeted_improvement",
+                    "exploration_weight": 0.6,
+                    "reasoning": "Mock planning strategy based on current progress",
+                }
+            )
+
+        # FC-4 Hypothesis Modification
+        is_hyp_mod = "`modified_hypothesis`" in prompt and "`modification_type`" in prompt
+        if is_hyp_mod:
+            return json.dumps(
+                {
+                    "modified_hypothesis": "Mock modified hypothesis",
+                    "modification_type": "modify",
+                    "source_hypothesis": "Mock source hypothesis",
+                    "reasoning": "Mock modification reasoning",
+                }
+            )
+
         is_experiment = "`implementation_steps`" in prompt
         if is_experiment:
             return json.dumps(

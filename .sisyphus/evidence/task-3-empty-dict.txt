@@ -1,0 +1,1 @@
+PASS: all schemas from empty dict

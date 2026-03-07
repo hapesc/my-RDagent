@@ -1,0 +1,25 @@
+Scenario: Mock produces valid VirtualEvalResult with candidate count
+Status: PASS
+
+Evidence:
+from llm.adapter import LLMAdapter, MockLLMProvider
+from llm.schemas import VirtualEvalResult
+
+adapter = LLMAdapter(MockLLMProvider())
+result = adapter.generate_structured(
+    'Rank these 5 candidates... ## Output Fields\n- `rankings`: ...\n- `selected_indices`: ...',
+    VirtualEvalResult
+)
+assert isinstance(result.rankings, list)
+assert isinstance(result.selected_indices, list)
+
+Result:
+✓ VirtualEvalResult detected and parsed
+✓ rankings=[0, 1, 2, 3, 4] (correctly detected 5 candidates from prompt)
+✓ selected_indices=[0, 1] (selected first 2 out of 5, which is 5//2)
+✓ reasoning set to default mock value
+✓ All fields are correct types
+
+Candidate count detection works correctly. Mock adapts rankings list size
+based on number in prompt (e.g., "5 candidates" → 5-element list).
+Selected indices calculated as first K candidates where K = candidate_count // 2.

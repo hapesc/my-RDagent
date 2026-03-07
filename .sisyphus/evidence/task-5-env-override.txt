@@ -1,0 +1,6 @@
+Environment Override Config:
+  llm_provider: litellm
+  llm_api_key: sk-test123
+  llm_model: gpt-4-turbo
+  llm_base_url: https://api.example.com
+  costeer_max_rounds: 5

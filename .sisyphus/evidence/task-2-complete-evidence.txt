@@ -1,0 +1,170 @@
+================================================================================
+TASK 2: FC-3 REASONING PROMPT TEMPLATES - COMPLETION EVIDENCE
+================================================================================
+
+Date: 2025-03-07
+Status: COMPLETE
+
+================================================================================
+1. IMPLEMENTATION SUMMARY
+================================================================================
+
+Added 5 new prompt functions to llm/prompts.py:
+  1. reasoning_analysis_prompt()
+  2. reasoning_identify_prompt()
+  3. reasoning_hypothesize_prompt()
+  4. reasoning_design_prompt()
+  5. virtual_eval_prompt()
+
+Each function:
+  - Returns str (structured prompt template)
+  - Follows proposal_prompt() pattern: role → context sections → instructions → output fields
+  - Includes ## Output Fields section with named fields
+  - Reuses _iteration_strategy() for iteration-aware context
+
+Created tests/test_prompts_fc3.py:
+  - 26 comprehensive TDD tests covering all 5 functions
+  - Tests verify: signatures, role assignments, output fields, context integration
+
+================================================================================
+2. VERIFICATION: ALL ACCEPTANCE CRITERIA MET
+================================================================================
+
+Acceptance Criteria from plan (lines 361-367):
+
+[✓] 5 new functions exist: reasoning_analysis_prompt, reasoning_identify_prompt, 
+    reasoning_hypothesize_prompt, reasoning_design_prompt, virtual_eval_prompt
+    
+[✓] Each function returns `str` with role assignment and `## Output Fields` section
+    - reasoning_analysis_prompt: role "research scientist analyzing", ## Output Fields present
+    - reasoning_identify_prompt: role "research scientist identifying", ## Output Fields present
+    - reasoning_hypothesize_prompt: role "research scientist formulating", ## Output Fields present
+    - reasoning_design_prompt: role "research engineer designing", ## Output Fields present
+    - virtual_eval_prompt: role "research scientist evaluating", ## Output Fields present
+    
+[✓] `virtual_eval_prompt` accepts list of candidate dicts and returns ranking prompt
+    - Signature: virtual_eval_prompt(candidates: List, ...) → str
+    - Handles empty list, single candidate, multiple candidates
+    
+[✓] Existing `proposal_prompt`, `coding_prompt`, `feedback_prompt` unchanged
+    - All 3 functions retain original behavior
+    - No modifications to existing code
+    
+[✓] `python -m pytest tests/ -v` → ALL tests pass
+    - Result: 210 tests passed (184 existing + 26 new)
+
+================================================================================
+3. QA SCENARIO VERIFICATION
+================================================================================
+
+Scenario 1: All 5 prompt functions callable and return structured strings
+  Command: python -c "from llm.prompts import reasoning_analysis_prompt, reasoning_identify_prompt, reasoning_hypothesize_prompt, reasoning_design_prompt, virtual_eval_prompt; p1 = reasoning_analysis_prompt('task', 'ds', 0, [], []); assert '## Output Fields' in p1; p5 = virtual_eval_prompt([{'summary':'a'},{'summary':'b'}], 'task', 'ds', 'accuracy'); assert 'rank' in p5.lower() or 'Rank' in p5; print('PASS: all prompts valid')"
+  Result: ✓ PASS: all prompts valid
+  Evidence: .sisyphus/evidence/task-2-prompt-functions.txt
+
+Scenario 2: Existing prompts unchanged (regression check)
+  Command: python -c "from llm.prompts import proposal_prompt; p = proposal_prompt('test task', 'ds', 0); assert 'research scientist' in p.lower(); assert '## Output Fields' in p; print('PASS: proposal_prompt unchanged')"
+  Result: ✓ PASS: proposal_prompt unchanged
+  Evidence: .sisyphus/evidence/task-2-regression.txt
+
+================================================================================
+4. TEST RESULTS
+================================================================================
+
+TDD Test Suite (tests/test_prompts_fc3.py):
+  - TestReasoningAnalysisPrompt: 5 tests PASSED
+  - TestReasoningIdentifyPrompt: 4 tests PASSED
+  - TestReasoningHypothesizePrompt: 4 tests PASSED
+  - TestReasoningDesignPrompt: 5 tests PASSED
+  - TestVirtualEvalPrompt: 8 tests PASSED
+  Total: 26 tests PASSED
+
+Full pytest run:
+  - Previous: 184 tests passed
+  - New: 26 tests passed
+  - Total: 210 tests passed
+  - Warnings: 3 (pre-existing, unrelated to this task)
+
+================================================================================
+5. CODE PATTERN VERIFICATION
+================================================================================
+
+All 5 functions follow the established pattern from proposal_prompt():
+
+Pattern: f"You are a [ROLE].\n\n## [SECTION]\n[content]\n\n## Output Fields\n- `field`: description\n"
+
+✓ reasoning_analysis_prompt:
+  - Role: "research scientist analyzing the current state..."
+  - Sections: Task, Context, Instructions
+  - Output Fields: strengths, weaknesses, trajectory, bottleneck_hypothesis
+
+✓ reasoning_identify_prompt:
+  - Role: "research scientist identifying the critical problem..."
+  - Sections: Task, Analysis, Scenario, Instructions
+  - Output Fields: problem_statement, evidence, impact_estimate
+
+✓ reasoning_hypothesize_prompt:
+  - Role: "research scientist formulating a scientific hypothesis..."
+  - Sections: Task, Analysis Context, Problem Identified, Scenario, Instructions
+  - Output Fields: hypothesis, rationale, testable_prediction
+
+✓ reasoning_design_prompt:
+  - Role: "research engineer designing a concrete experiment..."
+  - Sections: Task, Analysis, Problem, Hypothesis, Experiment Context, Instructions
+  - Output Fields: experiment_description, independent_variable, control_conditions, measurement_plan, implementation_outline, success_criteria
+  - Includes _iteration_strategy() for iteration-aware guidance
+
+✓ virtual_eval_prompt:
+  - Role: "research scientist evaluating and ranking candidates..."
+  - Sections: Task, Scenario, Candidates, Evaluation Criteria, Instructions
+  - Output Fields: ranking, justifications, risk_flags, confidence
+  - Handles list formatting of candidates
+
+================================================================================
+6. INTEGRATION NOTES
+================================================================================
+
+No breaking changes:
+  - All 5 functions are pure string builders (no LLM calls)
+  - No hardcoded N=5 or K=2 (caller responsibility)
+  - Functions work with existing LLMAdapter infrastructure
+  - No dependencies on new schemas (schemas added in Task 3)
+
+Next integration points:
+  - Task 5: fc3_reasoning_loop will use these prompts with AnalysisResult, ProblemIdentification, etc.
+  - Prompts ready for MockLLMProvider (extended in Task 4)
+
+================================================================================
+7. FILES CHANGED
+================================================================================
+
+Modified:
+  - llm/prompts.py: Added 5 new functions (lines 141-324)
+
+Created:
+  - tests/test_prompts_fc3.py: 26 TDD tests
+
+Evidence saved:
+  - .sisyphus/evidence/task-2-prompt-functions.txt
+  - .sisyphus/evidence/task-2-regression.txt
+  - .sisyphus/evidence/task-2-complete-evidence.txt
+
+================================================================================
+8. COMMIT READINESS
+================================================================================
+
+Files ready for commit:
+  - llm/prompts.py
+  - tests/test_prompts_fc3.py
+
+Message (from plan):
+  `feat(llm): add FC-3 reasoning prompt templates and schemas`
+
+Pre-commit verification:
+  ✓ python -m pytest tests/ (210 passed)
+  ✓ lsp_diagnostics (clean)
+  ✓ imports verified
+
+Status: READY FOR COMMIT
+
+================================================================================

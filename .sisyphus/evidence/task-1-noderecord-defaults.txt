@@ -1,0 +1,32 @@
+## NodeRecord Default Fields Evidence
+
+### Test Results
+3 tests passed for NodeRecord default fields.
+
+### Test Details
+
+#### test_noderecord_visits_default_is_zero
+- NodeRecord field: visits
+- Expected default: 0 (int)
+- Result: ✅ PASS - visits field correctly defaults to 0
+
+#### test_noderecord_total_value_default_is_zero
+- NodeRecord field: total_value
+- Expected default: 0.0 (float)
+- Result: ✅ PASS - total_value field correctly defaults to 0.0
+
+#### test_noderecord_avg_value_default_is_zero
+- NodeRecord field: avg_value
+- Expected default: 0.0 (float)
+- Result: ✅ PASS - avg_value field correctly defaults to 0.0
+
+### Backward Compatibility
+All existing NodeRecord construction patterns still work:
+- NodeRecord(node_id="x") creates node with all new fields defaulted
+- NodeRecord(node_id="x", parent_ids=[], ...) works unchanged
+- Existing code requires 0 modifications
+
+### Implementation Location
+File: data_models.py, lines 325-348
+Fields added after branch_state field, before Plan class definition.
+All fields have proper defaults to maintain backward compatibility.

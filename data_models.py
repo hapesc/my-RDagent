@@ -333,6 +333,19 @@ class NodeRecord:
     score_id: Optional[str] = None
     score: Optional[float] = None
     branch_state: BranchState = BranchState.ACTIVE
+    visits: int = 0
+    total_value: float = 0.0
+    avg_value: float = 0.0
+
+    def update_stats(self, reward: float) -> None:
+        """Update MCTS statistics with a new reward.
+        
+        Args:
+            reward: The reward value to accumulate.
+        """
+        self.visits += 1
+        self.total_value += reward
+        self.avg_value = self.total_value / self.visits
 
 
 @dataclass

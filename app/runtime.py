@@ -16,6 +16,8 @@ from core.storage import (
 )
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
+from llm import LLMAdapter, MockLLMProvider
+from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from plugins import PluginRegistry, build_default_registry
@@ -43,10 +45,23 @@ class RuntimeContext:
     memory_service: MemoryService
     evaluation_service: EvaluationService
     plugin_registry: PluginRegistry
+    llm_adapter: LLMAdapter
+
+
+def _create_llm_provider(config: AppConfig):
+    if config.llm_provider == "litellm":
+        return LiteLLMProvider(
+            api_key=config.llm_api_key or "",
+            model=config.llm_model,
+            base_url=config.llm_base_url,
+        )
+    return MockLLMProvider()
 
 
 def build_runtime() -> RuntimeContext:
     config = load_config()
+    llm_provider = _create_llm_provider(config)
+    llm_adapter = LLMAdapter(llm_provider)
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
     checkpoint_store = FileCheckpointStore(
@@ -80,6 +95,7 @@ def build_runtime() -> RuntimeContext:
                 ),
             ),
         ),
+        llm_adapter=llm_adapter,
     )
 
 
@@ -91,6 +107,7 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         workspace_manager=runtime.workspace_manager,
         event_store=runtime.sqlite_store,
         branch_store=runtime.branch_store,
+        costeer_max_rounds=runtime.config.costeer_max_rounds,
     )
     loop_engine = LoopEngine(
         config=LoopEngineConfig(exception_archive_root=runtime.config.artifact_root),

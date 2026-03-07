@@ -19,6 +19,11 @@ class AppConfig:
     sandbox_timeout_sec: int
     allow_local_execution: bool
     log_level: str
+    llm_provider: str
+    llm_api_key: Optional[str]
+    llm_model: str
+    llm_base_url: Optional[str]
+    costeer_max_rounds: int
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
@@ -62,4 +67,9 @@ def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
         sandbox_timeout_sec=_get_int(env_map, "AGENTRD_SANDBOX_TIMEOUT_SEC", 300),
         allow_local_execution=_get_bool(env_map, "AGENTRD_ALLOW_LOCAL_EXECUTION", False),
         log_level=env_map.get("AGENTRD_LOG_LEVEL", "INFO"),
+        llm_provider=env_map.get("RD_AGENT_LLM_PROVIDER", "mock"),
+        llm_api_key=env_map.get("RD_AGENT_LLM_API_KEY") or None,
+        llm_model=env_map.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini"),
+        llm_base_url=env_map.get("RD_AGENT_LLM_BASE_URL") or None,
+        costeer_max_rounds=_get_int(env_map, "RD_AGENT_COSTEER_MAX_ROUNDS", 1),
     )

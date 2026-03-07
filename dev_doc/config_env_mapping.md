@@ -11,6 +11,11 @@
 | `AGENTRD_SANDBOX_TIMEOUT_SEC` | int | `300` | Sandbox timeout in seconds |
 | `AGENTRD_ALLOW_LOCAL_EXECUTION` | bool | `false` | Explicit opt-in for host local execution when Docker is unavailable or disabled |
 | `AGENTRD_LOG_LEVEL` | string | `INFO` | Log verbosity |
+| `RD_AGENT_LLM_PROVIDER` | string | `mock` | LLM provider name (e.g., `mock`, `litellm`) |
+| `RD_AGENT_LLM_API_KEY` | string | (none) | LLM API key for authentication |
+| `RD_AGENT_LLM_MODEL` | string | `gpt-4o-mini` | LLM model name |
+| `RD_AGENT_LLM_BASE_URL` | string | (none) | LLM base URL for custom/local endpoints |
+| `RD_AGENT_COSTEER_MAX_ROUNDS` | int | `1` | Maximum reasoning rounds (1=single round, 3=multi-round) |
 
 ## Startup Validation Command
 

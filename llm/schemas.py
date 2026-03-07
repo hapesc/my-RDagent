@@ -136,3 +136,37 @@ class VirtualEvalResult:
             reasoning=str(data.get("reasoning", "")),
             selected_indices=[int(item) for item in data.get("selected_indices", [])],
         )
+
+
+@dataclass
+class PlanningStrategy:
+    strategy_name: str = ""
+    method_selection: str = ""
+    exploration_weight: float = 0.5
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "PlanningStrategy":
+        return cls(
+            strategy_name=str(data.get("strategy_name", "")),
+            method_selection=str(data.get("method_selection", "")),
+            exploration_weight=float(data.get("exploration_weight", 0.5)),
+            reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class HypothesisModification:
+    modified_hypothesis: str = ""
+    modification_type: str = ""
+    source_hypothesis: str = ""
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "HypothesisModification":
+        return cls(
+            modified_hypothesis=str(data.get("modified_hypothesis", "")),
+            modification_type=str(data.get("modification_type", "")),
+            source_hypothesis=str(data.get("source_hypothesis", "")),
+            reasoning=str(data.get("reasoning", "")),
+        )

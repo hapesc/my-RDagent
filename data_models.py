@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def utc_now() -> datetime:
@@ -399,6 +399,8 @@ class BudgetLedger:
 
     total_time_budget: float
     elapsed_time: float = 0.0
+    iteration_durations: List[float] = field(default_factory=list)
+    estimated_remaining: float = 0.0
 
 
 @dataclass
@@ -416,6 +418,7 @@ class ContextPack:
 
     items: List[str] = field(default_factory=list)
     highlights: List[str] = field(default_factory=list)
+    scored_items: List[Tuple[str, float]] = field(default_factory=list)
 
 
 @dataclass
@@ -426,6 +429,8 @@ class ExecutionResult:
     exit_code: int
     logs_ref: str
     artifacts_ref: str
+    duration_sec: float = 0.0
+    timed_out: bool = False
 
 
 @dataclass

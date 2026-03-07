@@ -1,3 +1,4 @@
+"""FC-2 trace merging: LLM-guided synthesis of multiple reasoning paths."""
 from __future__ import annotations
 
 import logging

@@ -1,3 +1,4 @@
+"""FC-3 virtual evaluation: generate N candidates, rank top K."""
 from __future__ import annotations
 
 import logging

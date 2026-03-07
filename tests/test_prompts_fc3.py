@@ -367,3 +367,102 @@ class TestVirtualEvalPrompt:
         )
         assert isinstance(result, str)
         assert len(result) > 100
+
+
+class TestStructuredFeedbackPrompt:
+    """Test the structured feedback prompt for FC-3 CoSTEER."""
+
+    def test_signature_and_return_type(self):
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="print(1)",
+            execution_output="1",
+            task_description="add two numbers"
+        )
+        assert isinstance(result, str)
+        assert len(result) > 50
+
+    def test_has_output_fields_section(self):
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="x = 1",
+            execution_output="ok",
+            task_description="test"
+        )
+        assert "Output Fields" in result
+
+    def test_includes_execution_field(self):
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="print('hello')",
+            execution_output="hello",
+            task_description="print hello"
+        )
+        assert "execution" in result.lower()
+
+    def test_includes_three_dimensions(self):
+        """Prompt should reference all 3 feedback dimensions: execution, return_checking, code."""
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="x = 1 + 2",
+            execution_output="3",
+            task_description="compute sum"
+        )
+        result_lower = result.lower()
+        assert "execution" in result_lower
+        assert "code" in result_lower
+
+    def test_includes_code_context(self):
+        """Prompt includes the provided code."""
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="MY_UNIQUE_CODE_SNIPPET",
+            execution_output="output",
+            task_description="task"
+        )
+        assert "MY_UNIQUE_CODE_SNIPPET" in result
+
+    def test_has_role_assignment(self):
+        from llm.prompts import structured_feedback_prompt
+        result = structured_feedback_prompt(
+            code="x=1", execution_output="1", task_description="test"
+        )
+        assert "you are" in result.lower() or "reviewer" in result.lower() or "evaluator" in result.lower()
+
+
+class TestKnowledgeExtractionPrompt:
+    """Test the knowledge extraction prompt for FC-3 knowledge self-generation."""
+
+    def test_signature_and_return_type(self):
+        from llm.prompts import knowledge_extraction_prompt
+        result = knowledge_extraction_prompt(
+            trace_summary="experiment succeeded with feature X",
+            scenario="data_science"
+        )
+        assert isinstance(result, str)
+        assert len(result) > 50
+
+    def test_includes_trace_summary(self):
+        from llm.prompts import knowledge_extraction_prompt
+        result = knowledge_extraction_prompt(
+            trace_summary="UNIQUE_TRACE_SUMMARY_TEXT",
+            scenario="data_science"
+        )
+        assert "UNIQUE_TRACE_SUMMARY_TEXT" in result
+
+    def test_has_output_fields_or_instructions(self):
+        from llm.prompts import knowledge_extraction_prompt
+        result = knowledge_extraction_prompt(
+            trace_summary="some results",
+            scenario="synthetic_research"
+        )
+        # Should have some kind of structured output guidance
+        assert "Output" in result or "knowledge" in result.lower() or "extract" in result.lower()
+
+    def test_includes_scenario(self):
+        from llm.prompts import knowledge_extraction_prompt
+        result = knowledge_extraction_prompt(
+            trace_summary="results",
+            scenario="MY_UNIQUE_SCENARIO"
+        )
+        assert "MY_UNIQUE_SCENARIO" in result

@@ -524,3 +524,70 @@ def hypothesis_modification_prompt(
         f"```json\n{schema_hint}\n```"
     )
 
+
+def structured_feedback_prompt(
+    code: str,
+    execution_output: str,
+    task_description: str,
+) -> str:
+    """Build prompt for FC-3 three-dimensional structured feedback.
+
+    Generates structured feedback with execution, return_checking, and code dimensions.
+    """
+    return (
+        f"You are a code reviewer evaluating experiment implementation quality.\n"
+        f"\n"
+        f"## Task Description\n"
+        f"{task_description}\n"
+        f"\n"
+        f"## Submitted Code\n"
+        f"```\n{code}\n```\n"
+        f"\n"
+        f"## Execution Output\n"
+        f"{execution_output}\n"
+        f"\n"
+        f"## Instructions\n"
+        f"Evaluate the code along three dimensions:\n"
+        f"1. **Execution**: Did the code run correctly? Any runtime errors, crashes, or unexpected behavior?\n"
+        f"2. **Return Checking**: Are the returned values and outputs consistent with expectations?\n"
+        f"3. **Code Quality**: Is the implementation clean, correct, and aligned with the task?\n"
+        f"\n"
+        f"## Output Fields\n"
+        f"- `execution`: Assessment of execution status and any runtime issues.\n"
+        f"- `return_checking`: Assessment of output correctness and consistency.\n"
+        f"- `code`: Assessment of code quality, correctness, and alignment with task.\n"
+        f"- `final_decision`: true if the implementation is acceptable, false otherwise.\n"
+        f"- `reasoning`: Overall reasoning for the decision (1-2 sentences).\n"
+    )
+
+
+def knowledge_extraction_prompt(
+    trace_summary: str,
+    scenario: str,
+) -> str:
+    """Build prompt for FC-3 knowledge self-generation.
+
+    Extracts reusable knowledge from a CoSTEER loop trace for storage in memory.
+    """
+    return (
+        f"You are a research scientist extracting reusable knowledge from experiment results.\n"
+        f"\n"
+        f"## Scenario\n"
+        f"{scenario}\n"
+        f"\n"
+        f"## Experiment Trace Summary\n"
+        f"{trace_summary}\n"
+        f"\n"
+        f"## Instructions\n"
+        f"Extract the key lessons and reusable knowledge from this experiment trace:\n"
+        f"1. What worked well and should be repeated in similar tasks?\n"
+        f"2. What failed and should be avoided?\n"
+        f"3. What general principles or patterns emerged?\n"
+        f"4. What specific techniques or configurations proved effective?\n"
+        f"\n"
+        f"## Output Fields\n"
+        f"Provide a concise knowledge summary (1-3 sentences) capturing the most "
+        f"transferable insight from this experiment. Focus on actionable knowledge "
+        f"that would help in future {scenario} experiments.\n"
+    )
+

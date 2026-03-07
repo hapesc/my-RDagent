@@ -20,7 +20,17 @@ from data_models import (
     Score,
     StepState,
 )
-from llm import CodeDraft, FeedbackDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm import (
+    CodeDraft,
+    FeedbackDraft,
+    LLMAdapter,
+    LLMAdapterConfig,
+    MockLLMProvider,
+    ProposalDraft,
+    coding_prompt,
+    feedback_prompt,
+    proposal_prompt,
+)
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -42,7 +52,7 @@ def default_synthetic_research_step_overrides(timeout_sec: int = 300) -> StepOve
             provider="mock",
             model="synthetic-coding-default",
             max_retries=2,
-            max_tokens=512,
+            max_tokens=2048,
         ),
         running=RunningStepConfig(timeout_sec=timeout_sec),
         feedback=ModelSelectorConfig(provider="mock", model="synthetic-feedback-default", max_retries=2),
@@ -89,8 +99,14 @@ class SyntheticResearchProposalEngine(ProposalEngine):
     ) -> Proposal:
         summary = task_summary or scenario.task_summary or "synthetic research task"
         if self._llm_adapter is not None:
+            iteration = int(scenario.input_payload.get("loop_index", 0))
+            prompt = proposal_prompt(
+                task_summary=summary,
+                scenario_name=scenario.scenario_name,
+                iteration=iteration,
+            )
             draft = self._llm_adapter.generate_structured(
-                f"proposal:{summary}",
+                prompt,
                 ProposalDraft,
                 model_config=scenario.step_config.proposal,
             )
@@ -161,8 +177,15 @@ class SyntheticResearchCoder(Coder):
         brief_text = "\n".join(brief_lines) + "\n"
         artifact_description = proposal.summary
         if self._llm_adapter is not None:
+            prompt = coding_prompt(
+                proposal_summary=proposal.summary,
+                constraints=proposal.constraints,
+                experiment_node_id=experiment.node_id,
+                workspace_ref=experiment.workspace_ref,
+                scenario_name=scenario.scenario_name,
+            )
             draft = self._llm_adapter.generate_structured(
-                f"coding:{proposal.summary}",
+                prompt,
                 CodeDraft,
                 model_config=scenario.step_config.coding,
             )
@@ -214,13 +237,26 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
     ) -> FeedbackRecord:
         if self._llm_adapter is not None:
             score_text = "none" if score is None else f"{score.metric_name}:{score.value:.4f}"
+            hypothesis_text = (
+                experiment.hypothesis.get("text", "")
+                if isinstance(experiment.hypothesis, dict)
+                else str(experiment.hypothesis)
+            )
+            iteration = experiment.loop_index
             feedback_config = ModelSelectorConfig.from_dict(
                 experiment.hypothesis.get("_feedback_model_config")
                 if isinstance(experiment.hypothesis, dict)
                 else None
             )
+            prompt = feedback_prompt(
+                hypothesis_text=hypothesis_text,
+                exit_code=result.exit_code,
+                score_text=score_text,
+                logs_summary=result.logs_ref,
+                iteration=iteration,
+            )
             draft = self._llm_adapter.generate_structured(
-                f"feedback:exit_code={result.exit_code};score={score_text}",
+                prompt,
                 FeedbackDraft,
                 model_config=feedback_config,
             )

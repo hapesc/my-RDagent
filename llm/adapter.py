@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import List, Optional, Protocol, Type, TypeVar
@@ -13,6 +14,8 @@ from service_contracts import ModelSelectorConfig
 T = TypeVar("T")
 
 _JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*\n?(.*?)```", re.DOTALL)
+_JSON_BLOCK_UNCLOSED_RE = re.compile(r"```(?:json)?\s*\n?(.*)", re.DOTALL)
+_log = logging.getLogger(__name__)
 
 
 class LLMProvider(Protocol):
@@ -27,6 +30,15 @@ class MockLLMProvider:
 
     def __init__(self, responses: Optional[List[str]] = None) -> None:
         self._responses = list(responses or [])
+
+    @staticmethod
+    def _extract_section(prompt: str, legacy_prefix: str, section_header: str) -> str:
+        if legacy_prefix and legacy_prefix in prompt:
+            return prompt.split(legacy_prefix, 1)[1].split("\n")[0].strip()
+        if section_header in prompt:
+            after = prompt.split(section_header, 1)[1]
+            return after.split("\n")[0].strip()
+        return ""
 
     def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
         def _metadata_tokens() -> List[str]:
@@ -46,8 +58,13 @@ class MockLLMProvider:
         if self._responses:
             return self._responses.pop(0)
 
-        if "proposal:" in prompt:
-            summary = prompt.split("proposal:", 1)[1].split("\n")[0].strip() or "proposal"
+        prompt_lower = prompt.lower()
+        is_proposal = "proposal:" in prompt or "`virtual_score`" in prompt
+        is_coding = "coding:" in prompt or "`artifact_id`" in prompt
+        is_feedback = "feedback:" in prompt or "`acceptable`" in prompt
+
+        if is_proposal:
+            summary = self._extract_section(prompt, "proposal:", "## Task\n") or "mock-proposal"
             constraints = ["llm-structured"] + _metadata_tokens()
             return json.dumps(
                 {
@@ -56,8 +73,8 @@ class MockLLMProvider:
                     "virtual_score": 0.5,
                 }
             )
-        if "coding:" in prompt:
-            summary = prompt.split("coding:", 1)[1].split("\n")[0].strip() or "code"
+        if is_coding:
+            summary = self._extract_section(prompt, "coding:", "## Research Proposal\n") or "mock-code"
             suffix = ""
             if model_config is not None and model_config.model:
                 suffix = f" [model={model_config.model}]"
@@ -68,8 +85,12 @@ class MockLLMProvider:
                     "location": "/tmp/rd_agent_workspace",
                 }
             )
-        if "feedback:" in prompt:
-            reason = prompt.split("feedback:", 1)[1].split("\n")[0].strip() or "feedback"
+        if is_feedback:
+            hypothesis = self._extract_section(prompt, "feedback:", "- Hypothesis: ")
+            exit_code = self._extract_section(prompt, "", "- Exit code: ")
+            score = self._extract_section(prompt, "", "- Score: ")
+            parts = [p for p in [hypothesis, f"exit_code={exit_code}" if exit_code else "", score] if p]
+            reason = "; ".join(parts) if parts else "mock-feedback"
             if model_config is not None and model_config.model:
                 reason = f"{reason};model={model_config.model}"
             return json.dumps(
@@ -131,8 +152,12 @@ class LLMAdapter:
 
     @staticmethod
     def _extract_json(raw: str) -> str:
-        """Strip markdown code fences if present."""
+        """Strip markdown code fences if present, including unclosed fences (truncated output)."""
         match = _JSON_BLOCK_RE.search(raw)
+        if match:
+            return match.group(1).strip()
+        # Handle unclosed fence (e.g. output truncated before closing ```)
+        match = _JSON_BLOCK_UNCLOSED_RE.search(raw)
         if match:
             return match.group(1).strip()
         return raw.strip()
@@ -151,7 +176,7 @@ class LLMAdapter:
 
         enhanced = self._enhance_prompt(prompt, schema_cls)
 
-        for _ in range(attempts):
+        for attempt in range(attempts):
             raw = self._provider.complete(enhanced, model_config=model_config)
             try:
                 cleaned = self._extract_json(raw)
@@ -160,6 +185,8 @@ class LLMAdapter:
                     raise TypeError(f"schema_cls missing from_dict: {schema_cls}")
                 return schema_cls.from_dict(payload)
             except Exception as exc:
+                _log.warning("parse attempt %d/%d failed: %s  raw[:200]=%s",
+                             attempt + 1, attempts, exc, (raw or "")[:200])
                 last_error = exc
 
         raise ValueError(f"structured output parse failed after {attempts} attempts: {last_error}")

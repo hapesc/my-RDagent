@@ -10,6 +10,10 @@ from litellm.exceptions import Timeout as LiteLLMTimeout
 from service_contracts import ModelSelectorConfig
 
 
+_THINKING_MODEL_PREFIXES = ("gemini/gemini-2.5-pro", "o1", "o3", "o4")
+_DEFAULT_THINKING_MAX_TOKENS = 8192
+
+
 class LiteLLMProvider:
     def __init__(
         self,
@@ -23,6 +27,10 @@ class LiteLLMProvider:
         self._temperature: Optional[float] = None
         self._max_tokens: Optional[int] = None
 
+    @staticmethod
+    def _is_thinking_model(model: str) -> bool:
+        return any(model.startswith(p) for p in _THINKING_MODEL_PREFIXES)
+
     def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
         model = self._model
         temperature = self._temperature
@@ -35,6 +43,9 @@ class LiteLLMProvider:
                 temperature = model_config.temperature
             if model_config.max_tokens is not None:
                 max_tokens = model_config.max_tokens
+
+        if max_tokens is None and self._is_thinking_model(model):
+            max_tokens = _DEFAULT_THINKING_MAX_TOKENS
 
         kwargs: Dict[str, Any] = {
             "model": model,

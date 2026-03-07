@@ -21,7 +21,17 @@ from data_models import (
     Score,
     StepState,
 )
-from llm import CodeDraft, FeedbackDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm import (
+    CodeDraft,
+    FeedbackDraft,
+    LLMAdapter,
+    LLMAdapterConfig,
+    MockLLMProvider,
+    ProposalDraft,
+    coding_prompt,
+    feedback_prompt,
+    proposal_prompt,
+)
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -42,7 +52,7 @@ def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideC
             provider="mock",
             model="ds-coding-default",
             max_retries=2,
-            max_tokens=512,
+            max_tokens=2048,
         ),
         running=RunningStepConfig(timeout_sec=timeout_sec),
         feedback=ModelSelectorConfig(provider="mock", model="ds-feedback-default", max_retries=2),
@@ -88,8 +98,14 @@ class DataScienceProposalEngine(ProposalEngine):
         _ = parent_ids
         _ = plan
         summary = task_summary or scenario.task_summary or "data science task"
+        iteration = int(scenario.input_payload.get("loop_index", 0))
+        prompt = proposal_prompt(
+            task_summary=summary,
+            scenario_name=scenario.scenario_name,
+            iteration=iteration,
+        )
         draft = self._llm_adapter.generate_structured(
-            f"proposal:{summary}",
+            prompt,
             ProposalDraft,
             model_config=scenario.step_config.proposal,
         )
@@ -149,8 +165,15 @@ class DataScienceCoder(Coder):
         artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
         if self._llm_adapter is not None:
+            prompt = coding_prompt(
+                proposal_summary=proposal.summary,
+                constraints=proposal.constraints,
+                experiment_node_id=experiment.node_id,
+                workspace_ref=experiment.workspace_ref,
+                scenario_name=scenario.scenario_name,
+            )
             code_draft = self._llm_adapter.generate_structured(
-                f"coding:{proposal.summary}",
+                prompt,
                 CodeDraft,
                 model_config=scenario.step_config.coding,
             )
@@ -217,12 +240,24 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
         result: ExecutionResult,
         score: Optional[Score] = None,
     ) -> FeedbackRecord:
-        _ = score
-        prompt = f"feedback:exit_code={result.exit_code};logs={result.logs_ref[:120]}"
+        score_text = "none" if score is None else f"{score.metric_name}:{score.value:.4f}"
+        hypothesis_text = (
+            experiment.hypothesis.get("text", "")
+            if isinstance(experiment.hypothesis, dict)
+            else str(experiment.hypothesis)
+        )
+        iteration = experiment.loop_index
         feedback_config = ModelSelectorConfig.from_dict(
             experiment.hypothesis.get("_feedback_model_config")
             if isinstance(experiment.hypothesis, dict)
             else None
+        )
+        prompt = feedback_prompt(
+            hypothesis_text=hypothesis_text,
+            exit_code=result.exit_code,
+            score_text=score_text,
+            logs_summary=result.logs_ref,
+            iteration=iteration,
         )
         draft = self._llm_adapter.generate_structured(
             prompt,

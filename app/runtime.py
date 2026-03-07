@@ -16,6 +16,9 @@ from core.storage import (
 )
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
+from exploration_manager.merging import TraceMerger
+from exploration_manager.pruning import BranchPruner
+from exploration_manager.scheduler import MCTSScheduler
 from llm import LLMAdapter, MockLLMProvider
 from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
@@ -46,6 +49,7 @@ class RuntimeContext:
     evaluation_service: EvaluationService
     plugin_registry: PluginRegistry
     llm_adapter: LLMAdapter
+    scheduler: MCTSScheduler
 
 
 def _create_llm_provider(config: AppConfig):
@@ -62,6 +66,9 @@ def build_runtime() -> RuntimeContext:
     config = load_config()
     llm_provider = _create_llm_provider(config)
     llm_adapter = LLMAdapter(llm_provider)
+    scheduler = MCTSScheduler(exploration_weight=config.mcts_exploration_weight)
+    pruner = BranchPruner(relative_threshold=config.prune_threshold)
+    merger = TraceMerger(llm_adapter)
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
     checkpoint_store = FileCheckpointStore(
@@ -78,7 +85,13 @@ def build_runtime() -> RuntimeContext:
         checkpoint_store=checkpoint_store,
         workspace_manager=workspace_manager,
         planner=Planner(PlannerConfig()),
-        exploration_manager=ExplorationManager(ExplorationManagerConfig()),
+        exploration_manager=ExplorationManager(
+            ExplorationManagerConfig(),
+            scheduler=scheduler,
+            pruner=pruner,
+            merger=merger,
+            llm_adapter=llm_adapter,
+        ),
         memory_service=MemoryService(MemoryServiceConfig()),
         evaluation_service=EvaluationService(EvaluationServiceConfig()),
         plugin_registry=build_default_registry(
@@ -97,6 +110,7 @@ def build_runtime() -> RuntimeContext:
             llm_adapter=llm_adapter,
         ),
         llm_adapter=llm_adapter,
+        scheduler=scheduler,
     )
 
 
@@ -118,6 +132,7 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         step_executor=step_executor,
         run_store=runtime.sqlite_store,
         event_store=runtime.sqlite_store,
+        scheduler=runtime.scheduler,
     )
     resume_manager = ResumeManager(
         checkpoint_store=runtime.checkpoint_store,

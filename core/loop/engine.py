@@ -12,6 +12,7 @@ from exploration_manager.scheduler import MCTSScheduler
 
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
 from data_models import (
+    BranchState,
     BudgetLedger,
     Event,
     EventType,
@@ -76,6 +77,8 @@ class LoopEngine:
         budget = BudgetLedger(total_time_budget=float(run_session.stop_conditions.max_duration_sec), elapsed_time=0.0)
         loop_context = LoopContext(loop_state=loop_state, budget=budget, run_session=run_session)
         graph = ExplorationGraph()
+        if self._scheduler is not None and not graph.nodes:
+            graph.nodes.append(NodeRecord(node_id="root"))
 
         total_loop_limit = run_session.stop_conditions.max_loops or self._config.default_max_loops
         loops_this_call = max_loops if max_loops is not None else total_loop_limit
@@ -135,6 +138,9 @@ class LoopEngine:
                     score_id=step_result.score.score_id,
                 )
                 graph = self._exploration_manager.register_node(graph, node)
+                pruned_graph = self._exploration_manager.prune_branches(graph)
+                if isinstance(pruned_graph, ExplorationGraph):
+                    graph = pruned_graph
             else:
                 for branch_index in range(self._config.branches_per_iteration):
                     selected_node_id = self._scheduler.select_node(graph)
@@ -142,7 +148,11 @@ class LoopEngine:
                         break
 
                     branch_source_workspace = source_workspace if branch_index == 0 else None
-                    parent_ids = [selected_node_id]
+                    fork_parent_node_id = run_session.entry_input.get("fork_parent_node_id")
+                    if branch_index == 0 and isinstance(fork_parent_node_id, str) and fork_parent_node_id:
+                        parent_ids = []
+                    else:
+                        parent_ids = [selected_node_id]
                     try:
                         step_result = self._step_executor.execute_iteration(
                             run_session=run_session,
@@ -155,6 +165,25 @@ class LoopEngine:
                         )
                     except Exception as exc:
                         self._archive_exception(run_session.run_id, loop_state.iteration, exc)
+                        if self._config.branches_per_iteration <= 1:
+                            run_session.entry_input["last_error"] = str(exc)
+                            run_session.update_status(RunStatus.FAILED)
+                            loop_state.status = RunStatus.FAILED
+                            self._run_store.create_run(run_session)
+                            self._event_store.append_event(
+                                Event(
+                                    event_id=f"event-{uuid.uuid4().hex}",
+                                    run_id=run_session.run_id,
+                                    branch_id=run_session.active_branch_ids[0]
+                                    if run_session.active_branch_ids
+                                    else "main",
+                                    loop_index=loop_state.iteration,
+                                    step_name="record",
+                                    event_type=EventType.TRACE_RECORDED,
+                                    payload={"status": "FAILED", "error": str(exc)},
+                                )
+                            )
+                            return loop_context
                         traceback.print_exc()
                         continue
 
@@ -170,11 +199,22 @@ class LoopEngine:
                         score_id=step_result.score.score_id,
                     )
                     graph = self._exploration_manager.register_node(graph, node)
+                    pruned_graph = self._exploration_manager.prune_branches(graph)
+                    if isinstance(pruned_graph, ExplorationGraph):
+                        graph = pruned_graph
                     graph = self._scheduler.update_visit_count(graph, node.node_id)
 
             source_workspace = None
             loop_state.iteration += 1
             self._run_store.create_run(run_session)
+
+        active_nodes = []
+        if isinstance(graph, ExplorationGraph):
+            active_nodes = [node for node in graph.nodes if node.branch_state == BranchState.ACTIVE]
+        if len(active_nodes) > 1 and hasattr(self._exploration_manager, "merge_traces"):
+            merged = self._exploration_manager.merge_traces(graph, task_summary, run_session.scenario)
+            if merged is not None:
+                loop_context.merged_result = merged
 
         if loop_state.iteration >= total_loop_limit:
             run_session.update_status(RunStatus.COMPLETED)

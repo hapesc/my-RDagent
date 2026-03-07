@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from data_models import CodeArtifact, ExperimentNode, Proposal, Score
+import logging
+from typing import Optional
+
+from data_models import CodeArtifact, ExperimentNode, FeedbackRecord, Proposal, Score
 from plugins.contracts import Coder, FeedbackAnalyzer, Runner, ScenarioContext
+
+_log = logging.getLogger(__name__)
 
 
 class CoSTEEREvolver:
@@ -11,11 +16,31 @@ class CoSTEEREvolver:
         runner: Runner,
         feedback_analyzer: FeedbackAnalyzer,
         max_rounds: int = 3,
+        llm_adapter=None,
+        memory_service=None,
     ) -> None:
         self._coder = coder
         self._runner = runner
         self._feedback_analyzer = feedback_analyzer
         self._max_rounds = max_rounds
+        self._llm_adapter = llm_adapter
+        self._memory_service = memory_service
+
+    def _analyze_feedback(
+        self,
+        feedback_record: FeedbackRecord,
+        code: str,
+        execution_output: str,
+    ) -> "StructuredFeedback":
+        from llm.prompts import structured_feedback_prompt
+        from llm.schemas import StructuredFeedback
+
+        prompt = structured_feedback_prompt(
+            code=code,
+            execution_output=execution_output,
+            task_description=feedback_record.reason,
+        )
+        return self._llm_adapter.generate_structured(prompt, StructuredFeedback)
 
     def evolve(
         self,
@@ -40,10 +65,55 @@ class CoSTEEREvolver:
                 ),
             )
             if feedback.acceptable:
+                self._save_knowledge(experiment, feedback, round_idx, scenario)
                 break
-            if isinstance(experiment.hypothesis, dict):
-                experiment.hypothesis["_costeer_feedback"] = feedback.reason
-                experiment.hypothesis["_costeer_round"] = round_idx + 1
+
+            if self._llm_adapter is not None:
+                structured = self._analyze_feedback(
+                    feedback_record=feedback,
+                    code=getattr(artifact, "description", ""),
+                    execution_output=getattr(execution_result, "logs_ref", ""),
+                )
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_costeer_feedback"] = structured.reasoning
+                    experiment.hypothesis["_costeer_feedback_execution"] = structured.execution
+                    experiment.hypothesis["_costeer_feedback_code"] = structured.code
+                    if structured.return_checking is not None:
+                        experiment.hypothesis["_costeer_feedback_return"] = structured.return_checking
+                    experiment.hypothesis["_costeer_round"] = round_idx + 1
+            else:
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_costeer_feedback"] = feedback.reason
+                    experiment.hypothesis["_costeer_round"] = round_idx + 1
+
             artifact = self._coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
 
         return artifact
+
+    def _save_knowledge(
+        self,
+        experiment: ExperimentNode,
+        feedback: FeedbackRecord,
+        round_idx: int,
+        scenario: ScenarioContext,
+    ) -> None:
+        if self._llm_adapter is None or self._memory_service is None:
+            return
+
+        from llm.prompts import knowledge_extraction_prompt
+
+        trace_summary = f"Hypothesis: {experiment.hypothesis}, Result: {feedback.reason}"
+        prompt = knowledge_extraction_prompt(
+            trace_summary=trace_summary,
+            scenario=scenario.scenario_name,
+        )
+        knowledge_item = self._llm_adapter.complete(prompt)
+
+        self._memory_service.write_memory(
+            item=knowledge_item,
+            metadata={
+                "source": "costeer_knowledge_gen",
+                "round": str(round_idx),
+                "scenario": scenario.scenario_name,
+            },
+        )

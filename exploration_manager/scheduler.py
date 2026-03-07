@@ -2,105 +2,138 @@
 
 from __future__ import annotations
 
-import logging
 import math
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
-from data_models import BranchState, ExplorationGraph
-
-_log = logging.getLogger(__name__)
+from data_models import BranchState, ExplorationGraph, NodeRecord
+from exploration_manager.reward import RewardCalculator
 
 
 class MCTSScheduler:
-    """MCTS/PUCT-based node selection for multi-branch exploration.
+    """MCTS/PUCT-based node selection and value backup."""
 
-    Uses the PUCT formula to balance exploration (unvisited nodes) vs
-    exploitation (high-scoring nodes):
+    def __init__(
+        self,
+        c_puct: float = 1.41,
+        reward_calculator: Optional[RewardCalculator] = None,
+        **legacy_kwargs: Any,
+    ) -> None:
+        if "exploration_weight" in legacy_kwargs:
+            c_puct = float(legacy_kwargs.pop("exploration_weight"))
+        if legacy_kwargs:
+            unexpected = ", ".join(sorted(legacy_kwargs.keys()))
+            raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
 
-        PUCT(node) = Q(node) + c * sqrt(ln(N_parent) / N_node)
+        self._c_puct = c_puct
+        self._reward_calculator = reward_calculator or RewardCalculator()
 
-    where:
-        Q(node) = node's score (exploitation term)
-        c = exploration_weight (default sqrt(2) ~= 1.41, standard UCB1)
-        N_parent = total visits across all nodes (or parent visit count)
-        N_node = visit count of this node
-    """
+    def __getattr__(self, name: str) -> Callable[[ExplorationGraph, str], ExplorationGraph]:
+        if name != "update_visit_count":
+            raise AttributeError(name)
 
-    def __init__(self, exploration_weight: float = 1.41) -> None:
-        self._c = exploration_weight
+        def _legacy_update_visit_count(graph: ExplorationGraph, node_id: str) -> ExplorationGraph:
+            self.backpropagate(graph, node_id, 0.0)
+            return graph
+
+        return _legacy_update_visit_count
 
     def select_node(self, graph: ExplorationGraph) -> Optional[str]:
-        """Select the best node to expand using PUCT formula.
-
-        Returns node_id of best node to expand, or None if no expandable nodes.
-        Unvisited ACTIVE nodes get infinite priority (always explored first).
-        Only ACTIVE nodes are considered (PRUNED/MERGED nodes skipped).
-        """
+        """Select one ACTIVE node by paper-faithful PUCT."""
         active_nodes = [n for n in graph.nodes if n.branch_state == BranchState.ACTIVE]
         if not active_nodes:
             return None
 
-        total_visits = sum(graph.visit_counts.get(n.node_id, 0) for n in active_nodes)
-
-        unvisited = [n for n in active_nodes if graph.visit_counts.get(n.node_id, 0) == 0]
+        unvisited = [n for n in active_nodes if n.visits == 0]
         if unvisited:
-            no_score = [n for n in unvisited if n.score is None]
-            if no_score:
-                return no_score[0].node_id
+            unvisited_no_score = [n for n in unvisited if n.score is None]
+            if unvisited_no_score:
+                return unvisited_no_score[0].node_id
             return unvisited[0].node_id
 
+        priors = self._compute_priors(active_nodes)
+        total_visits = sum(n.visits for n in active_nodes)
+        sqrt_total = math.sqrt(total_visits)
+
         best_node_id: Optional[str] = None
-        best_puct = float("-inf")
-
+        best_score = float("-inf")
         for node in active_nodes:
-            n_visits = graph.visit_counts.get(node.node_id, 0)
-            q_value = node.score if node.score is not None else 0.0
-
-            if n_visits > 0 and total_visits > 0:
-                exploration_bonus = self._c * math.sqrt(math.log(total_visits) / n_visits)
-            else:
-                exploration_bonus = float("inf")
-
-            puct_score = q_value + exploration_bonus
-            _log.debug(
-                "PUCT(%s) = %.4f (Q=%.4f, bonus=%.4f, visits=%d)",
-                node.node_id,
-                puct_score,
-                q_value,
-                exploration_bonus,
-                n_visits,
-            )
-
-            if puct_score > best_puct:
-                best_puct = puct_score
+            score = node.avg_value + self._c_puct * priors[node.node_id] * sqrt_total / (1 + node.visits)
+            if score > best_score:
+                best_score = score
                 best_node_id = node.node_id
-
         return best_node_id
 
-    def update_visit_count(self, graph: ExplorationGraph, node_id: str) -> ExplorationGraph:
-        """Increment visit count for a node after it has been selected/expanded."""
-        current = graph.visit_counts.get(node_id, 0)
-        graph.visit_counts[node_id] = current + 1
-        return graph
+    def backpropagate(self, graph: ExplorationGraph, node_id: str, reward: float) -> None:
+        """Backpropagate reward from leaf to all ancestors until root."""
+        node_map = {n.node_id: n for n in graph.nodes}
+        start = node_map.get(node_id)
+        if start is None:
+            return
+
+        start.update_stats(reward)
+
+        pending_parent_ids = list(start.parent_ids)
+        seen: "set[str]" = set()
+
+        while pending_parent_ids:
+            parent_id = pending_parent_ids.pop()
+            if parent_id in seen:
+                continue
+
+            parent = node_map.get(parent_id)
+            if parent is None:
+                continue
+
+            parent.update_stats(reward)
+            seen.add(parent_id)
+            pending_parent_ids.extend(parent.parent_ids)
+
+    def observe_feedback(
+        self,
+        graph: ExplorationGraph,
+        node_id: str,
+        score: Optional[float],
+        decision: Optional[bool],
+    ) -> None:
+        """Convert feedback to reward and backpropagate."""
+        reward = self._reward_calculator.calculate(score=score, decision=decision)
+        self.backpropagate(graph, node_id, reward)
 
     def get_all_scores(self, graph: ExplorationGraph) -> Dict[str, float]:
-        """Return node_id -> PUCT score map for debugging/logging."""
+        """Return PUCT score for every ACTIVE node."""
         active_nodes = [n for n in graph.nodes if n.branch_state == BranchState.ACTIVE]
         if not active_nodes:
             return {}
 
-        total_visits = sum(graph.visit_counts.get(n.node_id, 0) for n in active_nodes)
+        priors = self._compute_priors(active_nodes)
+        total_visits = sum(n.visits for n in active_nodes)
+        sqrt_total = math.sqrt(total_visits)
+
         scores: Dict[str, float] = {}
-
         for node in active_nodes:
-            n_visits = graph.visit_counts.get(node.node_id, 0)
-            q_value = node.score if node.score is not None else 0.0
+            if node.visits == 0:
+                scores[node.node_id] = float("inf")
+                continue
 
-            if n_visits > 0 and total_visits > 0:
-                exploration_bonus = self._c * math.sqrt(math.log(total_visits) / n_visits)
-            else:
-                exploration_bonus = float("inf")
-
-            scores[node.node_id] = q_value + exploration_bonus
-
+            puct = node.avg_value + self._c_puct * priors[node.node_id] * sqrt_total / (1 + node.visits)
+            scores[node.node_id] = puct
         return scores
+
+    @staticmethod
+    def _compute_priors(active_nodes: "list[NodeRecord]") -> Dict[str, float]:
+        """Compute softmax prior probability over node potentials."""
+        potentials = {n.node_id: (n.score if n.score is not None else 0.0) for n in active_nodes}
+        max_p = max(potentials.values())
+
+        exp_values: Dict[str, float] = {}
+        exp_sum = 0.0
+        for node_id, potential in potentials.items():
+            value = math.exp(potential - max_p)
+            exp_values[node_id] = value
+            exp_sum += value
+
+        if exp_sum == 0.0:
+            uniform = 1.0 / len(active_nodes)
+            return {n.node_id: uniform for n in active_nodes}
+
+        return {node_id: value / exp_sum for node_id, value in exp_values.items()}

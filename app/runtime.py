@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, ResumeManager, RunService, RunServiceConfig, StepExecutor
+from core.reasoning.virtual_eval import VirtualEvaluator
 from core.storage import (
     BranchTraceStore,
     BranchTraceStoreConfig,
@@ -18,6 +20,7 @@ from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from exploration_manager.merging import TraceMerger
 from exploration_manager.pruning import BranchPruner
+from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
 from llm import LLMAdapter, MockLLMProvider
 from llm.providers.litellm_provider import LiteLLMProvider
@@ -52,6 +55,7 @@ class RuntimeContext:
     plugin_registry: PluginRegistry
     llm_adapter: LLMAdapter
     scheduler: MCTSScheduler
+    virtual_evaluator: Optional[VirtualEvaluator] = None
 
 
 def _create_llm_provider(config: AppConfig):
@@ -79,9 +83,17 @@ def build_runtime() -> RuntimeContext:
     config = load_config()
     llm_provider = _create_llm_provider(config)
     llm_adapter = LLMAdapter(llm_provider)
-    scheduler = MCTSScheduler(exploration_weight=config.mcts_exploration_weight)
+    scheduler = MCTSScheduler(
+        c_puct=config.mcts_c_puct,
+        reward_calculator=RewardCalculator(mode=config.mcts_reward_mode),
+    )
     pruner = BranchPruner(relative_threshold=config.prune_threshold)
     merger = TraceMerger(llm_adapter)
+    virtual_evaluator = VirtualEvaluator(
+        llm_adapter,
+        n_candidates=config.layer0_n_candidates,
+        k_forward=config.layer0_k_forward,
+    )
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
     checkpoint_store = FileCheckpointStore(
@@ -107,6 +119,7 @@ def build_runtime() -> RuntimeContext:
             pruner=pruner,
             merger=merger,
             llm_adapter=llm_adapter,
+            virtual_evaluator=virtual_evaluator,
         ),
         memory_service=_create_memory_service(config, llm_adapter),
         evaluation_service=EvaluationService(EvaluationServiceConfig()),
@@ -127,6 +140,7 @@ def build_runtime() -> RuntimeContext:
         ),
         llm_adapter=llm_adapter,
         scheduler=scheduler,
+        virtual_evaluator=virtual_evaluator,
     )
 
 

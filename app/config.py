@@ -25,6 +25,10 @@ class AppConfig:
     llm_base_url: Optional[str]
     costeer_max_rounds: int
     mcts_exploration_weight: float = 1.41
+    mcts_c_puct: float = 1.41
+    mcts_reward_mode: str = "score_based"
+    layer0_n_candidates: int = 5
+    layer0_k_forward: int = 2
     prune_threshold: float = 0.5
     debug_mode: bool = False
     debug_sample_fraction: float = 0.1
@@ -80,6 +84,10 @@ def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
         llm_base_url=env_map.get("RD_AGENT_LLM_BASE_URL") or None,
         costeer_max_rounds=_get_int(env_map, "RD_AGENT_COSTEER_MAX_ROUNDS", 1),
         mcts_exploration_weight=float(env_map.get("RD_AGENT_MCTS_WEIGHT", "1.41")),
+        mcts_c_puct=float(env_map.get("RD_AGENT_MCTS_C_PUCT", "1.41")),
+        mcts_reward_mode=env_map.get("RD_AGENT_MCTS_REWARD_MODE", "score_based"),
+        layer0_n_candidates=_get_int(env_map, "RD_AGENT_LAYER0_N_CANDIDATES", 5),
+        layer0_k_forward=_get_int(env_map, "RD_AGENT_LAYER0_K_FORWARD", 2),
         prune_threshold=float(env_map.get("RD_AGENT_PRUNE_THRESHOLD", "0.5")),
         debug_mode=_get_bool(env_map, "RD_AGENT_DEBUG_MODE", False),
         debug_sample_fraction=float(env_map.get("RD_AGENT_DEBUG_SAMPLE_FRACTION", "0.1")),

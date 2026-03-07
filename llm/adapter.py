@@ -103,6 +103,73 @@ class MockLLMProvider:
                 }
             )
 
+        # FC-3 Reasoning Stages (check more specific patterns first)
+        is_analysis = "`strengths`" in prompt or "`weaknesses`" in prompt
+        if is_analysis:
+            return json.dumps(
+                {
+                    "strengths": ["Mock strength 1", "Mock strength 2"],
+                    "weaknesses": ["Mock weakness 1"],
+                    "current_performance": "Mock analysis",
+                    "key_observations": "Mock observation",
+                }
+            )
+
+        is_problem = "`severity`" in prompt or "`affected_component`" in prompt
+        if is_problem:
+            return json.dumps(
+                {
+                    "problem": "Mock problem identified",
+                    "severity": "High",
+                    "evidence": "Mock evidence",
+                    "affected_component": "Mock component",
+                }
+            )
+
+        is_hypothesis = "`mechanism`" in prompt or "`testable_prediction`" in prompt
+        if is_hypothesis:
+            return json.dumps(
+                {
+                    "hypothesis": "Mock hypothesis",
+                    "mechanism": "Mock mechanism",
+                    "expected_improvement": "Mock improvement",
+                    "testable_prediction": "Mock prediction",
+                }
+            )
+
+        is_experiment = "`implementation_steps`" in prompt
+        if is_experiment:
+            return json.dumps(
+                {
+                    "summary": "Mock experiment design",
+                    "constraints": ["constraint-1", "constraint-2"],
+                    "virtual_score": 0.7,
+                    "implementation_steps": ["step 1", "step 2", "step 3"],
+                }
+            )
+
+        is_virtual_eval = "`rankings`" in prompt or "`selected_indices`" in prompt
+        if is_virtual_eval:
+            # Extract candidate count from prompt if present, default to 5
+            candidates = 5
+            prompt_lower = prompt.lower()
+            if "candidate" in prompt_lower:
+                # Try to find a number near "candidate"
+                import re
+                match = re.search(r"(\d+)\s*candidate", prompt_lower)
+                if match:
+                    candidates = int(match.group(1))
+            rankings = list(range(candidates))
+            selected_count = max(1, candidates // 2)
+            selected_indices = list(range(selected_count))
+            return json.dumps(
+                {
+                    "rankings": rankings,
+                    "reasoning": "Mock ranking strategy",
+                    "selected_indices": selected_indices,
+                }
+            )
+
         return json.dumps({"message": "ok"})
 
 
@@ -135,6 +202,10 @@ class LLMAdapter:
                 example[f.name] = True
             elif "List[str]" in ann:
                 example[f.name] = ["string"]
+            elif "List[int]" in ann:
+                example[f.name] = [0]
+            elif "List[float]" in ann:
+                example[f.name] = [0.0]
             else:
                 example[f.name] = "value"
         return json.dumps(example, indent=2)

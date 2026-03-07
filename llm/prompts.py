@@ -7,7 +7,34 @@ focus on role, context, and evaluation criteria.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 from typing import List, Optional
+
+from llm.schemas import ExperimentDesign
+
+
+def _build_schema_hint(schema_cls: type) -> str:
+    if not dataclasses.is_dataclass(schema_cls):
+        return ""
+    example = {}
+    for field_obj in dataclasses.fields(schema_cls):
+        ann = str(field_obj.type)
+        if ann in ("str", "<class 'str'>"):
+            example[field_obj.name] = "string"
+        elif ann in ("float", "<class 'float'>"):
+            example[field_obj.name] = 0.0
+        elif ann in ("bool", "<class 'bool'>"):
+            example[field_obj.name] = True
+        elif "List[str]" in ann:
+            example[field_obj.name] = ["string"]
+        elif "List[int]" in ann:
+            example[field_obj.name] = [0]
+        elif "List[float]" in ann:
+            example[field_obj.name] = [0.0]
+        else:
+            example[field_obj.name] = "value"
+    return json.dumps(example, indent=2)
 
 
 def _iteration_strategy(iteration: int) -> str:
@@ -359,4 +386,42 @@ def virtual_eval_prompt(
         f"and flag any major risks or blockers for lower-ranked ones (2-5 sentences).\n"
         f"- `selected_indices`: Indices of the top candidates to advance to the next stage "
         f"(e.g., [2, 0] for top 2). Select the K most promising candidates.\n"
+    )
+
+
+def merge_traces_prompt(
+    trace_summaries: List[str],
+    task_summary: str,
+    scenario_name: str,
+) -> str:
+    traces_text = "\n\n".join(
+        f"### Trace {i + 1}\n{summary}" for i, summary in enumerate(trace_summaries)
+    )
+    schema_hint = _build_schema_hint(ExperimentDesign)
+    return (
+        "You are an expert research synthesizer specializing in {scenario_name} experiments.\n\n"
+        "## Context\n"
+        "A multi-branch exploration produced {n} completed research traces for the task:\n"
+        "**Task**: {task_summary}\n\n"
+        "## Completed Traces\n"
+        "{traces_text}\n\n"
+        "## Instruction\n"
+        "Synthesize the BEST elements from all traces into ONE unified experiment design.\n"
+        "- Combine strengths from different traces\n"
+        "- Avoid weaknesses identified in any trace\n"
+        "- Produce a design that is MORE effective than any individual trace\n\n"
+        "## Output Fields\n"
+        "Return a JSON object with these fields:\n"
+        "- `summary`: A concise description of the merged experiment design\n"
+        "- `constraints`: List of constraints from combined traces\n"
+        "- `virtual_score`: Estimated quality score (0.0-1.0)\n"
+        "- `implementation_steps`: Ordered list of concrete implementation steps\n\n"
+        "## Schema\n"
+        "```json\n{schema_hint}\n```"
+    ).format(
+        scenario_name=scenario_name,
+        n=len(trace_summaries),
+        task_summary=task_summary,
+        traces_text=traces_text,
+        schema_hint=schema_hint,
     )

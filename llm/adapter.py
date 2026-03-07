@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Protocol, Type, TypeVar
+from typing import Any, List, Optional, Protocol, Type, TypeVar
 
 from service_contracts import ModelSelectorConfig
 
@@ -59,6 +59,17 @@ class MockLLMProvider:
             return self._responses.pop(0)
 
         prompt_lower = prompt.lower()
+        is_merge = "research synthesizer" in prompt_lower or "completed traces" in prompt_lower
+        if is_merge:
+            return json.dumps(
+                {
+                    "summary": "Merged experiment design",
+                    "constraints": ["merged-constraint-1", "merged-constraint-2"],
+                    "virtual_score": 0.8,
+                    "implementation_steps": ["merged step 1", "merged step 2"],
+                }
+            )
+
         is_proposal = "proposal:" in prompt or "`virtual_score`" in prompt
         is_coding = "coding:" in prompt or "`artifact_id`" in prompt
         is_feedback = "feedback:" in prompt or "`acceptable`" in prompt
@@ -150,12 +161,8 @@ class MockLLMProvider:
 
         is_virtual_eval = "`rankings`" in prompt or "`selected_indices`" in prompt
         if is_virtual_eval:
-            # Extract candidate count from prompt if present, default to 5
             candidates = 5
-            prompt_lower = prompt.lower()
             if "candidate" in prompt_lower:
-                # Try to find a number near "candidate"
-                import re
                 match = re.search(r"(\d+)\s*candidate", prompt_lower)
                 if match:
                     candidates = int(match.group(1))
@@ -256,7 +263,9 @@ class LLMAdapter:
                 payload = json.loads(cleaned)
                 if not hasattr(schema_cls, "from_dict"):
                     raise TypeError(f"schema_cls missing from_dict: {schema_cls}")
-                return schema_cls.from_dict(payload)
+                converter = getattr(schema_cls, "from_dict")
+                parsed = converter(payload)
+                return parsed
             except Exception as exc:
                 _log.warning("parse attempt %d/%d failed: %s  raw[:200]=%s",
                              attempt + 1, attempts, exc, (raw or "")[:200])

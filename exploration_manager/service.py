@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
+import uuid
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from data_models import BranchState, ExplorationGraph, NodeRecord, Plan
+from data_models import BranchState, ExplorationGraph, GraphEdge, NodeRecord, Plan
 from exploration_manager.merging import TraceMerger
 from exploration_manager.pruning import BranchPruner
 from exploration_manager.scheduler import MCTSScheduler
 from llm.adapter import LLMAdapter
+
+if TYPE_CHECKING:
+    from core.reasoning.virtual_eval import VirtualEvaluator
 
 
 @dataclass
@@ -33,6 +38,7 @@ class ExplorationManager:
         pruner: Optional[BranchPruner] = None,
         merger: Optional[TraceMerger] = None,
         llm_adapter: Optional[LLMAdapter] = None,
+        virtual_evaluator: Optional["VirtualEvaluator"] = None,
     ) -> None:
         """Initialize exploration manager with selection settings."""
 
@@ -41,6 +47,7 @@ class ExplorationManager:
         self._pruner = pruner
         self._merger = merger
         self._llm_adapter = llm_adapter
+        self._virtual_evaluator = virtual_evaluator
 
     def select_parents(self, graph: ExplorationGraph, plan: Plan) -> List[str]:
         """Select parent node identifiers for the next expansion.
@@ -68,17 +75,19 @@ class ExplorationManager:
         """Register a new node in the exploration graph.
 
         Responsibility:
-            Append a new node record to the exploration graph.
+            Append a new node record and maintain edges for each parent.
         Input semantics:
             - graph: Current ExplorationGraph
             - node: NodeRecord metadata
         Output semantics:
-            Updated ExplorationGraph with the new node.
+            Updated ExplorationGraph with the new node and edges.
         Architecture mapping:
             Exploration Manager -> register_node
         """
 
         graph.nodes.append(node)
+        for parent_id in node.parent_ids:
+            graph.edges.append(GraphEdge(parent_id=parent_id, child_id=node.node_id))
         return graph
 
     def get_frontier(self, graph: ExplorationGraph, criteria: Dict[str, str]) -> List[str]:
@@ -97,6 +106,83 @@ class ExplorationManager:
 
         _ = criteria
         return [node.node_id for node in graph.nodes if node.branch_state == BranchState.ACTIVE]
+
+    def get_node_depth(self, graph: ExplorationGraph, node_id: str) -> int:
+        node_map = {n.node_id: n for n in graph.nodes}
+        if node_id not in node_map:
+            return -1
+        depth = 0
+        current = node_map[node_id]
+        while current.parent_ids:
+            parent_id = current.parent_ids[0]
+            parent = node_map.get(parent_id)
+            if parent is None:
+                break
+            depth += 1
+            current = parent
+        return depth
+
+    def get_children(self, graph: ExplorationGraph, node_id: str) -> List[str]:
+        return [e.child_id for e in graph.edges if e.parent_id == node_id]
+
+    def get_path_to_root(self, graph: ExplorationGraph, node_id: str) -> List[str]:
+        node_map = {n.node_id: n for n in graph.nodes}
+        if node_id not in node_map:
+            return []
+        path: List[str] = [node_id]
+        current = node_map[node_id]
+        while current.parent_ids:
+            parent_id = current.parent_ids[0]
+            parent = node_map.get(parent_id)
+            if parent is None:
+                break
+            path.append(parent_id)
+            current = parent
+        return path
+
+    def observe_feedback(
+        self,
+        graph: ExplorationGraph,
+        node_id: str,
+        score: Optional[float],
+        decision: Optional[bool],
+    ) -> None:
+        if self._scheduler is None:
+            return
+        self._scheduler.observe_feedback(graph, node_id, score, decision)
+
+    def generate_diverse_roots(
+        self,
+        graph: ExplorationGraph,
+        task_summary: str,
+        scenario_name: str,
+        n_candidates: int = 5,
+        k_forward: int = 2,
+    ) -> ExplorationGraph:
+        if self._virtual_evaluator is None:
+            return self.register_node(graph, NodeRecord(node_id="root"))
+
+        designs = self._virtual_evaluator.evaluate(
+            task_summary=task_summary,
+            scenario_name=scenario_name,
+            iteration=0,
+            previous_results=[],
+            current_scores=[],
+        )
+        if not designs:
+            return self.register_node(graph, NodeRecord(node_id="root"))
+
+        for design in designs:
+            node_id = f"root-{uuid.uuid4().hex[:8]}"
+            proposal_hash = hashlib.sha256(design.summary.encode()).hexdigest()[:12]
+            node = NodeRecord(
+                node_id=node_id,
+                parent_ids=[],
+                proposal_id=f"layer0-{proposal_hash}",
+                score=design.virtual_score if design.virtual_score > 0 else None,
+            )
+            graph = self.register_node(graph, node)
+        return graph
 
     def prune_branches(self, graph: ExplorationGraph) -> ExplorationGraph:
         if self._pruner is None:

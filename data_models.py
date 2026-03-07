@@ -390,6 +390,7 @@ class LoopContext:
     loop_state: LoopState
     budget: "BudgetLedger"
     run_session: Optional[RunSession] = None
+    merged_result: Optional[object] = None
 
 
 @dataclass
@@ -433,6 +434,5 @@ class EvalResult:
 
     score: Score
     report_ref: str
-
 
 

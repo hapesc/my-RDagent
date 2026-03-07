@@ -24,6 +24,8 @@ class AppConfig:
     llm_model: str
     llm_base_url: Optional[str]
     costeer_max_rounds: int
+    mcts_exploration_weight: float = 1.41
+    prune_threshold: float = 0.5
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
@@ -72,4 +74,6 @@ def load_config(environ: Optional[Mapping[str, str]] = None) -> AppConfig:
         llm_model=env_map.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini"),
         llm_base_url=env_map.get("RD_AGENT_LLM_BASE_URL") or None,
         costeer_max_rounds=_get_int(env_map, "RD_AGENT_COSTEER_MAX_ROUNDS", 1),
+        mcts_exploration_weight=float(env_map.get("RD_AGENT_MCTS_WEIGHT", "1.41")),
+        prune_threshold=float(env_map.get("RD_AGENT_PRUNE_THRESHOLD", "0.5")),
     )

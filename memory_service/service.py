@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import sqlite3
-from typing import Dict, Iterator
+import time
+from typing import Dict, Iterator, List, Optional
 
 from data_models import ContextPack
+from memory_service.interaction_kernel import HypothesisRecord
 
 
 @dataclass
@@ -19,18 +21,21 @@ class MemoryServiceConfig:
     max_context_items: int = 10
     index_backend: str = "in_memory"
     db_path: str = ":memory:"
+    enable_hypothesis_storage: bool = False
 
 
 class MemoryService:
     """Stores and retrieves historical solutions and insights."""
 
-    def __init__(self, config: MemoryServiceConfig) -> None:
+    def __init__(self, config: MemoryServiceConfig, hypothesis_selector=None, interaction_kernel=None) -> None:
         """Initialize memory service with retrieval limits."""
 
         self._config = config
         self._db_path = config.db_path
         self._db_uri = False
-        self._memory_anchor: sqlite3.Connection | None = None
+        self._memory_anchor = None  # type: Optional[sqlite3.Connection]
+        self._hypothesis_selector = hypothesis_selector
+        self._interaction_kernel = interaction_kernel
 
         if self._db_path != ":memory:":
             Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -71,6 +76,20 @@ class MemoryService:
                 )
                 """
             )
+            if self._config.enable_hypothesis_storage:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS hypotheses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        text TEXT NOT NULL,
+                        score REAL DEFAULT 0.0,
+                        branch_id TEXT DEFAULT '',
+                        timestamp REAL DEFAULT 0.0,
+                        metadata TEXT DEFAULT '{}',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
 
     def write_memory(self, item: str, metadata: Dict[str, str]) -> None:
         """Write a memory item into storage.
@@ -125,7 +144,13 @@ class MemoryService:
 
         items = [str(row["item"]) for row in rows]
         highlights = list(query.keys()) if items else []
-        return ContextPack(items=items, highlights=highlights)
+
+        scored_items = []  # type: List[tuple]
+        if self._config.enable_hypothesis_storage:
+            hyps = self.query_hypotheses(limit=self._config.max_context_items)
+            scored_items = [(h.text, h.score) for h in hyps]
+
+        return ContextPack(items=items, highlights=highlights, scored_items=scored_items)
 
     def get_memory_stats(self) -> Dict[str, int]:
         """Return basic memory statistics.
@@ -142,4 +167,57 @@ class MemoryService:
 
         with self._managed_connection() as conn:
             row = conn.execute("SELECT COUNT(*) AS count FROM failure_cases").fetchone()
-        return {"items": int(row["count"]) if row is not None else 0}
+        stats = {"items": int(row["count"]) if row is not None else 0}
+        if self._config.enable_hypothesis_storage:
+            with self._managed_connection() as conn:
+                h_row = conn.execute("SELECT COUNT(*) AS count FROM hypotheses").fetchone()
+            stats["hypothesis_count"] = int(h_row["count"]) if h_row is not None else 0
+        return stats
+
+    def write_hypothesis(
+        self,
+        text: str,
+        score: float,
+        branch_id: str,
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> None:
+        ts = time.time()
+        meta_json = json.dumps(metadata or {}, sort_keys=True)
+        with self._managed_connection() as conn:
+            conn.execute(
+                "INSERT INTO hypotheses (text, score, branch_id, timestamp, metadata) VALUES (?, ?, ?, ?, ?)",
+                (text, score, branch_id, ts, meta_json),
+            )
+
+    def query_hypotheses(self, branch_id: Optional[str] = None, limit: int = 10) -> List[HypothesisRecord]:
+        if branch_id is not None:
+            sql = "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id = ? ORDER BY id DESC LIMIT ?"
+            params = (branch_id, limit)  # type: tuple
+        else:
+            sql = "SELECT text, score, timestamp, branch_id FROM hypotheses ORDER BY id DESC LIMIT ?"
+            params = (limit,)
+        with self._managed_connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [
+            HypothesisRecord(
+                text=str(row["text"]),
+                score=float(row["score"]),
+                timestamp=float(row["timestamp"]),
+                branch_id=str(row["branch_id"]),
+            )
+            for row in rows
+        ]
+
+    def get_cross_branch_hypotheses(self, exclude_branch: str, limit: int = 10) -> List[HypothesisRecord]:
+        sql = "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id != ? ORDER BY score DESC LIMIT ?"
+        with self._managed_connection() as conn:
+            rows = conn.execute(sql, (exclude_branch, limit)).fetchall()
+        return [
+            HypothesisRecord(
+                text=str(row["text"]),
+                score=float(row["score"]),
+                timestamp=float(row["timestamp"]),
+                branch_id=str(row["branch_id"]),
+            )
+            for row in rows
+        ]

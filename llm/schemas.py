@@ -53,3 +53,86 @@ class FeedbackDraft:
             observations=str(data.get("observations", "")),
             code_change_summary=str(data.get("code_change_summary", "")),
         )
+
+
+@dataclass
+class AnalysisResult:
+    strengths: List[str] = field(default_factory=list)
+    weaknesses: List[str] = field(default_factory=list)
+    current_performance: str = ""
+    key_observations: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "AnalysisResult":
+        return cls(
+            strengths=[str(item) for item in data.get("strengths", [])],
+            weaknesses=[str(item) for item in data.get("weaknesses", [])],
+            current_performance=str(data.get("current_performance", "")),
+            key_observations=str(data.get("key_observations", "")),
+        )
+
+
+@dataclass
+class ProblemIdentification:
+    problem: str = ""
+    severity: str = ""
+    evidence: str = ""
+    affected_component: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ProblemIdentification":
+        return cls(
+            problem=str(data.get("problem", "")),
+            severity=str(data.get("severity", "")),
+            evidence=str(data.get("evidence", "")),
+            affected_component=str(data.get("affected_component", "")),
+        )
+
+
+@dataclass
+class HypothesisFormulation:
+    hypothesis: str = ""
+    mechanism: str = ""
+    expected_improvement: str = ""
+    testable_prediction: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "HypothesisFormulation":
+        return cls(
+            hypothesis=str(data.get("hypothesis", "")),
+            mechanism=str(data.get("mechanism", "")),
+            expected_improvement=str(data.get("expected_improvement", "")),
+            testable_prediction=str(data.get("testable_prediction", "")),
+        )
+
+
+@dataclass
+class ExperimentDesign:
+    summary: str = ""
+    constraints: List[str] = field(default_factory=list)
+    virtual_score: float = 0.0
+    implementation_steps: List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ExperimentDesign":
+        return cls(
+            summary=str(data.get("summary", "")),
+            constraints=[str(item) for item in data.get("constraints", [])],
+            virtual_score=float(data.get("virtual_score", 0.0)),
+            implementation_steps=[str(item) for item in data.get("implementation_steps", [])],
+        )
+
+
+@dataclass
+class VirtualEvalResult:
+    rankings: List[int] = field(default_factory=list)
+    reasoning: str = ""
+    selected_indices: List[int] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "VirtualEvalResult":
+        return cls(
+            rankings=[int(item) for item in data.get("rankings", [])],
+            reasoning=str(data.get("reasoning", "")),
+            selected_indices=[int(item) for item in data.get("selected_indices", [])],
+        )

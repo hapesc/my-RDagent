@@ -1,0 +1,14 @@
+Command:
+python -m pytest tests/test_scheduler_mcts.py -k "unvisited_node_with_no_score_preferred_first" -v
+
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0 -- /Users/michael-liang/miniforge3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 18 items / 17 deselected / 1 selected
+
+tests/test_scheduler_mcts.py::test_unvisited_node_with_no_score_preferred_first PASSED [100%]
+
+======================= 1 passed, 17 deselected in 2.35s =======================

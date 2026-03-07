@@ -1,0 +1,14 @@
+Command:
+python -m pytest tests/test_scheduler_mcts.py -k "observe_feedback_with_score_based_tanh_reward" -v
+
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0 -- /Users/michael-liang/miniforge3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 19 items / 18 deselected / 1 selected
+
+tests/test_scheduler_mcts.py::test_observe_feedback_with_score_based_tanh_reward PASSED [100%]
+
+======================= 1 passed, 18 deselected in 3.33s =======================

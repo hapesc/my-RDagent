@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from data_models import Plan, PlanningContext
+from llm.prompts import planning_strategy_prompt
+from llm.schemas import PlanningStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -16,19 +18,51 @@ class PlannerConfig:
     """Configuration for planning behavior."""
 
     max_exploration_strength: float = 1.0
-    default_budget_allocation: Dict[str, float] = None
+    default_budget_allocation: Optional[Dict[str, float]] = None
+    use_llm_planning: bool = False
 
 
 class Planner:
     """Generates a plan for exploration and exploitation within a loop."""
 
-    def __init__(self, config: PlannerConfig) -> None:
+    def __init__(self, config: PlannerConfig, llm_adapter=None) -> None:
         """Initialize planner with strategy constraints and defaults."""
 
         self._config = config
         self._history: List[Dict[str, str]] = []
+        self._llm_adapter = llm_adapter
         if self._config.default_budget_allocation is None:
             self._config.default_budget_allocation = {}
+
+    def generate_strategy(self, context: PlanningContext) -> Optional[PlanningStrategy]:
+        if self._llm_adapter is None or not self._config.use_llm_planning:
+            return None
+
+        budget = context.budget
+        progress = self._compute_progress(budget.total_time_budget, budget.elapsed_time)
+        stage = self._stage_from_progress(progress)
+        budget_remaining = max(0.0, budget.total_time_budget - budget.elapsed_time)
+
+        try:
+            prompt = planning_strategy_prompt(
+                task_summary="R&D exploration task",
+                scenario_name="default",
+                progress=progress,
+                stage=stage,
+                iteration=context.loop_state.iteration,
+                history_summary=context.history_summary,
+                budget_remaining=budget_remaining,
+            )
+            strategy = self._llm_adapter.generate_structured(prompt, PlanningStrategy)
+            logger.info(
+                "planner.strategy_generated name=%s weight=%.2f",
+                strategy.strategy_name,
+                strategy.exploration_weight,
+            )
+            return strategy
+        except Exception as exc:
+            logger.warning("planner.strategy_failed error=%s, falling back to heuristic", exc)
+            return None
 
     def generate_plan(self, context: PlanningContext) -> Plan:
         """Generate a plan for the current loop iteration.
@@ -48,9 +82,19 @@ class Planner:
         progress = self._compute_progress(budget.total_time_budget, budget.elapsed_time)
         stage = self._stage_from_progress(progress)
 
-        exploration_strength = max(0.0, self._config.max_exploration_strength * (1.0 - progress))
+        strategy = self.generate_strategy(context)
+        if strategy is not None:
+            exploration_strength = max(0.0, min(1.0, strategy.exploration_weight))
+        else:
+            exploration_strength = max(0.0, self._config.max_exploration_strength * (1.0 - progress))
+
         budget_allocation = self._build_budget_allocation(progress)
         guidance = self._build_guidance(stage, progress, context.history_summary)
+        if strategy is not None:
+            guidance.append(f"strategy:{strategy.strategy_name}")
+            guidance.append(f"method:{strategy.method_selection}")
+            if strategy.reasoning:
+                guidance.append(f"rationale:{strategy.reasoning}")
 
         plan_id = f"plan-{loop_state.loop_id}-{loop_state.iteration}"
         logger.info(
@@ -100,7 +144,8 @@ class Planner:
         return "late"
 
     def _build_budget_allocation(self, progress: float) -> Dict[str, float]:
-        allocation = dict(self._config.default_budget_allocation)
+        base_allocation = self._config.default_budget_allocation or {}
+        allocation = dict(base_allocation)
         if "exploration" not in allocation:
             allocation["exploration"] = 1.0 - progress
         if "exploitation" not in allocation:

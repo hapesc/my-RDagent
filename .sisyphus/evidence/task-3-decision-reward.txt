@@ -1,0 +1,25 @@
+EVIDENCE: test_true_decision_decision_based
+=============================================
+
+Test validates decision-based mode.
+Formula: reward = 1.0 if decision else 0.0
+
+Command: python -m pytest tests/test_reward.py::test_true_decision_decision_based -v
+
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_reward.py::test_true_decision_decision_based PASSED           [100%]
+
+============================== 1 passed in 2.45s ===============================
+
+Details:
+--------
+- RewardCalculator(mode="decision_based") correctly returns 1.0 for True
+- Validates official RDAgent formula: reward = 1.0 if decision else 0.0
+- Decision-based mode ignores score parameter

@@ -1,0 +1,26 @@
+EVIDENCE: test_score_none_falls_back_to_decision_true
+======================================================
+
+Test validates fallback mechanism in score-based mode.
+When score=None, falls back to decision_based computation.
+
+Command: python -m pytest tests/test_reward.py::test_score_none_falls_back_to_decision_true -v
+
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0
+cachedir: .pytest_cache
+rootdir: /Users/Michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_reward.py::test_score_none_falls_back_to_decision_true PASSED [100%]
+
+============================== 1 passed in 2.62s ===============================
+
+Details:
+--------
+- RewardCalculator(mode="score_based") with score=None correctly falls back to decision-based
+- Returns 1.0 when decision=True
+- Validates robustness: score_based mode gracefully handles missing score
+- Critical for MCTS backpropagation when score unavailable

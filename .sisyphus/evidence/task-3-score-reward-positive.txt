@@ -1,0 +1,25 @@
+EVIDENCE: test_positive_direction_score_based
+=============================================
+
+Test validates score-based mode with positive direction.
+Formula: reward = tanh(0.8) * 1 ≈ 0.6640
+
+Command: python -m pytest tests/test_reward.py::test_positive_direction_score_based -v
+
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_reward.py::test_positive_direction_score_based PASSED         [100%]
+
+============================== 1 passed in 3.89s ===============================
+
+Details:
+--------
+- RewardCalculator(mode="score_based", direction=1) correctly computes math.tanh(0.8)
+- Result matches expected value within 1e-6 tolerance
+- Validates official RDAgent formula: reward = math.tanh(score) * direction

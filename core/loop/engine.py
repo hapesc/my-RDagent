@@ -79,7 +79,16 @@ class LoopEngine:
         loop_context = LoopContext(loop_state=loop_state, budget=budget, run_session=run_session)
         graph = ExplorationGraph()
         if self._scheduler is not None and not graph.nodes:
-            graph.nodes.append(NodeRecord(node_id="root"))
+            if hasattr(self._exploration_manager, "generate_diverse_roots"):
+                graph = self._exploration_manager.generate_diverse_roots(
+                    graph,
+                    task_summary,
+                    run_session.scenario,
+                    n_candidates=5,
+                    k_forward=2,
+                )
+            if not graph.nodes:
+                graph.nodes.append(NodeRecord(node_id="root"))
 
         total_loop_limit = run_session.stop_conditions.max_loops or self._config.default_max_loops
         loops_this_call = max_loops if max_loops is not None else total_loop_limit
@@ -200,11 +209,17 @@ class LoopEngine:
                         artifact_id=step_result.artifact_id,
                         score_id=step_result.score.score_id,
                     )
+                    node.score = step_result.score.value
                     graph = self._exploration_manager.register_node(graph, node)
                     pruned_graph = self._exploration_manager.prune_branches(graph)
                     if isinstance(pruned_graph, ExplorationGraph):
                         graph = pruned_graph
-                    graph = self._scheduler.update_visit_count(graph, node.node_id)
+                    self._exploration_manager.observe_feedback(
+                        graph,
+                        node.node_id,
+                        score=step_result.score.value,
+                        decision=step_result.feedback.decision,
+                    )
 
             source_workspace = None
             iter_elapsed = time.monotonic() - iter_start

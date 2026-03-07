@@ -109,7 +109,6 @@ def test_no_scheduler_keeps_single_branch_behavior() -> None:
 def test_scheduler_multi_branch_creates_multiple_nodes_per_outer_iteration() -> None:
     scheduler = Mock()
     scheduler.select_node.side_effect = ["root-a", "root-b"]
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     engine, _planner, exploration_manager, step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=2,
@@ -144,7 +143,6 @@ def test_scheduler_none_selection_exhausts_branches_gracefully() -> None:
 def test_branch_error_does_not_stop_other_branches_when_scheduler_enabled() -> None:
     scheduler = Mock()
     scheduler.select_node.side_effect = ["root-a", "root-b"]
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     engine, _planner, exploration_manager, step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=2,
@@ -162,7 +160,6 @@ def test_branch_error_does_not_stop_other_branches_when_scheduler_enabled() -> N
 def test_scheduler_with_single_branch_per_iteration_executes_once() -> None:
     scheduler = Mock()
     scheduler.select_node.return_value = "root-a"
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     engine, _planner, _exploration_manager, step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=1,
@@ -176,12 +173,11 @@ def test_scheduler_with_single_branch_per_iteration_executes_once() -> None:
     assert scheduler.select_node.call_count == 1
 
 
-def test_visit_counts_updated_after_each_successful_branch_execution() -> None:
+def test_observe_feedback_called_after_each_successful_branch_execution() -> None:
     scheduler = Mock()
     scheduler.select_node.side_effect = ["root-a", "root-b"]
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
-    engine, _planner, _exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
+    engine, _planner, exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=2,
         scheduler=scheduler,
         step_side_effect=[_make_step_result("n1"), _make_step_result("n2")],
@@ -189,17 +185,16 @@ def test_visit_counts_updated_after_each_successful_branch_execution() -> None:
 
     engine.run(run_session=_make_run(max_loops=1), task_summary="visits", max_loops=1)
 
-    assert scheduler.update_visit_count.call_count == 2
-    first_call = scheduler.update_visit_count.call_args_list[0][0][1]
-    second_call = scheduler.update_visit_count.call_args_list[1][0][1]
-    assert first_call == "n1"
-    assert second_call == "n2"
+    assert exploration_manager.observe_feedback.call_count == 2
+    first_call = exploration_manager.observe_feedback.call_args_list[0]
+    second_call = exploration_manager.observe_feedback.call_args_list[1]
+    assert first_call[0][1] == "n1"  # node_id
+    assert second_call[0][1] == "n2"  # node_id
 
 
 def test_scheduler_selected_node_is_used_as_parent_id() -> None:
     scheduler = Mock()
     scheduler.select_node.side_effect = ["p1", "p2"]
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     engine, _planner, _exploration_manager, step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=2,
@@ -218,7 +213,6 @@ def test_scheduler_selected_node_is_used_as_parent_id() -> None:
 def test_scheduler_none_mid_iteration_stops_remaining_branches() -> None:
     scheduler = Mock()
     scheduler.select_node.side_effect = ["p1", None]
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     engine, _planner, _exploration_manager, step_executor, _run_store, _event_store = _build_engine(
         branches_per_iteration=3,

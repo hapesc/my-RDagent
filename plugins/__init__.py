@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from service_contracts import ScenarioManifest
 
@@ -23,6 +23,9 @@ from scenarios import (
     build_data_science_v1_bundle,
     build_synthetic_research_bundle,
 )
+
+if TYPE_CHECKING:
+    from llm import LLMAdapter
 
 
 def _data_science_manifest(config: Optional[DataScienceV1Config] = None) -> ScenarioManifest:
@@ -56,18 +59,19 @@ def _synthetic_research_manifest(config: Optional[SyntheticResearchConfig] = Non
 def build_default_registry(
     data_science_config: Optional[DataScienceV1Config] = None,
     synthetic_research_config: Optional[SyntheticResearchConfig] = None,
+    llm_adapter: Optional["LLMAdapter"] = None,
 ) -> PluginRegistry:
     """Create registry with built-in minimal plugins."""
 
     registry = PluginRegistry()
     registry.register(
         "data_science",
-        lambda: build_data_science_v1_bundle(data_science_config),
+        lambda: build_data_science_v1_bundle(data_science_config, llm_adapter=llm_adapter),
         manifest=_data_science_manifest(data_science_config),
     )
     registry.register(
         "synthetic_research",
-        lambda: build_synthetic_research_bundle(synthetic_research_config),
+        lambda: build_synthetic_research_bundle(synthetic_research_config, llm_adapter=llm_adapter),
         manifest=_synthetic_research_manifest(synthetic_research_config),
     )
     return registry

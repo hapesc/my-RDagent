@@ -239,11 +239,14 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
         )
 
 
-def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -> PluginBundle:
+def build_data_science_v1_bundle(
+    config: Optional[DataScienceV1Config] = None,
+    llm_adapter: Optional[LLMAdapter] = None,
+) -> PluginBundle:
     """Build Data Science plugin v1 bundle."""
 
     plugin_config = config or DataScienceV1Config()
-    llm_adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
+    adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
     backend = DockerExecutionBackend(
         DockerExecutionBackendConfig(
             docker_image=plugin_config.docker_image,
@@ -257,10 +260,10 @@ def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -
     return PluginBundle(
         scenario_name="data_science",
         scenario_plugin=DataScienceScenarioPlugin(),
-        proposal_engine=DataScienceProposalEngine(llm_adapter),
+        proposal_engine=DataScienceProposalEngine(adapter),
         experiment_generator=DataScienceExperimentGenerator(workspace_root=plugin_config.workspace_root),
-        coder=DataScienceCoder(llm_adapter),
+        coder=DataScienceCoder(adapter),
         runner=DataScienceRunner(backend),
-        feedback_analyzer=DataScienceFeedbackAnalyzer(llm_adapter),
+        feedback_analyzer=DataScienceFeedbackAnalyzer(adapter),
         default_step_overrides=plugin_config.default_step_overrides,
     )

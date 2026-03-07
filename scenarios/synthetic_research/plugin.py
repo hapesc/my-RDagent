@@ -243,21 +243,24 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
         )
 
 
-def build_synthetic_research_bundle(config: Optional[SyntheticResearchConfig] = None) -> PluginBundle:
+def build_synthetic_research_bundle(
+    config: Optional[SyntheticResearchConfig] = None,
+    llm_adapter: Optional[LLMAdapter] = None,
+) -> PluginBundle:
     """Build the formal synthetic research plugin bundle."""
 
     plugin_config = config or SyntheticResearchConfig()
     reasoning_service = ReasoningService(
         ReasoningServiceConfig(reasoning_policy="synthetic_research_pipeline")
     )
-    llm_adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
+    adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
     return PluginBundle(
         scenario_name="synthetic_research",
         scenario_plugin=SyntheticResearchScenarioPlugin(),
-        proposal_engine=SyntheticResearchProposalEngine(reasoning_service, llm_adapter=llm_adapter),
+        proposal_engine=SyntheticResearchProposalEngine(reasoning_service, llm_adapter=adapter),
         experiment_generator=SyntheticResearchExperimentGenerator(workspace_root=plugin_config.workspace_root),
-        coder=SyntheticResearchCoder(llm_adapter=llm_adapter),
+        coder=SyntheticResearchCoder(llm_adapter=adapter),
         runner=SyntheticResearchRunner(),
-        feedback_analyzer=SyntheticResearchFeedbackAnalyzer(llm_adapter=llm_adapter),
+        feedback_analyzer=SyntheticResearchFeedbackAnalyzer(llm_adapter=adapter),
         default_step_overrides=plugin_config.default_step_overrides,
     )

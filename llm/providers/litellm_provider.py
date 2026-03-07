@@ -29,7 +29,7 @@ class LiteLLMProvider:
         max_tokens = self._max_tokens
 
         if model_config is not None:
-            if model_config.model:
+            if model_config.model and model_config.provider not in (None, "", "mock"):
                 model = model_config.model
             if model_config.temperature is not None:
                 temperature = model_config.temperature
@@ -39,8 +39,9 @@ class LiteLLMProvider:
         kwargs: Dict[str, Any] = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
-            "api_key": self._api_key,
         }
+        if self._api_key:
+            kwargs["api_key"] = self._api_key
         if self._base_url is not None:
             kwargs["base_url"] = self._base_url
         if temperature is not None:

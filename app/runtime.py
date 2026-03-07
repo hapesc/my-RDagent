@@ -94,6 +94,7 @@ def build_runtime() -> RuntimeContext:
                     config.sandbox_timeout_sec
                 ),
             ),
+            llm_adapter=llm_adapter,
         ),
         llm_adapter=llm_adapter,
     )

@@ -114,6 +114,17 @@ class MockLLMProvider:
                 }
             )
 
+        # FC-3 Structured Feedback
+        is_structured_feedback = "structured feedback" in prompt_lower or ("`execution`" in prompt and "`code`" in prompt and "`reasoning`" in prompt)
+        if is_structured_feedback:
+            return json.dumps({
+                "execution": "Mock execution status: passed",
+                "return_checking": "Mock return check: values consistent",
+                "code": "Mock code review: clean implementation",
+                "final_decision": True,
+                "reasoning": "Mock reasoning: all checks passed",
+            })
+
         # FC-3 Reasoning Stages (check more specific patterns first)
         is_analysis = "`strengths`" in prompt or "`weaknesses`" in prompt
         if is_analysis:

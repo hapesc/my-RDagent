@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -169,4 +169,42 @@ class HypothesisModification:
             modification_type=str(data.get("modification_type", "")),
             source_hypothesis=str(data.get("source_hypothesis", "")),
             reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class StructuredFeedback:
+    """FC-3 three-dimensional structured feedback (execution + return_checking + code)."""
+    execution: str = ""
+    return_checking: Optional[str] = None
+    code: str = ""
+    final_decision: Optional[bool] = None
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "StructuredFeedback":
+        return cls(
+            execution=str(data.get("execution", "")),
+            return_checking=data.get("return_checking") if data.get("return_checking") is not None else None,
+            code=str(data.get("code", "")),
+            final_decision=bool(data["final_decision"]) if "final_decision" in data and data["final_decision"] is not None else None,
+            reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class ReasoningTrace:
+    """FC-3 reasoning pipeline trace record."""
+    trace_id: str = ""
+    stages: Dict[str, Any] = field(default_factory=dict)
+    timestamp: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ReasoningTrace":
+        return cls(
+            trace_id=str(data.get("trace_id", "")),
+            stages=dict(data.get("stages", {})),
+            timestamp=str(data.get("timestamp", "")),
+            metadata=dict(data.get("metadata", {})),
         )

@@ -26,6 +26,8 @@ from evaluation_service import EvaluationService
 from plugins.contracts import PluginBundle
 from service_contracts import StepOverrideConfig, resolve_step_override_config
 
+from .costeer import CoSTEEREvolver
+
 
 @dataclass
 class StepExecutionResult:
@@ -49,12 +51,14 @@ class StepExecutor:
         workspace_manager: WorkspaceManager,
         event_store: EventMetadataStore,
         branch_store: Optional[BranchTraceStore] = None,
+        costeer_max_rounds: int = 1,
     ) -> None:
         self._plugin_bundle = plugin_bundle
         self._evaluation_service = evaluation_service
         self._workspace_manager = workspace_manager
         self._event_store = event_store
         self._branch_store = branch_store
+        self._costeer_max_rounds = costeer_max_rounds
 
     def execute_iteration(
         self,
@@ -144,11 +148,20 @@ class StepExecutor:
             payload={"node_id": experiment.node_id, "workspace_ref": experiment.workspace_ref},
         )
 
-        artifact = self._plugin_bundle.coder.develop(
-            experiment=experiment,
-            proposal=proposal,
-            scenario=scenario_context,
-        )
+        if self._costeer_max_rounds > 1:
+            evolver = CoSTEEREvolver(
+                coder=self._plugin_bundle.coder,
+                runner=self._plugin_bundle.runner,
+                feedback_analyzer=self._plugin_bundle.feedback_analyzer,
+                max_rounds=self._costeer_max_rounds,
+            )
+            artifact = evolver.evolve(experiment=experiment, proposal=proposal, scenario=scenario_context)
+        else:
+            artifact = self._plugin_bundle.coder.develop(
+                experiment=experiment,
+                proposal=proposal,
+                scenario=scenario_context,
+            )
         self._workspace_manager.inject_files(
             workspace_path,
             {

@@ -41,11 +41,31 @@ class _LegacyExplorationManager:
         self.observe_feedback = Mock()
 
 
+class _DiverseRootsExplorationManager(_LegacyExplorationManager):
+    def __init__(self) -> None:
+        super().__init__()
+        self.generate_diverse_roots_mock = Mock(side_effect=self._generate_diverse_roots)
+
+    def _generate_diverse_roots(self, graph, task_summary, scenario, n_candidates, k_forward):
+        _ = task_summary
+        _ = scenario
+        _ = n_candidates
+        _ = k_forward
+        graph.nodes.append(NodeRecord(node_id="root-a"))
+        graph.nodes.append(NodeRecord(node_id="root-b"))
+        return graph
+
+    def generate_diverse_roots(self, graph, task_summary, scenario, n_candidates, k_forward):
+        return self.generate_diverse_roots_mock(graph, task_summary, scenario, n_candidates, k_forward)
+
+
 class LoopEngineMCTSTests(unittest.TestCase):
     def _build_engine(
         self,
         *,
         branches_per_iteration: int = 1,
+        layer0_n_candidates: int = 5,
+        layer0_k_forward: int = 2,
         scheduler: Mock,
         exploration_manager,
         step_executor: Mock,
@@ -60,7 +80,11 @@ class LoopEngineMCTSTests(unittest.TestCase):
         event_store = Mock()
 
         return LoopEngine(
-            config=LoopEngineConfig(branches_per_iteration=branches_per_iteration),
+            config=LoopEngineConfig(
+                branches_per_iteration=branches_per_iteration,
+                layer0_n_candidates=layer0_n_candidates,
+                layer0_k_forward=layer0_k_forward,
+            ),
             planner=planner,
             exploration_manager=exploration_manager,
             memory_service=memory_service,
@@ -126,7 +150,7 @@ class LoopEngineMCTSTests(unittest.TestCase):
 
         scheduler.update_visit_count.assert_not_called()
 
-    def test_layer0_initialization_uses_generate_diverse_roots_when_available(self) -> None:
+    def test_layer0_initialization_uses_configured_params_when_available(self) -> None:
         scheduler = Mock()
 
         def select_node(graph: ExplorationGraph) -> str:
@@ -134,26 +158,14 @@ class LoopEngineMCTSTests(unittest.TestCase):
 
         scheduler.select_node.side_effect = select_node
 
-        exploration_manager = Mock()
-
-        def generate_diverse_roots(graph, task_summary, scenario, n_candidates, k_forward):
-            _ = task_summary
-            _ = scenario
-            _ = n_candidates
-            _ = k_forward
-            graph.nodes.append(NodeRecord(node_id="root-a"))
-            graph.nodes.append(NodeRecord(node_id="root-b"))
-            return graph
-
-        exploration_manager.generate_diverse_roots.side_effect = generate_diverse_roots
-        exploration_manager.register_node.side_effect = lambda graph, node: graph
-        exploration_manager.prune_branches.side_effect = lambda graph: graph
-        exploration_manager.observe_feedback = Mock()
+        exploration_manager = _DiverseRootsExplorationManager()
 
         step_executor = Mock()
         step_executor.execute_iteration.return_value = _make_step_result("node-3", "root-a")
 
         engine = self._build_engine(
+            layer0_n_candidates=9,
+            layer0_k_forward=4,
             scheduler=scheduler,
             exploration_manager=exploration_manager,
             step_executor=step_executor,
@@ -162,12 +174,12 @@ class LoopEngineMCTSTests(unittest.TestCase):
         run_session = _build_run_session()
         engine.run(run_session, "task", max_loops=1)
 
-        exploration_manager.generate_diverse_roots.assert_called_once()
-        call = exploration_manager.generate_diverse_roots.call_args
+        exploration_manager.generate_diverse_roots_mock.assert_called_once()
+        call = exploration_manager.generate_diverse_roots_mock.call_args
         self.assertEqual(call.args[1], "task")
         self.assertEqual(call.args[2], run_session.scenario)
-        self.assertEqual(call.kwargs["n_candidates"], 5)
-        self.assertEqual(call.kwargs["k_forward"], 2)
+        self.assertEqual(call.args[3], 9)
+        self.assertEqual(call.args[4], 4)
 
     def test_layer0_falls_back_to_single_root_without_generate_diverse_roots(self) -> None:
         scheduler = Mock()

@@ -5,7 +5,6 @@ from core.reasoning.virtual_eval import VirtualEvaluator
 from data_models import ContextPack, Plan
 from llm.adapter import LLMAdapter, MockLLMProvider
 from plugins.contracts import ProposalEngine, ScenarioContext
-from reasoning_service import ReasoningService, ReasoningServiceConfig
 from scenarios.data_science.plugin import DataScienceProposalEngine, build_data_science_v1_bundle
 from scenarios.synthetic_research.plugin import (
     SyntheticResearchProposalEngine,
@@ -46,10 +45,6 @@ def _make_scenario_context(
         task_summary="test task",
         step_config=StepOverrideConfig(),
     )
-
-
-def _make_reasoning_service() -> ReasoningService:
-    return ReasoningService(ReasoningServiceConfig(reasoning_policy="synthetic_research_pipeline"))
 
 
 def _base_inputs() -> tuple[ContextPack, list[str], Plan]:
@@ -97,7 +92,6 @@ def test_synthetic_proposal_engine_virtual_evaluator_path() -> None:
     adapter = _make_adapter()
     evaluator = _make_evaluator(adapter, n=2, k=1)
     engine = SyntheticResearchProposalEngine(
-        _make_reasoning_service(),
         llm_adapter=adapter,
         virtual_evaluator=evaluator,
     )
@@ -120,7 +114,6 @@ def test_synthetic_proposal_engine_reasoning_pipeline_only_path() -> None:
     adapter = _make_adapter()
     pipeline = _make_pipeline(adapter)
     engine = SyntheticResearchProposalEngine(
-        _make_reasoning_service(),
         llm_adapter=adapter,
         reasoning_pipeline=pipeline,
     )
@@ -141,7 +134,7 @@ def test_synthetic_proposal_engine_reasoning_pipeline_only_path() -> None:
 
 def test_synthetic_proposal_engine_backward_compat_llm_path() -> None:
     adapter = _make_adapter()
-    engine = SyntheticResearchProposalEngine(_make_reasoning_service(), llm_adapter=adapter)
+    engine = SyntheticResearchProposalEngine(llm_adapter=adapter)
 
     context, parent_ids, plan = _base_inputs()
     proposal = engine.propose(
@@ -157,7 +150,7 @@ def test_synthetic_proposal_engine_backward_compat_llm_path() -> None:
 
 
 def test_synthetic_proposal_engine_reasoning_service_fallback() -> None:
-    engine = SyntheticResearchProposalEngine(_make_reasoning_service(), llm_adapter=None)
+    engine = SyntheticResearchProposalEngine(llm_adapter=None)
 
     context, parent_ids, plan = _base_inputs()
     proposal = engine.propose(
@@ -232,7 +225,6 @@ def test_fc3_proposals_have_non_empty_summary_and_constraints() -> None:
     )
 
     synthetic_engine = SyntheticResearchProposalEngine(
-        _make_reasoning_service(),
         llm_adapter=adapter,
         reasoning_pipeline=_make_pipeline(adapter),
     )
@@ -253,7 +245,6 @@ def test_proposal_engine_protocol_compliance_with_fc3() -> None:
 
     ds_engine = DataScienceProposalEngine(adapter, reasoning_pipeline=_make_pipeline(adapter))
     synthetic_engine = SyntheticResearchProposalEngine(
-        _make_reasoning_service(),
         llm_adapter=adapter,
         virtual_evaluator=_make_evaluator(adapter, n=2, k=1),
     )

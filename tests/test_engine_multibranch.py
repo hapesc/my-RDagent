@@ -41,18 +41,22 @@ def _build_engine(
     branches_per_iteration: int = 1,
     scheduler: Optional[Mock] = None,
     step_side_effect=None,
+    exploration_manager_override=None,
 ):
     planner = Mock()
     planner.generate_plan.return_value = Plan(plan_id="plan-1")
 
-    exploration_manager = Mock()
-    exploration_manager.select_parents.return_value = ["default-parent"]
+    if exploration_manager_override is None:
+        exploration_manager = Mock()
+        exploration_manager.select_parents.return_value = ["default-parent"]
 
-    def _register_node(graph, node):
-        graph.nodes.append(node)
-        return graph
+        def _register_node(graph, node):
+            graph.nodes.append(node)
+            return graph
 
-    exploration_manager.register_node.side_effect = _register_node
+        exploration_manager.register_node.side_effect = _register_node
+    else:
+        exploration_manager = exploration_manager_override
 
     memory_service = Mock()
     memory_service.query_context.return_value = Mock(items=[])
@@ -77,6 +81,29 @@ def _build_engine(
         scheduler=scheduler,
     )
     return engine, planner, exploration_manager, step_executor, run_store, event_store
+
+
+class _NoMergeExplorationManager:
+    def __init__(self) -> None:
+        self.select_parents = Mock(return_value=["default-parent"])
+        self.observe_feedback = Mock()
+
+    def register_node(self, graph, node):
+        graph.nodes.append(node)
+        return graph
+
+    def prune_branches(self, graph):
+        return graph
+
+
+class _MergeExplorationManager(_NoMergeExplorationManager):
+    def __init__(self) -> None:
+        super().__init__()
+        self.merge_calls = []
+
+    def merge_traces(self, graph, task_summary, scenario_name):
+        self.merge_calls.append((graph, task_summary, scenario_name))
+        return {"status": "merged", "active_nodes": len(graph.nodes)}
 
 
 def _make_run(max_loops: int = 1) -> RunSession:
@@ -224,3 +251,32 @@ def test_scheduler_none_mid_iteration_stops_remaining_branches() -> None:
 
     assert step_executor.execute_iteration.call_count == 1
     assert scheduler.select_node.call_count == 2
+
+
+def test_merge_capability_supported_merges_after_multiple_active_nodes() -> None:
+    manager = _MergeExplorationManager()
+    engine, _planner, _exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
+        scheduler=None,
+        step_side_effect=[_make_step_result("n1"), _make_step_result("n2")],
+        exploration_manager_override=manager,
+    )
+
+    context = engine.run(run_session=_make_run(max_loops=2), task_summary="merge", max_loops=2)
+
+    assert context.loop_state.iteration == 2
+    assert context.merged_result == {"status": "merged", "active_nodes": 2}
+    assert len(manager.merge_calls) == 1
+
+
+def test_merge_capability_missing_skips_merge_without_failure() -> None:
+    manager = _NoMergeExplorationManager()
+    engine, _planner, _exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
+        scheduler=None,
+        step_side_effect=[_make_step_result("n1"), _make_step_result("n2")],
+        exploration_manager_override=manager,
+    )
+
+    context = engine.run(run_session=_make_run(max_loops=2), task_summary="no-merge", max_loops=2)
+
+    assert context.loop_state.iteration == 2
+    assert context.merged_result is None

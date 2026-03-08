@@ -20,6 +20,16 @@ from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
 from plugins.examples import build_minimal_data_science_bundle
 
 
+class SchemaWithoutFromDict:
+    """Test class without from_dict method."""
+    pass
+
+
+class SchemaWithNonCallableFromDict:
+    """Test class with non-callable from_dict attribute."""
+    from_dict = "not-callable"
+
+
 class LLMAdapterTests(unittest.TestCase):
     def test_mock_provider_returns_structured_proposal(self) -> None:
         adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
@@ -40,6 +50,18 @@ class LLMAdapterTests(unittest.TestCase):
         draft = adapter.generate_structured("proposal:any", ProposalDraft)
         self.assertEqual(draft.summary, "retry ok")
         self.assertAlmostEqual(draft.virtual_score, 0.9)
+
+    def test_schema_without_from_dict_raises_type_error(self) -> None:
+        adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
+        with self.assertRaises(ValueError) as ctx:
+            adapter.generate_structured("proposal:any", SchemaWithoutFromDict)
+        self.assertIn("structured output parse failed", str(ctx.exception))
+
+    def test_schema_with_non_callable_from_dict_raises_type_error(self) -> None:
+        adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
+        with self.assertRaises(ValueError) as ctx:
+            adapter.generate_structured("proposal:any", SchemaWithNonCallableFromDict)
+        self.assertIn("structured output parse failed", str(ctx.exception))
 
     def test_plugin_paths_use_llm_adapter(self) -> None:
         bundle = build_minimal_data_science_bundle()

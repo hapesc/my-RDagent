@@ -100,11 +100,7 @@ class ModelLayerUsageTests(unittest.TestCase):
             "planner/service.py",
             "exploration_manager/service.py",
             "memory_service/service.py",
-            "reasoning_service/service.py",
-            "development_service/service.py",
-            "execution_service/service.py",
             "evaluation_service/service.py",
-            "artifact_registry/service.py",
         ]
 
         for file_path in core_service_files:

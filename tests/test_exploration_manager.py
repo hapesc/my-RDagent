@@ -198,7 +198,7 @@ class TestGenerateDiverseRoots(unittest.TestCase):
             assert node.proposal_id is not None
             self.assertTrue(node.proposal_id.startswith("layer0-"))
 
-    def test_diverse_roots_uses_call_time_n_and_k(self) -> None:
+    def test_diverse_roots_uses_injected_evaluator_configuration(self) -> None:
         from llm.adapter import LLMAdapter, MockLLMProvider
 
         adapter = LLMAdapter(MockLLMProvider())
@@ -215,7 +215,7 @@ class TestGenerateDiverseRoots(unittest.TestCase):
             n_candidates=4,
             k_forward=3,
         )
-        self.assertEqual(len(graph.nodes), 3)
+        self.assertEqual(len(graph.nodes), 1)
 
     def test_fallback_single_root_when_no_evaluator(self) -> None:
         config = ExplorationManagerConfig()

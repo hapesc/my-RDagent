@@ -207,6 +207,30 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertEqual(payload["error"]["code"], "invalid_state")
                 self.assertIn(run_id, payload["error"]["message"])
 
+    def test_build_config_snapshot_serializes_stop_conditions_without_to_dict_method(self) -> None:
+        """Verify _build_config_snapshot falls back to manual serialization when to_dict() is missing."""
+        from app.control_plane import _build_config_snapshot
+        from service_contracts import RunCreateRequest, StepOverrideConfig
+        
+        # Create a RunCreateRequest with StopConditions (which lacks to_dict method)
+        request = RunCreateRequest(
+            scenario="synthetic_research",
+            task_summary="test-snapshot",
+            stop_conditions=StopConditions(max_loops=5, max_steps=10, max_duration_sec=3600),
+            step_overrides=StepOverrideConfig(),
+        )
+        
+        runtime = build_runtime()
+        manifest = runtime.plugin_registry.get_manifest("synthetic_research")
+        snapshot = _build_config_snapshot(runtime, request, manifest)
+        
+        # Verify stop_conditions was serialized correctly via fallback
+        self.assertEqual(snapshot["stop_conditions"]["max_loops"], 5)
+        self.assertEqual(snapshot["stop_conditions"]["max_steps"], 10)
+        self.assertEqual(snapshot["stop_conditions"]["max_duration_sec"], 3600)
+        self.assertIn("scenario", snapshot)
+        self.assertIn("step_overrides", snapshot)
+
     def test_invalid_event_pagination_returns_structured_invalid_request(self) -> None:
         create_response = self.client.post(
             "/runs",

@@ -26,11 +26,10 @@
 
 `提出假设 -> 生成实验/任务 -> 编码实现 -> 运行验证 -> 反馈总结 -> 进入下一轮`
 
-系统当前聚焦于数据驱动研发，尤其是三类场景：
+系统当前聚焦于数据驱动研发，仓库内正式暴露的是两个共享 loop 场景：
 
-- 数据科学 / Kaggle / MLE-bench 风格任务
-- 量化金融因子、模型与因子-模型协同优化
-- 从 PDF 论文或报告中抽取模型并尝试实现
+- `data_science`：面向小型数据科学实验的闭环执行
+- `synthetic_research`：面向轻量研究 brief / findings 生成的闭环执行
 
 ## 3. 产品目标
 
@@ -45,7 +44,7 @@
 ## 4. 核心用户
 
 - 直接使用 CLI 运行场景的研究者/工程师
-- 准备数据集、报告、Qlib 环境的领域用户
+- 准备数据集或研究主题输入的领域用户
 - 需要定制提案器、编码器、运行器、反馈器的框架开发者
 - 通过 UI 或服务端 API 查看执行轨迹的观察者
 
@@ -143,22 +142,18 @@
 
 ### 8.2 CLI 能力
 
-当前对外公开的主要命令为：
+当前仓库对外公开的是两层 CLI：
 
-- `rdagent fin_factor`
-- `rdagent fin_model`
-- `rdagent fin_quant`
-- `rdagent fin_factor_report`
-- `rdagent general_model`
-- `rdagent data_science`
-- `rdagent grade_summary`
-- `rdagent ui`
-- `rdagent server_ui`
-- `rdagent health_check`
-- `rdagent collect_info`
-- `rdagent ds_user_interact`
+- `python3 agentrd_cli.py run`
+- `python3 agentrd_cli.py resume`
+- `python3 agentrd_cli.py pause`
+- `python3 agentrd_cli.py stop`
+- `python3 agentrd_cli.py trace`
+- `python3 agentrd_cli.py ui`
+- `python3 agentrd_cli.py health-check`
+- `python3 cli.py --task ...`（quick-start wrapper）
 
-其中前六个是主要业务能力，后面的是运维和可视化能力。
+其中 `agentrd_cli.py` 是完整控制面 CLI，`cli.py` 是面向快速启动的简化入口。
 
 ### 7.2 配置能力
 
@@ -242,100 +237,50 @@ Data Science trace 中存在明确的完成顺序：
 
 #### 输出要求
 
-当实验进入可运行状态时，工作区中应至少存在：
+当实验进入可运行状态时，工作区中应至少存在一个可执行入口脚本（例如 `experiment.py` 或场景生成的等价入口）。
 
-- `main.py`
+runner 成功后通常会产出：
 
-runner 成功后应产出：
-
-- `scores.csv`
-- 可能的 `submission.csv`
-- 可选的 `EDA.md`
-- 若启用 MLE-bench 校验，还会生成格式检查输出
+- 结构化运行结果（trace / feedback / metrics）
+- 由场景生成的工作区文件与执行产物
+- 在数据科学场景中，可能包含 `scores.csv`、`submission.csv` 等结果文件
 
 #### 特殊能力
 
-Data Science 是当前最复杂的场景，额外支持：
+Data Science 是当前更偏“执行型”的场景，额外体现为：
 
 - 多分支 trace / DAG 式探索
-- checkpoint 选择与 SOTA 选择
-- 交互器插入用户反馈
-- 知识库积累
-- 文档开发 `DocDev`
-- notebook 转换
-- MLE-bench 自动数据获取与评分
+- checkpoint 选择与恢复
+- 场景默认值 + per-step overrides
+- 与控制面、UI、trace 查询链路共享同一运行时装配
 
-### 8.2 Finance Factor Agent
+### 8.2 Synthetic Research Agent
 
 #### 目标
 
-在 Qlib 环境中自动提出、实现、验证和筛选量化因子。
+围绕研究主题生成轻量 hypothesis / brief / findings，并复用与 `data_science` 相同的 loop engine、trace、checkpoint、control-plane 能力。
 
-#### 典型语义
+#### 输入要求
 
-- 基于 Qlib 预置模板创建实验工作区
-- 生成因子代码
-- 用 Alpha158 加新因子做回测
-- 根据反馈决定是否保留当前因子实现
+最小输入通常包含：
 
-#### 运行前提
+- `task_summary`
+- 可选的 `reference_topics`
+- 可选的运行上限（例如 `max_loops`）
 
-- 需要可用的 Qlib 数据与运行环境
-- 默认依赖本地 conda 环境执行因子相关代码
+#### 输出要求
 
-### 8.3 Finance Model Agent
+该场景重点不是产出特定数据文件，而是：
 
-#### 目标
+- 结构化 proposal / feedback 文本
+- 可被 trace 查询和 UI 展示的运行记录
+- 与共享运行时一致的 config snapshot / scenario manifest
 
-在给定因子与 Qlib 模板条件下自动实现和迭代量化模型。
+#### 特殊能力
 
-#### 典型语义
-
-- 生成模型结构或超参数方案
-- 在 Qlib 模板中落地模型代码
-- 执行训练、验证、回测
-- 依据指标决定是否替换最佳版本
-
-### 8.4 Finance Quant Agent
-
-#### 目标
-
-联合优化“因子 + 模型”，而不是单独优化其中一侧。
-
-#### 关键特征
-
-- 假设生成阶段会先决定当前动作是 `factor` 还是 `model`
-- 后续编码、运行、反馈使用对应分支的组件
-- 动作选择支持 bandit / LLM / random
-
-这说明 `fin_quant` 是一个多代理协同场景，而不是简单串联 `fin_factor + fin_model`。
-
-### 8.5 Finance Factor Report Copilot
-
-#### 目标
-
-从金融研究报告 PDF 中抽取因子想法，自动实现并回测。
-
-#### 输入
-
-支持两种方式：
-
-- 直接指定报告文件夹
-- 提供一个 JSON 文件，列出报告 PDF 路径
-
-### 8.6 General Model Copilot
-
-#### 目标
-
-读取 PDF 论文或报告，抽取模型信息，并尝试生成可执行模型代码。
-
-#### 输入
-
-- 单个 PDF 文件路径
-
-#### 当前形态
-
-该能力更像“单次任务驱动的 copilot”，不是长期自循环场景。
+- 作为正式第二场景注册在共享 manifest 中
+- 复用 FC-3 reasoning / virtual-eval 路径与本地 fallback
+- 不引入独立 orchestration 分支，避免与主运行时脱节
 
 ## 9. 运行环境规格
 
@@ -400,16 +345,11 @@ Data Science 是当前最复杂的场景，额外支持：
 - 可演化：编码过程不是一次性生成，而是多轮演化
 - 可恢复：工作区支持 checkpoint 与 fallback
 
-系统的代码质量通过单元测试保障，目前的覆盖情况如下：
+系统的代码质量通过 pytest 回归保障，当前仓库可直接执行：
 
-- 测试文件数：23+ 个任务测试文件 (`tests/test_task_*.py`)，以及 `test_litellm_provider.py` 等功能测试。
-- 总测试用例：约 96 个核心测试用例（基于历史版本，当前正在持续演进）。
-- 测试覆盖点：从 `core_models` 到 `loop_engine`，再到 `data_science_plugin`。
-- 工程规范约束：
-  - `ruff`
-  - `mypy`
-  - `pytest`
-  - 覆盖率阈值 `80%`
+- `python3 -m pytest tests -q`
+- 覆盖范围包含 CLI、loop engine、control plane、trace UI、场景插件以及 FC-2/FC-3/FC-4/5/6 相关能力
+- 文档中不再固定测试文件数或用例数，避免随着回归集扩张而再次过时
 
 ## 12. 扩展规格
 
@@ -433,38 +373,34 @@ Data Science 是当前最复杂的场景，额外支持：
 
 对外最成熟的落地场景是：
 
-- Data Science / Kaggle / MLE-bench
-- Qlib 量化研发
-- 报告/论文到代码的半自动实现
+- `data_science`
+- `synthetic_research`
 
 ## 14. 尚不确定或存在漂移的地方
 
-以下内容在代码和文档间存在一定漂移，后续如要形成正式 spec，建议单独澄清：
+以下内容在代码和文档间仍可能存在进一步澄清空间，后续如要形成正式 spec，建议单独确认：
 
-- README 中 “Kaggle Agent” 与当前 `data_science` 场景的关系边界
-- `collect_info` 等工具命令的正式产品定位
-- 实时服务端 API 是否仍与 `rdagent/log/server/README.md` 完全一致
-- 部分场景文档使用“research copilot”描述，但代码中是否继续保持长期维护尚不完全明确
-- Data Science 中 `spec_enabled` 配置存在，但仓库内面向该场景的显式 spec 产物并不统一
+- `data_science` 场景与更广义“研发代理平台”品牌表述的边界
+- quick-start CLI (`cli.py`) 与完整控制面 CLI (`agentrd_cli.py`) 的长期维护分工
+- Streamlit UI 与 FastAPI 控制面的产品边界是否继续保持当前双入口形态
+- FC-4/FC-5/FC-6 相关能力在文档中的“实现存在”与“默认启用”边界
 
 ## 15. 主要证据来源
 
-本 spec 主要依据以下实现与文档逆向整理：
+本 spec 主要依据以下当前仓库实现与文档逆向整理：
 
 - `README.md`
 - `pyproject.toml`
-- `rdagent/app/cli.py`
-- `rdagent/core/loop/engine.py`
-- `rdagent/core/scenario.py`
-- `rdagent/core/proposal.py`
-- `rdagent/core/experiment.py`
-- `rdagent/components/coder/CoSTEER/*`
-- `rdagent/app/data_science/conf.py`
-- `rdagent/scenarios/data_science/*`
-- `rdagent/app/qlib_rd_loop/*`
-- `rdagent/scenarios/qlib/*`
-- `rdagent/app/general_model/general_model.py`
-- `docs/scens/*.rst`
-- `docs/installation_and_configuration.rst`
-- `docs/ui.rst`
-- `rdagent/log/server/README.md`
+- `agentrd_cli.py`
+- `cli.py`
+- `app/runtime.py`
+- `app/api_main.py`
+- `app/control_plane.py`
+- `core/loop/engine.py`
+- `core/loop/step_executor.py`
+- `plugins/contracts.py`
+- `scenarios/data_science/`
+- `scenarios/synthetic_research/`
+- `ui/trace_ui.py`
+- `dev_doc/task_21_control_plane.md`
+- `dev_doc/task_22_branch_aware_ui.md`

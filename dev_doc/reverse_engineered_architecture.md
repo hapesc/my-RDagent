@@ -319,8 +319,8 @@ Persist after each successful step, not only after each loop. This drastically r
 
 `VirtualEvaluator` (FC-3)
 
-- generates N=5 diversified candidate ideas via prompt perturbation
-- LLM-ranks each candidate and forwards top K=2 to coding stage
+- generates multiple diversified candidate ideas via prompt perturbation
+- LLM-ranks candidates and forwards the configured top subset to coding stage
 - located in `core/reasoning/virtual_eval.py`
 
 ### 8.3 Domain Plugin Layer
@@ -445,8 +445,8 @@ The following entities are sufficient for an implementation-ready MVP.
   "workspace_id": "ws_17",
   "run_id": "run_20260306_001",
   "file_manifest": [
-    {"path": "main.py", "sha256": "abc"},
-    {"path": "feature/transform.py", "sha256": "def"}
+    {"path": "experiment.py", "sha256": "<sha256-entrypoint>"},
+    {"path": "feature/transform.py", "sha256": "<sha256-module>"}
   ],
   "checkpoint_type": "zip",
   "created_at": "2026-03-06T10:03:00Z"
@@ -800,7 +800,7 @@ This section summarizes the current implementation status compared to the design
 | `StepExecutor` | **Implemented** | Executes individual steps via plugins. |
 | `CoSTEER` | **In-Progress** | Multi-round code evolution logic. |
 | `ReasoningPipeline` | **Implemented** | 4-stage scientific reasoning (Analyze → Identify → Hypothesize → Design) per FC-3. Located in `core/reasoning/pipeline.py`. |
-| `VirtualEvaluator` | **Implemented** | Generates N=5 candidate ideas and selects top K=2 via LLM evaluation (FC-3). Located in `core/reasoning/virtual_eval.py`. |
+| `VirtualEvaluator` | **Implemented** | Generates multiple candidate ideas and forwards a config-driven top subset via LLM evaluation (FC-3). Located in `core/reasoning/virtual_eval.py`. |
 | `MCTSScheduler` | **Implemented** | MCTS/PUCT-based branch selection for DAG exploration (FC-2). Located in `exploration_manager/scheduler.py`. |
 | `BranchPruner` | **Implemented** | Score-based branch pruning with relative threshold (FC-2). Located in `exploration_manager/pruning.py`. |
 | `TraceMerger` | **Implemented** | LLM-based synthesis of best ideas from multiple branch traces (FC-2). Located in `exploration_manager/merging.py`. |

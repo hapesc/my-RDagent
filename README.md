@@ -108,10 +108,10 @@ Trace 输出中的 `run.config_snapshot.step_overrides` 为最终生效配置，
 ./scripts/run_task17_acceptance.sh
 ```
 
-- 全量测试：
+- 全量回归：
 
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m pytest tests -q
 ```
 
 ## 交付文档

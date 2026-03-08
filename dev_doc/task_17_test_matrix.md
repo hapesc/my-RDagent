@@ -19,20 +19,10 @@ Task-17 验收目标：补齐单元/集成/E2E 验收，并提供可执行验收
 ./scripts/run_task17_acceptance.sh
 ```
 
-该脚本内部执行：
+该脚本用于 Task-17 验收；脚本内部实现以 `scripts/run_task17_acceptance.sh` 为准，不把内部执行命令再重复写死在这里。
+
+## 3. 仓库级回归
 
 ```bash
-python3 -m unittest \
-  tests.test_task_14_cli_integration \
-  tests.test_task_10_run_service \
-  tests.test_task_08_execution_backend \
-  tests.test_task_02_plugin_contracts \
-  tests.test_task_17_reliability \
-  tests.test_task_17_reproducibility
-```
-
-## 3. 全量回归
-
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m pytest tests -q
 ```

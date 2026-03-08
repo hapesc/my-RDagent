@@ -43,21 +43,20 @@ The paper's FC-1 Planning implements dynamic time-aware strategy that adapts as 
 
 The paper's prompt (Appendix E.1) explicitly references "time budget" and "elapsed time" to guide the LLM's planning decisions.
 
-### Current State — **Fully Implemented**
+### Current State — **Partial Implementation**
 
-Time-aware planning with dynamic strategy switching:
+Time-aware planning with basic budget tracking, but missing core algorithm:
 
 - **Location**: `planner/service.py` (176 lines), `app/config.py`
-- **Capability**: Full time-aware planning with LLM strategy generation
-- **Implementation**:
-  - Time-based stage classification: early (<0.33), mid (0.33-0.66), late (>0.66)
-  - `BudgetLedger` tracks `elapsed_time`, `iteration_durations`, `estimated_remaining`
-  - `LoopEngine` measures wall-clock time per iteration and updates budget
-  - Optional LLM-based strategy generation (`generate_strategy()`) with graceful fallback
-  - Moving average of last 3 iterations for estimated remaining time
-  - Config-driven enablement: `RD_AGENT_LLM_PLANNING` env var
+- **Capability**: Partial time-aware planning infrastructure
+- **Implemented**:
+   - Time-based stage classification: early (<0.33), mid (0.33-0.66), late (>0.66)
+   - `BudgetLedger` tracks `elapsed_time`, `iteration_durations`, `estimated_remaining`
+   - `LoopEngine` measures wall-clock time per iteration
+   - Config-driven enablement: `RD_AGENT_LLM_PLANNING` env var
+   - Moving average of last 3 iterations for estimated remaining time
 
-### Gap Rating: **MINOR** (Remaining: real LLM validation, prompt tuning with production data)
+### Gap Rating: **SIGNIFICANT** (Remaining: Algorithm 1 time budget loop, method cost estimation, strategy switching)
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
@@ -66,14 +65,14 @@ Time-aware planning with dynamic strategy switching:
 - **Tests**: 19+ tests covering time-aware planning, strategy generation, budget tracking, config wiring
 
 **Evidence**:
-- Missing: Time budget loop structure from Algorithm 1
-- Missing: Dynamic method cost estimation
-- Missing: Time-based strategy switching
+- Partial: Basic time tracking exists, but lacks Algorithm 1 integration
+- Missing: Dynamic method cost estimation for different approaches
+- Missing: Automatic strategy switching based on progress and deadline
 
 **Impact**:
-- Cannot optimize method selection based on time constraints
-- Wastes expensive compute on exploratory methods when deadline approaches
-- Cannot prioritize quick wins early vs. thorough search later
+- Time budget is tracked but not actively used to adjust method selection
+- Cannot adapt exploration intensity based on time remaining
+- Requires manual tuning rather than automatic deadline-aware adaptation
 
 ---
 
@@ -210,21 +209,25 @@ FC-4 enables knowledge sharing across parallel branches via an interaction kerne
 - LLM chooses from three actions: **Select** (use external hypothesis as-is), **Modify** (adapt external hypothesis), **Generate** (create new hypothesis)
 - Enables dynamic knowledge transfer between branches
 
-### Current State — **Fully Implemented**
+### Current State — **Partial Implementation**
 
-Cross-branch memory with interaction kernel and adaptive hypothesis selection:
+Cross-branch memory structure with basic storage, but missing core algorithm components:
 
 - **Location**: `memory_service/` (4 modules: `service.py`, `interaction_kernel.py`, `hypothesis_selector.py`)
-- **Capability**: Full FC-4 implementation per paper Algorithm 2
-- **Implementation**:
-  - **Interaction Kernel**: K(hi, hj) = α·cosine(embed(hi), embed(hj)) + β·δscore + γ·decay(time) — pure Python TF-IDF vectorizer, no external dependencies
-  - **HypothesisSelector**: Algorithm 2 adaptive selection — Generate (progress <0.33), Modify (0.33-0.66), Select (≥0.66)
-  - **Memory Service**: SQLite-backed hypothesis storage with cross-branch queries
-  - **Cross-branch sharing**: `get_cross_branch_hypotheses()` excludes current branch
-  - **LLM integration**: Optional `hypothesis_modification_prompt` for modify/generate actions with graceful fallback
-  - Config-driven: `RD_AGENT_HYPOTHESIS_STORAGE` env var, `enable_hypothesis_storage` flag
+- **Capability**: Storage infrastructure exists, but missing interaction kernel and Algorithm 2
+- **Implemented**:
+   - SQLite-backed hypothesis storage with cross-branch queries
+   - Basic `get_cross_branch_hypotheses()` function
+   - Config-driven: `RD_AGENT_HYPOTHESIS_STORAGE` env var, `enable_hypothesis_storage` flag
+   - Hypothesis selector module exists
 
-### Gap Rating: **MINOR** (Remaining: production embedding model, real cross-branch scenarios)
+- **Missing (Blocking Algorithm 2)**:
+   - Interaction kernel computation: K(hi, hj) = α·cosine(embed) + β·δscore + γ·decay(time)
+   - Embedding-based similarity scoring (TF-IDF vectorizer referenced but not integrated)
+   - Adaptive hypothesis selection (Select/Modify/Generate based on progress)
+   - LLM integration for modify/generate actions
+
+### Gap Rating: **SIGNIFICANT** (Remaining: interaction kernel, embedding similarity, Algorithm 2 adaptive selection)
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
@@ -233,17 +236,16 @@ Cross-branch memory with interaction kernel and adaptive hypothesis selection:
 - **Tests**: 48+ tests covering TF-IDF, cosine similarity, interaction kernel, hypothesis selector, memory storage, cross-branch queries
 
 **Evidence**:
-- Paper shows **-9% performance** when removed (smallest drop, but still significant)
-- Missing: Embedding-based hypothesis storage
-- Missing: Interaction kernel for similarity + performance weighting
-- Missing: Algorithm 2 adaptive hypothesis selection
-- Missing: Cross-branch knowledge sharing (dependent on FC-2 branches existing first)
+- Partial: Storage infrastructure exists but Algorithm 2 selection logic incomplete
+- Missing: Full interaction kernel (embedding similarity + performance weighting + temporal decay)
+- Missing: Adaptive selection mechanism for Select/Modify/Generate actions
+- Missing: LLM-driven hypothesis modification for adaptive branch knowledge transfer
 
 **Impact**:
-- Cannot leverage knowledge from parallel exploration paths
-- Each branch relearns lessons independently (wasteful)
-- No semantic search over past hypotheses
-- However: This FC has smallest ablation impact, so lower priority than FC-2/FC-3
+- Hypotheses can be stored and retrieved, but not intelligently weighted
+- No semantic similarity scoring between cross-branch ideas
+- Cannot adaptively choose between selecting/modifying/generating new hypotheses
+- Knowledge transfer between branches lacks the paper's interactive scoring mechanism
 
 ---
 
@@ -264,23 +266,24 @@ FC-5 optimizes the expensive code execution cycle with debug mode:
 3. **Debug compliance**: Does it respect debug mode constraints (time, memory)?
 4. **Submission authenticity**: Is the submission valid for leaderboard?
 
-### Current State — **Fully Implemented**
+### Current State — **Partial Implementation**
 
-Debug mode and multi-stage evaluation:
+Multi-stage evaluation framework exists, but debug mode integration incomplete:
 
 - **Location**: `evaluation_service/service.py`, `app/config.py`
-- **Capability**: Full FC-5 debug mode + multi-stage evaluation
-- **Implementation**:
-  - **Debug mode config**: `debug_mode`, `debug_sample_fraction` (10%), `debug_max_epochs` (5) — all configurable via env vars
-  - **Multi-stage evaluation**: 4 stages with weighted scoring:
-    1. Execution success (weight: 0.4)
-    2. Alignment check (weight: 0.2)
-    3. Debug compliance (weight: 0.2)
-    4. Authenticity check (weight: 0.2)
-  - **Duration tracking**: `ExecutionResult.duration_sec` and `timed_out` fields
-  - Config-driven: `RD_AGENT_DEBUG_MODE`, `RD_AGENT_DEBUG_SAMPLE_FRACTION`, `RD_AGENT_DEBUG_MAX_EPOCHS` env vars
+- **Capability**: Multi-stage evaluation structure with config flags, debug sampling not fully integrated
+- **Implemented**:
+   - Multi-stage evaluation: 4 stages with weighted scoring (execution, alignment, compliance, authenticity)
+   - Duration tracking: `ExecutionResult.duration_sec` and `timed_out` fields
+   - Debug config flags: `debug_mode`, `debug_sample_fraction` (10%), `debug_max_epochs` (5)
+   - Config-driven env vars: `RD_AGENT_DEBUG_MODE`, `RD_AGENT_DEBUG_SAMPLE_FRACTION`, `RD_AGENT_DEBUG_MAX_EPOCHS`
+   
+- **Missing (Blocking actual debug iteration)**:
+   - Data sampling integration: 10% data sampling not applied to scenario execution
+   - Timing estimation: Full-run time extrapolation from debug runs not implemented
+   - Debug mode enforcement: Scenario runners do not respect debug sampling constraints
 
-### Gap Rating: **MINOR** (Remaining: actual data sampling integration with scenario runners)
+### Gap Rating: **SIGNIFICANT** (Remaining: actual sampling integration, timing extrapolation)
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
@@ -289,15 +292,16 @@ Debug mode and multi-stage evaluation:
 - **Tests**: 16+ tests covering multi-stage evaluation, debug config, duration tracking
 
 **Evidence**:
-- Has iteration capability (core loop exists)
-- Missing: Debug mode with 10% sampling
-- Missing: Timing estimation
-- Missing: Multi-stage evaluation checks
+- Partial: Config and evaluation stages exist, execution not integrated
+- Missing: Data sampling enforcement in scenario runners (10% sampling not applied)
+- Missing: Timing estimation from debug run to full run
+- Missing: Multi-stage evaluation checks integrated with actual execution
 
 **Impact**:
-- Slower debug cycles (always run full evaluation)
-- Higher compute cost (no fast iteration path)
-- However: Paper didn't test FC-5 ablation separately, suggesting lower priority than FC-2/FC-3
+- Debug mode configuration exists but has no effect on actual execution
+- Cannot run fast debug cycles with reduced data
+- No timing extrapolation to estimate full-run duration
+- Slower iteration during development (always full evaluation)
 
 ---
 
@@ -322,20 +326,25 @@ FC-6 automates evaluation infrastructure:
 - Ranks solutions by validation performance
 - Prevents overfitting to any single train/test split
 
-### Current State — **Fully Implemented**
+### Current State — **Partial Implementation**
 
-Automated data splitting and validation selection:
+Basic evaluation infrastructure with framework for validation selection, but missing automated data splitting:
 
 - **Location**: `evaluation_service/stratified_splitter.py`, `evaluation_service/validation_selector.py`, `evaluation_service/service.py`
-- **Capability**: Full FC-6 stratified splitting + validation-based candidate ranking
-- **Implementation**:
-  - **StratifiedSplitter**: 90/10 train/test split, deterministic seed, optional stratified labels (preserves class distribution)
-  - **ValidationSelector**: Ranks multiple candidates by holdout validation scores
-  - **Leaderboard**: `get_leaderboard()` returns sorted (branch_id, score) tuples
-  - **Branch aggregation**: `aggregate_branch_scores()` computes average scores per branch
-  - Returns `DataSplitManifest` with train_ids and test_ids
+- **Capability**: Validation ranking framework, but data splitting and auto-grading not integrated
+- **Implemented**:
+   - ValidationSelector: Ranks multiple candidates by holdout validation scores
+   - Leaderboard: `get_leaderboard()` returns sorted (branch_id, score) tuples
+   - Branch aggregation: `aggregate_branch_scores()` computes average scores
+   - Stratified splitter class: 90/10 split logic with deterministic seed support
 
-### Gap Rating: **MINOR** (Remaining: auto-generated grading scripts, scenario-specific metrics)
+- **Missing (Blocking FC-6 automation)**:
+   - Automated data splitting: not called by evaluation pipeline
+   - Stratified label preservation: code exists but not enforced in scenarios
+   - Auto-generated grading scripts: no script generation per scenario
+   - Validation-driven candidate ranking: splitter exists but not integrated with execution
+
+### Gap Rating: **SIGNIFICANT** (Remaining: automated split integration, grading script generation)
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
@@ -344,16 +353,16 @@ Automated data splitting and validation selection:
 - **Tests**: 25+ tests covering stratified splitting, deterministic seeds, validation ranking, leaderboard
 
 **Evidence**:
-- Basic evaluation exists (scenarios can compute scores)
-- Missing: Automated data splitting
-- Missing: Grading script generation
-- Missing: ValidationSelector multi-candidate ranking
+- Partial: Splitter and selector exist as standalone modules
+- Missing: Automated data splitting called during evaluation pipeline
+- Missing: Grading script generation per scenario
+- Missing: Integration of stratified splitting with actual data loading
 
 **Impact**:
-- Cannot reliably compare multiple solution candidates
+- Manual data splitting required; cannot guarantee consistency across candidates
+- No scenario-specific auto-grading scripts
 - Risk of overfitting to single train/test split
-- Manual evaluation is error-prone and inconsistent
-- However: Not tested separately in ablation, suggesting lower priority
+- Validation selection logic cannot execute without automated splitting infrastructure
 
 ---
 
@@ -361,14 +370,14 @@ Automated data splitting and validation selection:
 
 | Component | Rating | Paper Key Features | Current State | Ablation Impact |
 |-----------|--------|-------------------|---------------|-----------------|
-| **FC-1 Planning** | MINOR | Time-aware dynamic strategy | Fully implemented: time-based staging, LLM strategy, budget tracking | Not tested separately |
+| **FC-1 Planning** | SIGNIFICANT | Time-aware dynamic strategy | Partial: time tracking exists, missing Algorithm 1 integration and cost-aware strategy switching | Not tested separately |
 | **FC-2 Exploration Path** | MINOR | Parallel DAG + pruning + merging | Fully implemented: PUCT, reward, backprop, Layer-0 diversity, pruning, merging (single-worker sequential execution) | **-28%** (largest) |
 | **FC-3 Reasoning Pipeline** | MINOR | 4-step reasoning + virtual eval | Fully implemented: 4-stage pipeline, virtual eval N=5/K=2, trace persistence, structured feedback, knowledge self-generation | Not tested separately |
-| **FC-4 Memory Context** | MINOR | Cross-branch kernel + embeddings | Fully implemented: TF-IDF interaction kernel, Algorithm 2, cross-branch storage | -9% (smallest) |
-| **FC-5 Coding Workflow** | MINOR | Debug mode + multi-stage eval | Fully implemented: debug config, 4-stage weighted evaluation | Not tested separately |
-| **FC-6 Evaluation Strategy** | MINOR | Automated split + grading + ValidationSelector | Fully implemented: 90/10 stratified split, ValidationSelector, leaderboard | Not tested separately |
+| **FC-4 Memory Context** | SIGNIFICANT | Cross-branch kernel + embeddings | Partial: storage exists, missing interaction kernel and Algorithm 2 adaptive selection | -9% (smallest) |
+| **FC-5 Coding Workflow** | SIGNIFICANT | Debug mode + multi-stage eval | Partial: config and evaluation stages exist, missing data sampling enforcement and timing extrapolation | Not tested separately |
+| **FC-6 Evaluation Strategy** | SIGNIFICANT | Automated split + grading + ValidationSelector | Partial: selector logic exists, missing automated split integration and auto-grading scripts | Not tested separately |
 
-**Key insight**: All 6 Framework Components are now implemented. FC-2 and FC-3 are no longer early versions; they now cover the paper-critical behaviors in code and tests. Remaining gaps are primarily production validation (real LLM testing, prompt tuning) and Phase 2 execution concerns such as async multi-worker parallelism.
+**Key insight**: FC-2 and FC-3 are fully implemented with paper-critical behaviors in code and tests. FC-1, FC-4, FC-5, FC-6 have infrastructure in place but are missing core algorithmic integration or execution enforcement. Remaining significant gaps require: Algorithm 1 time budget loop (FC-1), interaction kernel + Algorithm 2 (FC-4), sampling enforcement (FC-5), and split pipeline integration (FC-6). Phase 2 concerns include async multi-worker parallelism and production LLM validation.
 
 ---
 
@@ -488,4 +497,4 @@ This roadmap is kept for historical context. The FC-2 / FC-3 items below are com
 
 **Document Version**: 2.1  
 **Last Updated**: 2026-03-08  
-**Status**: All 6 FCs implemented. FC-2 and FC-3 upgraded from early versions to paper-faithful complete implementations; remaining gaps are MINOR and mostly relate to production validation / Phase 2 execution enhancements.
+**Status**: FC-2 and FC-3 fully implemented (paper-critical behaviors). FC-1, FC-4, FC-5, FC-6 have partial implementations with significant gaps in algorithmic integration and execution enforcement. Remaining work focuses on algorithm 1 integration, interaction kernel, sampling enforcement, and pipeline wiring.

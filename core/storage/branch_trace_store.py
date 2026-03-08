@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import json
+import logging
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Dict, Iterator, List, Optional
 
 from data_models import ExperimentNode, StepState
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,6 +44,7 @@ class BranchTraceStore:
             yield connection
             connection.commit()
         except Exception:
+            logger.exception(f"Database operation failed in BranchTraceStore._managed_connection(db_path={self._db_path}); rolling back")
             connection.rollback()
             raise
         finally:

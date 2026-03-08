@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from exploration_manager.scheduler import MCTSScheduler
+from exploration_manager.service import supports_diverse_roots, supports_trace_merge
 
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
 from data_models import (
@@ -34,6 +35,8 @@ class LoopEngineConfig:
     exception_archive_root: str = "/tmp/rd_agent_artifacts"
     default_max_loops: int = 1
     branches_per_iteration: int = 1
+    layer0_n_candidates: int = 5
+    layer0_k_forward: int = 2
 
 
 class LoopEngine:
@@ -79,13 +82,13 @@ class LoopEngine:
         loop_context = LoopContext(loop_state=loop_state, budget=budget, run_session=run_session)
         graph = ExplorationGraph()
         if self._scheduler is not None and not graph.nodes:
-            if hasattr(self._exploration_manager, "generate_diverse_roots"):
+            if supports_diverse_roots(self._exploration_manager):
                 graph = self._exploration_manager.generate_diverse_roots(
                     graph,
                     task_summary,
                     run_session.scenario,
-                    n_candidates=5,
-                    k_forward=2,
+                    n_candidates=self._config.layer0_n_candidates,
+                    k_forward=self._config.layer0_k_forward,
                 )
             if not graph.nodes:
                 graph.nodes.append(NodeRecord(node_id="root"))
@@ -234,7 +237,7 @@ class LoopEngine:
         active_nodes = []
         if isinstance(graph, ExplorationGraph):
             active_nodes = [node for node in graph.nodes if node.branch_state == BranchState.ACTIVE]
-        if len(active_nodes) > 1 and hasattr(self._exploration_manager, "merge_traces"):
+        if len(active_nodes) > 1 and supports_trace_merge(self._exploration_manager):
             merged = self._exploration_manager.merge_traces(graph, task_summary, run_session.scenario)
             if merged is not None:
                 loop_context.merged_result = merged

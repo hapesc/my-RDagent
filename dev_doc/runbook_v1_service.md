@@ -14,18 +14,34 @@ Example install:
 python3 -m pip install fastapi uvicorn streamlit
 ```
 
-## Required environment
+## Configuration setup
+
+The service uses a file-first configuration approach. Start by creating a `config.yaml` from the example:
 
 ```bash
-export AGENTRD_SQLITE_PATH=/tmp/rd_agent_v1/meta.db
-export AGENTRD_WORKSPACE_ROOT=/tmp/rd_agent_v1/workspaces
-export AGENTRD_ARTIFACT_ROOT=/tmp/rd_agent_v1/artifacts
-export AGENTRD_TRACE_STORAGE_PATH=/tmp/rd_agent_v1/trace.jsonl
-export AGENTRD_SANDBOX_TIMEOUT_SEC=300
-export AGENTRD_ALLOW_LOCAL_EXECUTION=0
+cp config.example.yaml config.yaml
 ```
 
-Only set `AGENTRD_ALLOW_LOCAL_EXECUTION=1` when you intentionally accept host-local execution fallback.
+### Recommended baseline (config.yaml)
+
+```yaml
+sqlite_path: /tmp/rd_agent_v1/meta.db
+workspace_root: /tmp/rd_agent_v1/workspaces
+artifact_root: /tmp/rd_agent_v1/artifacts
+trace_storage_path: /tmp/rd_agent_v1/trace.jsonl
+sandbox_timeout_sec: 300
+allow_local_execution: false
+```
+
+### Environment overrides
+
+Use environment variables for secrets or deployment-specific values. They have the highest priority and will override values in `config.yaml`. Note that empty-string environment variables (e.g., `export RD_AGENT_LLM_API_KEY=""`) are treated as unset and will not override config values.
+
+```bash
+export RD_AGENT_LLM_API_KEY="your-key-here"
+# Optional: force local execution if Docker is unavailable
+# export AGENTRD_ALLOW_LOCAL_EXECUTION=1
+```
 
 ## Startup sequence
 
@@ -33,6 +49,8 @@ Only set `AGENTRD_ALLOW_LOCAL_EXECUTION=1` when you intentionally accept host-lo
 
 ```bash
 python3 -m app.startup
+# or with a specific file
+python3 -m app.startup --config ./config.yaml
 ```
 
 2. Start control plane:

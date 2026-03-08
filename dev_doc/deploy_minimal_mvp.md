@@ -10,26 +10,46 @@ mkdir -p /tmp/rd_agent_artifacts /tmp/rd_agent_workspace /tmp/rd_agent_trace
 
 确保运行用户对以上目录可读写。
 
-## 2. 建议环境变量
+## 2. 建议配置 (`config.yaml`)
+
+建议从 `config.example.yaml` 复制并修改基础配置：
 
 ```bash
-export AGENTRD_ENV=prod
-export AGENTRD_DEFAULT_SCENARIO=data_science
-export AGENTRD_ARTIFACT_ROOT=/tmp/rd_agent_artifacts
-export AGENTRD_WORKSPACE_ROOT=/tmp/rd_agent_workspace
-export AGENTRD_TRACE_STORAGE_PATH=/tmp/rd_agent_trace/events.jsonl
-export AGENTRD_SQLITE_PATH=/tmp/rd_agent.sqlite3
-export AGENTRD_SANDBOX_TIMEOUT_SEC=300
-export AGENTRD_ALLOW_LOCAL_EXECUTION=0
-export AGENTRD_LOG_LEVEL=INFO
+cp config.example.yaml config.yaml
+```
+
+```yaml
+env: prod
+default_scenario: data_science
+artifact_root: /tmp/rd_agent_artifacts
+workspace_root: /tmp/rd_agent_workspace
+trace_storage_path: /tmp/rd_agent_trace/events.jsonl
+sqlite_path: /tmp/rd_agent.sqlite3
+sandbox_timeout_sec: 300
+allow_local_execution: false
+log_level: INFO
+```
+
+### 环境变量覆盖
+
+使用环境变量来设置密钥或特定部署的值。环境变量优先级最高（`defaults < YAML config < env overrides`）。
+
+注意：空字符串环境变量（如 `export RD_AGENT_LLM_API_KEY=""`）会被视为未设置，不会覆盖 YAML 或默认值。
+
+```bash
+export RD_AGENT_LLM_API_KEY="your-llm-api-key"
+# export AGENTRD_ALLOW_LOCAL_EXECUTION=1  # 如果没有 Docker，显式允许本地执行
 ```
 
 ## 3. 部署后 Smoke Check
 
-1. 配置检查：
+1. 配置检查（默认加载 `./config.yaml`）：
 
 ```bash
 python3 -m app.startup
+
+# 或显式指定配置文件
+python3 -m app.startup --config /path/to/config.yaml
 ```
 
 2. 健康检查：

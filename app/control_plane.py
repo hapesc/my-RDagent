@@ -28,7 +28,7 @@ from .fastapi_compat import FastAPI, HTTPException, Query, status
 from .run_supervisor import RunSupervisor
 
 
-def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> FastAPI:
+def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
     app = FastAPI(title="AgentRD Control Plane")
     app.state.supervisor = supervisor or RunSupervisor()
 
@@ -184,7 +184,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> FastA
     return app
 
 
-def _http_error(code: str, message: str, field: Optional[str] = None) -> HTTPException:
+def _http_error(code: str, message: str, field: Optional[str] = None) -> Any:
     status_code = status.HTTP_400_BAD_REQUEST
     if code == ErrorCode.NOT_FOUND:
         status_code = status.HTTP_404_NOT_FOUND
@@ -207,13 +207,21 @@ def _require_scenario_manifest(runtime, scenario: str):
 
 def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
     effective_step_config = resolve_step_override_config(manifest.default_step_overrides, request.step_overrides)
-    return {
-        "scenario": request.scenario,
-        "stop_conditions": request.stop_conditions.to_dict() if hasattr(request.stop_conditions, "to_dict") else {
+    
+    # Serialize stop_conditions: try to_dict() if available, else manual fallback
+    to_dict_method = getattr(request.stop_conditions, "to_dict", None)
+    if callable(to_dict_method):
+        stop_conditions_dict = to_dict_method()
+    else:
+        stop_conditions_dict = {
             "max_loops": request.stop_conditions.max_loops,
             "max_steps": request.stop_conditions.max_steps,
             "max_duration_sec": request.stop_conditions.max_duration_sec,
-        },
+        }
+    
+    return {
+        "scenario": request.scenario,
+        "stop_conditions": stop_conditions_dict,
         "step_overrides": effective_step_config.to_dict(),
         "requested_step_overrides": request.step_overrides.to_dict(),
         "scenario_manifest": manifest.to_dict(),

@@ -189,7 +189,11 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         memory_service=runtime.memory_service,
     )
     loop_engine = LoopEngine(
-        config=LoopEngineConfig(exception_archive_root=runtime.config.artifact_root),
+        config=LoopEngineConfig(
+            exception_archive_root=runtime.config.artifact_root,
+            layer0_n_candidates=runtime.config.layer0_n_candidates,
+            layer0_k_forward=runtime.config.layer0_k_forward,
+        ),
         planner=runtime.planner,
         exploration_manager=runtime.exploration_manager,
         memory_service=runtime.memory_service,

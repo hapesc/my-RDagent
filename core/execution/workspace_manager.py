@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import shutil
 import zipfile
 from dataclasses import dataclass
@@ -13,6 +14,8 @@ from typing import Callable, Dict, List, Optional, Union
 from core.path_safety import ensure_within_root, resolve_relative_to_root, validate_path_component
 from core.storage import CheckpointStoreConfig, FileCheckpointStore
 from data_models import FileManifestEntry, WorkspaceSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -124,7 +127,8 @@ class WorkspaceManager:
         try:
             operation(workspace_dir)
             return True
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Operation failed in execute_with_recovery(run_id={run_id}); restoring checkpoint {checkpoint_id}")
             self.restore_checkpoint(run_id=run_id, checkpoint_id=checkpoint_id, workspace_path=workspace_path)
             return False
 

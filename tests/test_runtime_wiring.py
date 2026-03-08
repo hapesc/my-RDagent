@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import unittest
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 from app.config import AppConfig, load_config
@@ -303,6 +305,28 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertIs(step_executor._memory_service, runtime.memory_service)
             self.assertEqual(step_executor._costeer_max_rounds, 2)
 
+    def test_build_run_service_wires_layer0_params_into_loop_engine(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-layer0",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-layer0",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-layer0/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-layer0/meta.db",
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "11",
+                "RD_AGENT_LAYER0_K_FORWARD": "6",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            run_service = build_run_service(runtime, "data_science")
+            loop_engine_config = run_service._loop_engine._config
+
+            self.assertEqual(loop_engine_config.layer0_n_candidates, 11)
+            self.assertEqual(loop_engine_config.layer0_k_forward, 6)
+
     def test_build_runtime_wires_fc3_proposal_components_into_registry(self):
         with patch.dict(
             "os.environ",
@@ -326,6 +350,38 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertIs(getattr(data_science_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
             self.assertIs(getattr(synthetic_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
             self.assertIs(getattr(synthetic_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
+
+    def test_build_runtime_injects_virtual_evaluator_into_exploration_manager(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-exploration",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-exploration",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-exploration/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-exploration/meta.db",
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+
+            self.assertIs(runtime.exploration_manager._virtual_evaluator, runtime.virtual_evaluator)
+
+    def test_import_smoke_for_runtime_cycle_breaks(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import plugins; import exploration_manager.service; import scenarios.synthetic_research.plugin; print('ok')",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(result.stdout.strip(), "ok")
 
 
 if __name__ == "__main__":

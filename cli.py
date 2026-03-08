@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Agentic R&D Platform - Quick Start")
+    parser.add_argument("--config", default=None, help="Path to YAML config file")
     parser.add_argument("--scenario", default="data_science", help="Scenario plugin name (default: data_science)")
     parser.add_argument("--task", required=True, help="Task description string")
     parser.add_argument("--max-steps", type=int, default=5, help="Maximum iteration steps (default: 5)")
     parser.add_argument("--dry-run", action="store_true", help="Initialize only, do not run")
     args = parser.parse_args(argv)
     
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     
     logger.info("scenario: %s", args.scenario)
     logger.info("llm_provider: %s", runtime.config.llm_provider)

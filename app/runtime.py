@@ -102,8 +102,8 @@ def _create_memory_service(config: AppConfig, llm_adapter: LLMAdapter) -> Memory
     return MemoryService(mem_config)
 
 
-def build_runtime() -> RuntimeContext:
-    config = load_config()
+def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
+    config = load_config(config_path=config_path)
     llm_provider = _create_llm_provider(config)
     llm_adapter = LLMAdapter(llm_provider)
     scheduler = MCTSScheduler(

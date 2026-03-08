@@ -1,0 +1,11 @@
+Task 14 evidence: FC-3 full loop integration
+
+Command:
+python -m pytest tests/test_e2e_fc3.py::TestFC3E2E::test_fc3_full_loop_with_trace_and_feedback -v
+
+Result:
+tests/test_e2e_fc3.py::TestFC3E2E::test_fc3_full_loop_with_trace_and_feedback PASSED [100%]
+
+Interpretation:
+- Full runtime wiring emits FEEDBACK_GENERATED and TRACE_RECORDED events.
+- This confirms the upgraded reasoning pipeline, CoSTEER loop, and persistence path coordinate correctly under build_runtime/build_run_service.

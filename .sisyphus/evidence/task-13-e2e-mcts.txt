@@ -1,0 +1,12 @@
+Task 13 evidence: FC-2 full MCTS E2E backpropagation
+
+Command:
+python -m pytest tests/test_e2e_fc2_fc3.py::TestFC2FC3Integration::test_full_loop_with_backprop_integration -v
+
+Result:
+tests/test_e2e_fc2_fc3.py::TestFC2FC3Integration::test_full_loop_with_backprop_integration PASSED [100%]
+
+Interpretation:
+- The integrated LoopEngine + ExplorationManager + MCTSScheduler path exercises observe_feedback.
+- The test asserts at least one node in the captured graph has visits > 0 and total_value > 0.0.
+- This is direct evidence that backpropagation is active in the real FC-2 loop.

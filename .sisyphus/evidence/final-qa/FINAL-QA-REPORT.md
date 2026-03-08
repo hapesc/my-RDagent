@@ -1,10 +1,10 @@
 # FINAL QA REPORT: FC-2 + FC-3 Implementation
 
 > Addendum (2026-03-08): This report originally captured an earlier checkpoint. The current authoritative Wave 4 verification state is:
-> - Full regression: `547 passed, 3 warnings`
+> - Full regression: `548 passed, 3 warnings`
 > - FC-2 E2E file: `tests/test_e2e_fc2_fc3.py` now has 7 passing tests
 > - FC-3 E2E file: `tests/test_e2e_fc3.py` now has 4 passing tests
-> - `tests/test_runtime_wiring.py` now has 14 passing tests, including CoSTEER dependency wiring
+> - `tests/test_runtime_wiring.py` now has 15 passing tests, including CoSTEER dependency wiring and runtime FC-3 proposal wiring
 > - `tests/test_exploration_manager.py` now has 23 passing tests, including call-time `n_candidates` / `k_forward` semantics
 > - Gap analysis updated in `dev_doc/paper_gap_analysis.md`
 > - Supporting evidence added under `.sisyphus/evidence/task-13-*.txt`, `.sisyphus/evidence/task-14-*.txt`, `.sisyphus/evidence/task-15-*.txt`

@@ -1,6 +1,8 @@
 Final fix evidence: close runtime FC-3 wiring and FC-2 scope fidelity gaps
 
 Changes:
+- `plugins/__init__.py`: pass `reasoning_pipeline` and `virtual_evaluator` from runtime into scenario bundle builders
+- `app/runtime.py`: construct a shared `ReasoningPipeline` with runtime trace persistence and wire it into registry + `VirtualEvaluator`
 - `core/loop/step_executor.py`: inject `llm_adapter` and `memory_service` into `CoSTEEREvolver`
 - `app/runtime.py`: pass runtime dependencies into `StepExecutor`
 - `core/loop/costeer.py`: guard `_analyze_feedback()` for missing llm_adapter and fix type diagnostics
@@ -10,12 +12,14 @@ Changes:
 
 New / strengthened tests:
 - `tests/test_runtime_wiring.py`: verifies `build_run_service()` wires CoSTEER dependencies into `StepExecutor`
+- `tests/test_runtime_wiring.py`: verifies `build_runtime()` wires FC-3 proposal components into both scenario registries
 - `tests/test_exploration_manager.py`: verifies `generate_diverse_roots()` uses call-time `n_candidates` / `k_forward`
 - `tests/test_e2e_fc2_fc3.py`: renamed outdated MCTS selection test to reflect current `observe_feedback` behavior
+- `tests/test_e2e_fc3.py`: verifies runtime full loop uses FC-3 proposal path and persists reasoning traces into memory
 
 Verification:
-- `python -m pytest tests/test_runtime_wiring.py -v` -> 14 passed
+- `python -m pytest tests/test_runtime_wiring.py -v` -> 15 passed
 - `python -m pytest tests/test_exploration_manager.py -v` -> 23 passed
 - `python -m pytest tests/test_e2e_fc2_fc3.py -v` -> 7 passed
 - `python -m pytest tests/test_e2e_fc3.py -v` -> 4 passed
-- `python -m pytest tests/ --tb=short` -> 547 passed, 3 warnings
+- `python -m pytest tests/ --tb=short` -> 548 passed, 3 warnings

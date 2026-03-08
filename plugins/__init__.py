@@ -25,6 +25,8 @@ from scenarios import (
 )
 
 if TYPE_CHECKING:
+    from core.reasoning.pipeline import ReasoningPipeline
+    from core.reasoning.virtual_eval import VirtualEvaluator
     from llm import LLMAdapter
 
 
@@ -60,18 +62,30 @@ def build_default_registry(
     data_science_config: Optional[DataScienceV1Config] = None,
     synthetic_research_config: Optional[SyntheticResearchConfig] = None,
     llm_adapter: Optional["LLMAdapter"] = None,
+    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+    virtual_evaluator: Optional["VirtualEvaluator"] = None,
 ) -> PluginRegistry:
     """Create registry with built-in minimal plugins."""
 
     registry = PluginRegistry()
     registry.register(
         "data_science",
-        lambda: build_data_science_v1_bundle(data_science_config, llm_adapter=llm_adapter),
+        lambda: build_data_science_v1_bundle(
+            data_science_config,
+            llm_adapter=llm_adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
+        ),
         manifest=_data_science_manifest(data_science_config),
     )
     registry.register(
         "synthetic_research",
-        lambda: build_synthetic_research_bundle(synthetic_research_config, llm_adapter=llm_adapter),
+        lambda: build_synthetic_research_bundle(
+            synthetic_research_config,
+            llm_adapter=llm_adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
+        ),
         manifest=_synthetic_research_manifest(synthetic_research_config),
     )
     return registry

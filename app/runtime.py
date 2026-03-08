@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Optional
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, ResumeManager, RunService, RunServiceConfig, StepExecutor
+from core.reasoning.pipeline import ReasoningPipeline
 from core.reasoning.virtual_eval import VirtualEvaluator
 from core.storage import (
     BranchTraceStore,
@@ -55,7 +57,28 @@ class RuntimeContext:
     plugin_registry: PluginRegistry
     llm_adapter: LLMAdapter
     scheduler: MCTSScheduler
+    reasoning_pipeline: Optional[ReasoningPipeline] = None
     virtual_evaluator: Optional[VirtualEvaluator] = None
+
+
+class _ReasoningTraceStore:
+    def __init__(self, memory_service: MemoryService) -> None:
+        self._memory_service = memory_service
+
+    def store(self, trace_record) -> None:
+        payload = {
+            "trace_id": trace_record.trace_id,
+            "stages": trace_record.stages,
+            "timestamp": trace_record.timestamp,
+            "metadata": trace_record.metadata,
+        }
+        metadata = {
+            "kind": "reasoning_trace",
+            "trace_id": str(trace_record.trace_id),
+            "scenario": str(trace_record.metadata.get("scenario", "")),
+            "iteration": str(trace_record.metadata.get("iteration", "")),
+        }
+        self._memory_service.write_memory(json.dumps(payload, sort_keys=True), metadata)
 
 
 def _create_llm_provider(config: AppConfig):
@@ -89,11 +112,6 @@ def build_runtime() -> RuntimeContext:
     )
     pruner = BranchPruner(relative_threshold=config.prune_threshold)
     merger = TraceMerger(llm_adapter)
-    virtual_evaluator = VirtualEvaluator(
-        llm_adapter,
-        n_candidates=config.layer0_n_candidates,
-        k_forward=config.layer0_k_forward,
-    )
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
     checkpoint_store = FileCheckpointStore(
@@ -102,6 +120,17 @@ def build_runtime() -> RuntimeContext:
     workspace_manager = WorkspaceManager(
         WorkspaceManagerConfig(root_dir=config.workspace_root),
         checkpoint_store=checkpoint_store,
+    )
+    memory_service = _create_memory_service(config, llm_adapter)
+    reasoning_pipeline = ReasoningPipeline(
+        llm_adapter,
+        trace_store=_ReasoningTraceStore(memory_service),
+    )
+    virtual_evaluator = VirtualEvaluator(
+        llm_adapter,
+        n_candidates=config.layer0_n_candidates,
+        k_forward=config.layer0_k_forward,
+        reasoning_pipeline=reasoning_pipeline,
     )
     return RuntimeContext(
         config=config,
@@ -121,7 +150,7 @@ def build_runtime() -> RuntimeContext:
             llm_adapter=llm_adapter,
             virtual_evaluator=virtual_evaluator,
         ),
-        memory_service=_create_memory_service(config, llm_adapter),
+        memory_service=memory_service,
         evaluation_service=EvaluationService(EvaluationServiceConfig()),
         plugin_registry=build_default_registry(
             DataScienceV1Config(
@@ -137,9 +166,12 @@ def build_runtime() -> RuntimeContext:
                 ),
             ),
             llm_adapter=llm_adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
         ),
         llm_adapter=llm_adapter,
         scheduler=scheduler,
+        reasoning_pipeline=reasoning_pipeline,
         virtual_evaluator=virtual_evaluator,
     )
 

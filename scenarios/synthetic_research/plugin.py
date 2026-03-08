@@ -129,10 +129,13 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                 )
                 if designs:
                     best = designs[0]
+                    constraints = list(best.constraints)
+                    if scenario.step_config.proposal.model:
+                        constraints.append(f"model:{scenario.step_config.proposal.model}")
                     return Proposal(
                         proposal_id="proposal-synthetic-fc3",
                         summary=best.summary,
-                        constraints=best.constraints,
+                        constraints=constraints,
                         virtual_score=best.virtual_score,
                     )
 
@@ -155,10 +158,13 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                     current_scores=current_scores,
                     model_config=scenario.step_config.proposal,
                 )
+                constraints = list(design.constraints)
+                if scenario.step_config.proposal.model:
+                    constraints.append(f"model:{scenario.step_config.proposal.model}")
                 return Proposal(
                     proposal_id="proposal-synthetic-fc3-pipeline",
                     summary=design.summary,
-                    constraints=design.constraints,
+                    constraints=constraints,
                     virtual_score=design.virtual_score,
                 )
 

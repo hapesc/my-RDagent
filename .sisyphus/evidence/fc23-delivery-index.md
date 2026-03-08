@@ -15,6 +15,7 @@ Latest implementation and verification commits:
 - `887f603` `docs(evidence): refresh final QA report with Wave 4 regression addendum`
 - `fd37325` `docs(evidence): add final test accounting for Wave 4 regression`
 - `32cfb24` `fix(fc2-fc3): wire CoSTEER runtime dependencies and close final audit gaps`
+- current working changes: runtime proposal wiring now also passes shared `ReasoningPipeline` and `VirtualEvaluator` into scenario registries
 
 Primary implementation files:
 
@@ -51,7 +52,7 @@ Key evidence files:
 
 Current regression baseline:
 
-- `547 passed, 3 warnings`
+- `548 passed, 3 warnings`
 
 Warnings status:
 

@@ -303,6 +303,30 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertIs(step_executor._memory_service, runtime.memory_service)
             self.assertEqual(step_executor._costeer_max_rounds, 2)
 
+    def test_build_runtime_wires_fc3_proposal_components_into_registry(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-registry",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-registry",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-registry/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-registry/meta.db",
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            data_science_bundle = runtime.plugin_registry.create_bundle("data_science")
+            synthetic_bundle = runtime.plugin_registry.create_bundle("synthetic_research")
+
+            self.assertIsNotNone(runtime.reasoning_pipeline)
+            self.assertIsNotNone(runtime.virtual_evaluator)
+            self.assertIs(getattr(data_science_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
+            self.assertIs(getattr(data_science_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
+            self.assertIs(getattr(synthetic_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
+            self.assertIs(getattr(synthetic_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
+
 
 if __name__ == "__main__":
     unittest.main()

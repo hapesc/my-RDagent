@@ -33,6 +33,7 @@ class TestFC3E2E(unittest.TestCase):
                 "AGENTRD_TRACE_STORAGE_PATH": os.path.join(self._tmpdir.name, "trace", "events.jsonl"),
                 "AGENTRD_SQLITE_PATH": os.path.join(self._tmpdir.name, "meta.db"),
                 "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
                 "RD_AGENT_LLM_PROVIDER": "mock",
             },
             clear=False,
@@ -221,8 +222,14 @@ class TestFC3E2E(unittest.TestCase):
 
         events = runtime.sqlite_store.query_events(run_id=run.run_id)
         event_types = {event.event_type for event in events}
+        proposal_events = [event for event in events if event.event_type == EventType.HYPOTHESIS_GENERATED]
         self.assertIn(EventType.FEEDBACK_GENERATED, event_types)
         self.assertIn(EventType.TRACE_RECORDED, event_types)
+        self.assertTrue(proposal_events)
+        self.assertEqual(proposal_events[0].payload.get("proposal_id"), "proposal-ds-fc3")
+
+        trace_entries = runtime.memory_service.query_context({"kind": "reasoning_trace"})
+        self.assertTrue(trace_entries.items)
 
 
 if __name__ == "__main__":

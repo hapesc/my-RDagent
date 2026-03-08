@@ -19,9 +19,10 @@ class VirtualEvaluator:
         llm_adapter: LLMAdapter,
         n_candidates: int = 5,
         k_forward: int = 2,
+        reasoning_pipeline: Optional[ReasoningPipeline] = None,
     ) -> None:
         self._llm_adapter = llm_adapter
-        self._pipeline = ReasoningPipeline(llm_adapter)
+        self._pipeline = reasoning_pipeline or ReasoningPipeline(llm_adapter)
         self._n_candidates = n_candidates
         self._k_forward = k_forward
 

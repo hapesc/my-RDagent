@@ -91,28 +91,32 @@ FC-2 is the paper's most impactful component (28% performance drop when removed)
 
 The paper's prompt (Appendix E.2) instructs the LLM to maintain a "trace tree" and select parent nodes for branching.
 
-### Current State
+### Current State — **Fully Implemented**
 
-Our implementation uses a single sequential chain only:
+Paper-faithful adaptive exploration is now implemented in the current architecture:
 
-- **Location**: `core/loop/step_executor.py` → StepExecutor executes one proposal at a time
-- **Capability**: Sequential iteration through proposal → code → evaluate cycle
-- **Limitations**:
-  - `BranchTraceStore` exists in design documents but **not implemented** in code
-  - No parallel branch execution
-  - No path merging logic
-  - No pruning based on scores
-  - Cannot explore multiple solution directions simultaneously
+- **Location**: `exploration_manager/scheduler.py`, `exploration_manager/service.py`, `core/loop/engine.py`, `app/runtime.py`
+- **Capability**: MCTS/PUCT-guided sequential DAG exploration with backpropagation, branch pruning, trace merging, and Layer-0 diversity
+- **Implementation**:
+  - **PUCT scheduler** with node-level `visits`, `total_value`, `avg_value`
+  - **Reward integration** via `RewardCalculator` (`score_based` and `decision_based`)
+  - **Backpropagation** from expanded child to all ancestors through `parent_ids`
+  - **Layer-0 diversity** through `VirtualEvaluator` + `generate_diverse_roots()`
+  - **Branch pruning** via `BranchPruner`
+  - **Trace merging** via `TraceMerger`
+  - **LoopEngine integration**: `observe_feedback()` replaces legacy visit-count bumping and feeds real execution scores back into MCTS
 
-**Architecture**: The 6-stage plugin pipeline (`build_context → propose → generate → develop → run → summarize`) runs linearly, advancing one step at a time. There is no DAG scheduler or branch manager.
+**Architecture**: Branches still execute sequentially in one worker, but the paper-critical search structure is present: multiple root candidates, branch expansion, reward-based backprop, pruning, and merge-ready traces.
 
-### Gap Rating: **SIGNIFICANT**
+### Gap Rating: **MINOR** (Remaining: async multi-worker execution, more advanced pruning heuristics)
 
 **Evidence**:
 - Ablation study shows **-28% performance** when removed (largest impact of all 6 FCs)
-- Implemented: MCTS/PUCT scheduler (`exploration_manager/scheduler.py`), branch pruning (`exploration_manager/pruning.py`), trace merging via LLM (`exploration_manager/merging.py`)
-- Wired into `ExplorationManager`, `LoopEngine`, and `app/runtime.py` with config-driven enablement
-- Remaining: async parallel execution (Phase 2), advanced pruning heuristics
+- Implemented: PUCT selection, reward calculation, backpropagation, and node statistics in `exploration_manager/scheduler.py`
+- Implemented: graph edges, tree traversal helpers, `observe_feedback()`, and `generate_diverse_roots()` in `exploration_manager/service.py`
+- Implemented: LoopEngine MCTS flow integration in `core/loop/engine.py`
+- Implemented: runtime/config wiring for `c_puct`, reward mode, Layer-0 candidate count, and top-K forwarding in `app/runtime.py` and `app/config.py`
+- Verified by unit, integration, and E2E tests including backpropagation and Layer-0 diverse roots
 
 **Impact**:
 - Core DAG-based multi-branch exploration now functional (sequential execution)
@@ -122,9 +126,9 @@ Our implementation uses a single sequential chain only:
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
-- **Date**: 2026-03-07
-- **Tasks**: T1 (data models), T8 (MCTS scheduler), T9 (multi-branch engine), T10 (pruning), T11 (merging), T12 (wiring)
-- **Tests**: 53+ tests covering scheduler, pruning, merging, engine, and integration wiring
+- **Date**: 2026-03-08
+- **Tasks**: T1, T3, T5, T9, T10, T11, T12, T13
+- **Tests**: scheduler, exploration manager, engine integration, runtime wiring, and E2E coverage for backpropagation / Layer-0 diversity
 
 ---
 
@@ -148,29 +152,29 @@ FC-3 implements structured scientific reasoning with virtual evaluation:
 
 The paper's prompt (Appendix E.3) structures this as a multi-turn dialogue with the LLM.
 
-### Current State
+### Current State — **Fully Implemented**
 
-Our implementation uses single-step LLM generation:
+Structured scientific reasoning is now implemented end-to-end:
 
-- **Location**: `scenarios/*/plugin.py` → `ProposalEngine.propose()` method
-- **Capability**: Direct one-shot LLM call to generate proposal
-- **Limitations**:
-  - No 4-step decomposition pipeline
-  - No problem identification phase
-  - No hypothesis formulation
-  - No virtual evaluation before coding
-  - `ProposalEngine` directly returns a `ProposalDraft` without multi-candidate evaluation
+- **Location**: `core/reasoning/pipeline.py`, `core/reasoning/virtual_eval.py`, `core/loop/costeer.py`, `llm/prompts.py`, `llm/schemas.py`
+- **Capability**: 4-stage reasoning, virtual evaluation, reasoning trace persistence, structured feedback, and knowledge self-generation
+- **Implementation**:
+  - **4-stage reasoning pipeline**: Analyze -> Identify -> Hypothesize -> Design
+  - **Virtual evaluation**: generate N candidates and forward top K to coding
+  - **Trace persistence**: `ReasoningTrace` stored through injected `trace_store`
+  - **Structured feedback**: CoSTEER asks the LLM for execution / return-checking / code-quality feedback
+  - **Knowledge self-generation**: successful CoSTEER rounds distill reusable knowledge into `MemoryService.write_memory(...)`
+  - **Scenario integration**: both proposal engines use the upgraded reasoning path
 
-**Current prompt structure** (`llm/prompts.py:proposal_prompt()`): Single unified prompt with task summary, previous proposals, and iteration strategy. No structured reasoning steps, no multi-candidate generation.
-
-### Gap Rating: **MINOR**
+### Gap Rating: **MINOR** (Remaining: prompt tuning and validation against production LLM behavior)
 
 **Evidence**:
-- Implemented: 4-stage scientific reasoning pipeline (`core/reasoning/pipeline.py`) — Analyze → Identify → Hypothesize → Design
-- Implemented: Virtual evaluation with N=5 candidates, K=2 forward selection (`core/reasoning/virtual_eval.py`)
+- Implemented: 4-stage scientific reasoning pipeline in `core/reasoning/pipeline.py`
+- Implemented: virtual evaluation with candidate generation and top-K forwarding in `core/reasoning/virtual_eval.py`
+- Implemented: trace persistence through injected trace store in `core/reasoning/pipeline.py`
+- Implemented: CoSTEER structured feedback and knowledge self-generation in `core/loop/costeer.py`
 - Integrated into both `DataScienceProposalEngine` and `SyntheticResearchProposalEngine`
-- Prompt structure follows Appendix E.3 multi-turn dialogue pattern
-- Remaining: prompt tuning with real data, production LLM validation
+- Verified by unit, scenario integration, and E2E tests covering structured feedback, trace recording, and knowledge writes
 
 **Impact**:
 - Proposals now go through structured scientific reasoning before generation
@@ -180,9 +184,9 @@ Our implementation uses single-step LLM generation:
 
 #### Implementation Status
 - **Branch**: `feat/paper-fc-implementation`
-- **Date**: 2026-03-07
-- **Tasks**: T2 (prompts), T3 (schemas), T4 (mock), T5 (pipeline), T6 (virtual eval), T7 (scenario integration)
-- **Tests**: 77+ tests covering schemas, prompts, mock, pipeline, virtual eval, and scenario integration
+- **Date**: 2026-03-08
+- **Tasks**: T2, T4, T6, T7, T8, T12, T14
+- **Tests**: schemas, prompts, pipeline, virtual evaluation, CoSTEER, scenario integration, and new E2E coverage
 
 ---
 
@@ -358,17 +362,19 @@ Automated data splitting and validation selection:
 | Component | Rating | Paper Key Features | Current State | Ablation Impact |
 |-----------|--------|-------------------|---------------|-----------------|
 | **FC-1 Planning** | MINOR | Time-aware dynamic strategy | Fully implemented: time-based staging, LLM strategy, budget tracking | Not tested separately |
-| **FC-2 Exploration Path** | SIGNIFICANT | Parallel DAG + pruning + merging | Fully implemented: MCTS/PUCT scheduler, pruning, merging (sequential) | **-28%** (largest) |
-| **FC-3 Reasoning Pipeline** | MINOR | 4-step reasoning + virtual eval | Fully implemented: 4-stage pipeline, virtual eval N=5/K=2 | Not tested separately |
+| **FC-2 Exploration Path** | MINOR | Parallel DAG + pruning + merging | Fully implemented: PUCT, reward, backprop, Layer-0 diversity, pruning, merging (single-worker sequential execution) | **-28%** (largest) |
+| **FC-3 Reasoning Pipeline** | MINOR | 4-step reasoning + virtual eval | Fully implemented: 4-stage pipeline, virtual eval N=5/K=2, trace persistence, structured feedback, knowledge self-generation | Not tested separately |
 | **FC-4 Memory Context** | MINOR | Cross-branch kernel + embeddings | Fully implemented: TF-IDF interaction kernel, Algorithm 2, cross-branch storage | -9% (smallest) |
 | **FC-5 Coding Workflow** | MINOR | Debug mode + multi-stage eval | Fully implemented: debug config, 4-stage weighted evaluation | Not tested separately |
 | **FC-6 Evaluation Strategy** | MINOR | Automated split + grading + ValidationSelector | Fully implemented: 90/10 stratified split, ValidationSelector, leaderboard | Not tested separately |
 
-**Key insight**: All 6 Framework Components are now implemented. Remaining gaps are primarily in production validation (real LLM testing, prompt tuning) and Phase 2 features (async parallel execution for FC-2). The core paper algorithms (Algorithm 1 loop, Algorithm 2 hypothesis selection, interaction kernel, multi-stage evaluation, stratified splitting) are fully functional.
+**Key insight**: All 6 Framework Components are now implemented. FC-2 and FC-3 are no longer early versions; they now cover the paper-critical behaviors in code and tests. Remaining gaps are primarily production validation (real LLM testing, prompt tuning) and Phase 2 execution concerns such as async multi-worker parallelism.
 
 ---
 
-## Prioritized Implementation Roadmap
+## Prioritized Implementation Roadmap (Archived)
+
+This roadmap is kept for historical context. The FC-2 / FC-3 items below are completed on `feat/paper-fc-implementation`; any remaining bullets should be read as Phase 2 enhancements rather than open core capability gaps.
 
 **Priority order**: Ablation impact (where available) + dependency analysis
 
@@ -480,6 +486,6 @@ Automated data splitting and validation selection:
 
 ---
 
-**Document Version**: 2.0  
-**Last Updated**: 2026-03-07  
-**Status**: All 6 FCs implemented. Remaining gaps documented as MINOR — primarily production validation and Phase 2 async features.
+**Document Version**: 2.1  
+**Last Updated**: 2026-03-08  
+**Status**: All 6 FCs implemented. FC-2 and FC-3 upgraded from early versions to paper-faithful complete implementations; remaining gaps are MINOR and mostly relate to production validation / Phase 2 execution enhancements.

@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 import json
+import logging
 from pathlib import Path
 import sqlite3
 import time
@@ -12,6 +13,8 @@ from typing import Dict, Iterator, List, Optional
 
 from data_models import ContextPack
 from memory_service.interaction_kernel import HypothesisRecord
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -59,6 +62,7 @@ class MemoryService:
             yield connection
             connection.commit()
         except Exception:
+            logger.exception(f"Database operation failed in MemoryService._managed_connection(db_path={self._db_path}); rolling back")
             connection.rollback()
             raise
         finally:

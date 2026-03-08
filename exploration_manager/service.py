@@ -5,16 +5,13 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from data_models import BranchState, ExplorationGraph, GraphEdge, NodeRecord, Plan
 from exploration_manager.merging import TraceMerger
 from exploration_manager.pruning import BranchPruner
 from exploration_manager.scheduler import MCTSScheduler
 from llm.adapter import LLMAdapter
-
-if TYPE_CHECKING:
-    from core.reasoning.virtual_eval import VirtualEvaluator
 
 
 @dataclass
@@ -28,6 +25,47 @@ class ExplorationManagerConfig:
     merge_enabled: bool = True
 
 
+@runtime_checkable
+class SupportsDiverseRoots(Protocol):
+    def generate_diverse_roots(
+        self,
+        graph: ExplorationGraph,
+        task_summary: str,
+        scenario_name: str,
+        n_candidates: int = 5,
+        k_forward: int = 2,
+    ) -> ExplorationGraph: ...
+
+
+@runtime_checkable
+class SupportsTraceMerge(Protocol):
+    def merge_traces(self, graph: ExplorationGraph, task_summary: str, scenario_name: str) -> Any: ...
+
+
+@runtime_checkable
+class VirtualEvaluatorLike(Protocol):
+    def evaluate(
+        self,
+        task_summary: str,
+        scenario_name: str,
+        iteration: int,
+        previous_results: List[str],
+        current_scores: List[float],
+        evaluation_criteria: str = "feasibility, novelty, expected performance gain",
+        model_config: Optional[Any] = None,
+    ) -> List[Any]: ...
+
+
+def supports_diverse_roots(manager: object) -> bool:
+
+    return callable(getattr(type(manager), "generate_diverse_roots", None))
+
+
+def supports_trace_merge(manager: object) -> bool:
+
+    return callable(getattr(type(manager), "merge_traces", None))
+
+
 class ExplorationManager:
     """Maintains the exploration graph and manages branch scheduling."""
 
@@ -38,7 +76,7 @@ class ExplorationManager:
         pruner: Optional[BranchPruner] = None,
         merger: Optional[TraceMerger] = None,
         llm_adapter: Optional[LLMAdapter] = None,
-        virtual_evaluator: Optional["VirtualEvaluator"] = None,
+        virtual_evaluator: Optional[VirtualEvaluatorLike] = None,
     ) -> None:
         """Initialize exploration manager with selection settings."""
 
@@ -162,20 +200,7 @@ class ExplorationManager:
         if self._virtual_evaluator is None:
             return self.register_node(graph, NodeRecord(node_id="root"))
 
-        from core.reasoning.virtual_eval import VirtualEvaluator
-
-        evaluator = self._virtual_evaluator
-        if isinstance(evaluator, VirtualEvaluator) and (
-            getattr(evaluator, "_n_candidates", n_candidates) != n_candidates
-            or getattr(evaluator, "_k_forward", k_forward) != k_forward
-        ):
-            evaluator = evaluator.__class__(
-                evaluator._llm_adapter,
-                n_candidates=n_candidates,
-                k_forward=k_forward,
-            )
-
-        designs = evaluator.evaluate(
+        designs = self._virtual_evaluator.evaluate(
             task_summary=task_summary,
             scenario_name=scenario_name,
             iteration=0,

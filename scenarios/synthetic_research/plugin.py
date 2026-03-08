@@ -41,7 +41,6 @@ from plugins.contracts import (
     ScenarioContext,
     ScenarioPlugin,
 )
-from reasoning_service import ReasoningService, ReasoningServiceConfig
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
 
 if TYPE_CHECKING:
@@ -87,15 +86,15 @@ class SyntheticResearchScenarioPlugin(ScenarioPlugin):
 class SyntheticResearchProposalEngine(ProposalEngine):
     def __init__(
         self,
-        reasoning_service: ReasoningService,
         llm_adapter: Optional[LLMAdapter] = None,
         reasoning_pipeline: Optional["ReasoningPipeline"] = None,
         virtual_evaluator: Optional["VirtualEvaluator"] = None,
+        fallback_policy: str = "synthetic_research_pipeline",
     ) -> None:
-        self._reasoning_service = reasoning_service
         self._llm_adapter = llm_adapter
         self._reasoning_pipeline = reasoning_pipeline
         self._virtual_evaluator = virtual_evaluator
+        self._fallback_policy = fallback_policy
 
     def propose(
         self,
@@ -185,11 +184,14 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                 constraints=draft.constraints + ["synthetic_research"],
                 virtual_score=draft.virtual_score,
             )
-        return self._reasoning_service.generate_proposal(
-            task_summary=summary,
-            context=context,
-            parent_ids=parent_ids,
-            plan=plan,
+        _ = context
+        _ = parent_ids
+        _ = plan
+        return Proposal(
+            proposal_id="proposal-placeholder",
+            summary=summary,
+            constraints=[self._fallback_policy],
+            virtual_score=0.0,
         )
 
 
@@ -357,15 +359,11 @@ def build_synthetic_research_bundle(
     """Build the formal synthetic research plugin bundle."""
 
     plugin_config = config or SyntheticResearchConfig()
-    reasoning_service = ReasoningService(
-        ReasoningServiceConfig(reasoning_policy="synthetic_research_pipeline")
-    )
     adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
     return PluginBundle(
         scenario_name="synthetic_research",
         scenario_plugin=SyntheticResearchScenarioPlugin(),
         proposal_engine=SyntheticResearchProposalEngine(
-            reasoning_service,
             llm_adapter=adapter,
             reasoning_pipeline=reasoning_pipeline,
             virtual_evaluator=virtual_evaluator,

@@ -1,0 +1,12 @@
+Command:
+python - <<'PY'
+import plugins
+import exploration_manager.service
+import scenarios.synthetic_research.plugin
+print('ok')
+PY
+
+Status: PASS
+
+Output:
+ok

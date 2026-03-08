@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional, Protocol, Type, TypeVar
+from typing import Any, List, Optional, Protocol, Type, TypeVar, cast
 
 from service_contracts import ModelSelectorConfig
 
@@ -296,10 +296,10 @@ class LLMAdapter:
             try:
                 cleaned = self._extract_json(raw)
                 payload = json.loads(cleaned)
-                if not hasattr(schema_cls, "from_dict"):
-                    raise TypeError(f"schema_cls missing from_dict: {schema_cls}")
-                converter = getattr(schema_cls, "from_dict")
-                parsed = converter(payload)
+                converter = getattr(schema_cls, "from_dict", None)
+                if not callable(converter):
+                    raise TypeError(f"schema_cls missing callable from_dict: {schema_cls}")
+                parsed = cast(T, converter(payload))
                 return parsed
             except Exception as exc:
                 _log.warning("parse attempt %d/%d failed: %s  raw[:200]=%s",

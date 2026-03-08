@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -28,6 +29,8 @@ from service_contracts import (
     ScenarioManifest,
 )
 from trace_store import TraceTimelineView
+
+logger = logging.getLogger(__name__)
 
 
 def load_run_ids(sqlite_path: str) -> List[str]:
@@ -134,8 +137,14 @@ def list_artifacts(
 def perform_control_action(client: Any, run_id: str, action: str) -> RunControlResponse:
     if action not in {"pause", "resume", "stop"}:
         raise ValueError(f"unsupported control action: {action}")
-    if hasattr(client, f"{action}_run"):
-        return getattr(client, f"{action}_run")(run_id)
+    
+    # Try the direct method call if it exists and is callable
+    method_name = f"{action}_run"
+    method = getattr(client, method_name, None)
+    if callable(method):
+        return method(run_id)  # type: ignore
+    
+    # Fall back to HTTP POST if method doesn't exist
     response = client.post(f"/runs/{run_id}/{action}", json={})
     payload = response.json()
     if response.status_code >= 400:
@@ -196,13 +205,14 @@ def build_branch_compare_summary(
 
 
 def _extract_metrics(artifact_paths: List[str]) -> Dict[str, Any]:
-    for path in artifact_paths:
-        if path.endswith("metrics.json"):
-            try:
-                return json.loads(Path(path).read_text(encoding="utf-8"))
-            except Exception:
-                return {"error": "failed to parse metrics.json"}
-    return {}
+     for path in artifact_paths:
+         if path.endswith("metrics.json"):
+             try:
+                 return json.loads(Path(path).read_text(encoding="utf-8"))
+             except Exception as e:
+                 logger.exception(f"Failed to parse metrics.json from {path}")
+                 return {"error": "failed to parse metrics.json"}
+     return {}
 
 
 def run_app() -> None:

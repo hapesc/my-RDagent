@@ -1,49 +1,62 @@
-# Config Env Mapping
+# Config and Env Mapping
 
-## Prefix Roles
+## Load Order
 
-- **`AGENTRD_*`**: App/runtime settings (paths, execution modes, observability)
-- **`RD_AGENT_*`**: Model, loop, and reasoning behavior settings
+Configuration is resolved in this order:
 
-## App/Runtime Settings (`AGENTRD_*`)
+1. Built-in defaults
+2. YAML file (`config.yaml` at project root, or `--config <path>`)
+3. Environment variables (highest priority)
 
-| Env Var | Type | Default | Description |
+Empty-string environment variables (e.g., `export RD_AGENT_LLM_API_KEY=""`) are ignored and treated as unset. This ensures they do not accidentally override YAML or default values.
+
+This keeps env-only usage backward compatible while enabling file-based baseline config.
+
+## Flat YAML Schema
+
+`config.yaml` uses a flat key schema matching `AppConfig` fields directly.
+
+Example:
+
+```yaml
+env: dev
+default_scenario: data_science
+llm_provider: mock
+```
+
+## Field Mapping
+
+| YAML Key | Env Var | Type | Default |
 |---|---|---|---|
-| `AGENTRD_ENV` | string | `dev` | Runtime environment (e.g., `dev`, `prod`) |
-| `AGENTRD_DEFAULT_SCENARIO` | string | `data_science` | Default scenario plugin to load on startup |
-| `AGENTRD_ARTIFACT_ROOT` | path | `/tmp/rd_agent_artifacts` | Storage root for run artifacts and outputs |
-| `AGENTRD_WORKSPACE_ROOT` | path | `/tmp/rd_agent_workspace` | Workspace root for intermediate execution state |
-| `AGENTRD_TRACE_STORAGE_PATH` | path | `/tmp/rd_agent_trace/events.jsonl` | Path to trace event JSONL log |
-| `AGENTRD_SQLITE_PATH` | path | `/tmp/rd_agent.sqlite3` | Path to SQLite metadata database |
-| `AGENTRD_SANDBOX_TIMEOUT_SEC` | int | `300` | Execution sandbox timeout in seconds |
-| `AGENTRD_ALLOW_LOCAL_EXECUTION` | bool | `false` | Explicit opt-in for local Python execution (when Docker unavailable) |
-| `AGENTRD_LOG_LEVEL` | string | `INFO` | Log verbosity (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `env` | `AGENTRD_ENV` | string | `dev` |
+| `default_scenario` | `AGENTRD_DEFAULT_SCENARIO` | string | `data_science` |
+| `artifact_root` | `AGENTRD_ARTIFACT_ROOT` | path | `/tmp/rd_agent_artifacts` |
+| `workspace_root` | `AGENTRD_WORKSPACE_ROOT` | path | `/tmp/rd_agent_workspace` |
+| `trace_storage_path` | `AGENTRD_TRACE_STORAGE_PATH` | path | `/tmp/rd_agent_trace/events.jsonl` |
+| `sqlite_path` | `AGENTRD_SQLITE_PATH` | path | `/tmp/rd_agent.sqlite3` |
+| `sandbox_timeout_sec` | `AGENTRD_SANDBOX_TIMEOUT_SEC` | int | `300` |
+| `allow_local_execution` | `AGENTRD_ALLOW_LOCAL_EXECUTION` | bool | `false` |
+| `log_level` | `AGENTRD_LOG_LEVEL` | string | `INFO` |
+| `llm_provider` | `RD_AGENT_LLM_PROVIDER` | string | `mock` |
+| `llm_api_key` | `RD_AGENT_LLM_API_KEY` | string/null | `null` |
+| `llm_model` | `RD_AGENT_LLM_MODEL` | string | `gpt-4o-mini` |
+| `llm_base_url` | `RD_AGENT_LLM_BASE_URL` | string/null | `null` |
+| `costeer_max_rounds` | `RD_AGENT_COSTEER_MAX_ROUNDS` | int | `1` |
+| `mcts_exploration_weight` | `RD_AGENT_MCTS_WEIGHT` | float | `1.41` |
+| `mcts_c_puct` | `RD_AGENT_MCTS_C_PUCT` | float | `1.41` |
+| `mcts_reward_mode` | `RD_AGENT_MCTS_REWARD_MODE` | string | `score_based` |
+| `layer0_n_candidates` | `RD_AGENT_LAYER0_N_CANDIDATES` | int | `5` |
+| `layer0_k_forward` | `RD_AGENT_LAYER0_K_FORWARD` | int | `2` |
+| `prune_threshold` | `RD_AGENT_PRUNE_THRESHOLD` | float | `0.5` |
+| `debug_mode` | `RD_AGENT_DEBUG_MODE` | bool | `false` |
+| `debug_sample_fraction` | `RD_AGENT_DEBUG_SAMPLE_FRACTION` | float | `0.1` |
+| `debug_max_epochs` | `RD_AGENT_DEBUG_MAX_EPOCHS` | int | `5` |
+| `enable_hypothesis_storage` | `RD_AGENT_HYPOTHESIS_STORAGE` | bool | `false` |
+| `use_llm_planning` | `RD_AGENT_LLM_PLANNING` | bool | `false` |
 
-## Model and Loop Behavior (`RD_AGENT_*`)
-
-| Env Var | Type | Default | Description |
-|---|---|---|---|
-| `RD_AGENT_LLM_PROVIDER` | string | `mock` | LLM provider backend (e.g., `mock`, `litellm`, `openai`) |
-| `RD_AGENT_LLM_API_KEY` | string | (none) | API key for LLM provider authentication |
-| `RD_AGENT_LLM_MODEL` | string | `gpt-4o-mini` | Model identifier for LLM calls |
-| `RD_AGENT_LLM_BASE_URL` | string | (none) | Custom base URL for LLM provider (e.g., local proxy) |
-| `RD_AGENT_COSTEER_MAX_ROUNDS` | int | `1` | Max reasoning rounds in costeer (1=single, 3+=multi-round) |
-| `RD_AGENT_MCTS_WEIGHT` | float | `1.41` | MCTS exploration weight (UCB formula coefficient) |
-| `RD_AGENT_MCTS_C_PUCT` | float | `1.41` | MCTS C_PUCT coefficient (balance exploitation vs exploration) |
-| `RD_AGENT_MCTS_REWARD_MODE` | string | `score_based` | MCTS reward aggregation mode (e.g., `score_based`) |
-| `RD_AGENT_LAYER0_N_CANDIDATES` | int | `5` | Layer-0 diverse root generation: number of candidate roots |
-| `RD_AGENT_LAYER0_K_FORWARD` | int | `2` | Layer-0 diverse root generation: number of roots to forward |
-| `RD_AGENT_PRUNE_THRESHOLD` | float | `0.5` | Node pruning threshold (remove nodes with score below this) |
-| `RD_AGENT_DEBUG_MODE` | bool | `false` | Enable debug mode with structured logging and sampling |
-| `RD_AGENT_DEBUG_SAMPLE_FRACTION` | float | `0.1` | Fraction of steps to log in debug mode (0.0–1.0) |
-| `RD_AGENT_DEBUG_MAX_EPOCHS` | int | `5` | Max epochs for debug sampling |
-| `RD_AGENT_HYPOTHESIS_STORAGE` | bool | `false` | Enable hypothesis storage (experimental) |
-| `RD_AGENT_LLM_PLANNING` | bool | `false` | Enable LLM-based planning mode (experimental) |
-
-## Startup Validation Command
+## Startup Validation
 
 ```bash
 python3 -m app.startup
+python3 -m app.startup --config ./config.yaml
 ```
-
-输出为当前生效配置 JSON。

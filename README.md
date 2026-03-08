@@ -50,6 +50,9 @@ The system is plugin-based. The loop engine is generic — scenario-specific log
 
 ```bash
 python3 -m app.startup
+
+# or validate with a specific config file
+python3 -m app.startup --config ./config.yaml
 ```
 
 This prints the active configuration as JSON. All settings have sensible defaults — no setup required for a local trial.
@@ -58,7 +61,7 @@ This prints the active configuration as JSON. All settings have sensible default
 
 ```bash
 # Simple CLI
-python3 cli.py --scenario data_science --task "classify iris dataset" --max-steps 3
+python3 cli.py --config ./config.yaml --scenario data_science --task "classify iris dataset" --max-steps 3
 
 # Dry run (validate config only, no execution)
 python3 cli.py --dry-run --task "verify setup"
@@ -70,6 +73,7 @@ Or use the full CLI with JSON input:
 export AGENTRD_ALLOW_LOCAL_EXECUTION=1
 
 python3 agentrd_cli.py run \
+  --config ./config.yaml \
   --scenario data_science \
   --loops-per-call 1 \
   --max-loops 3 \
@@ -104,7 +108,21 @@ python3 agentrd_cli.py health-check --verbose
 
 ## Configuration
 
-All configuration is via environment variables. No config files needed.
+Configuration precedence is:
+
+1. Built-in defaults
+2. Optional YAML config file (`./config.yaml` by default)
+3. Environment variables (highest priority)
+
+**Note**: Empty-string environment variables (e.g., `export RD_AGENT_LLM_API_KEY=""`) are treated as unset and will not override YAML or default values.
+
+To start from a template:
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+Use `--config <path>` in `app.startup`, `cli.py`, and `agentrd_cli.py` to load a non-default YAML file.
 
 ### App / Runtime (`AGENTRD_*`)
 

@@ -1,0 +1,76 @@
+Task 15 evidence: final test accounting by file
+
+Collection command:
+python -m pytest tests/ --collect-only -q
+
+Per-file distribution:
+tests/test_branch_pruning.py: 13
+tests/test_cli.py: 3
+tests/test_costeer.py: 12
+tests/test_data_models_extended.py: 28
+tests/test_data_models_mcts.py: 13
+tests/test_e2e_fc2_fc3.py: 7
+tests/test_e2e_fc3.py: 4
+tests/test_engine_multibranch.py: 9
+tests/test_exploration_manager.py: 22
+tests/test_fc1456_data_models.py: 6
+tests/test_fc1456_e2e.py: 6
+tests/test_fc1456_mocks.py: 4
+tests/test_fc1456_prompts.py: 8
+tests/test_fc1456_schemas.py: 4
+tests/test_fc1456_wiring.py: 9
+tests/test_fc1_planning.py: 10
+tests/test_fc4_hypothesis_selector.py: 13
+tests/test_fc4_interaction_kernel.py: 23
+tests/test_fc4_memory.py: 12
+tests/test_fc5_debug_mode.py: 10
+tests/test_fc6_evaluation.py: 19
+tests/test_integration_full_loop.py: 4
+tests/test_integration_wiring.py: 11
+tests/test_litellm_provider.py: 4
+tests/test_llm_config.py: 10
+tests/test_loop_engine_mcts.py: 5
+tests/test_memory_service.py: 6
+tests/test_mock_fc3.py: 19
+tests/test_prompt_schema_alignment.py: 7
+tests/test_prompts_fc3.py: 36
+tests/test_reasoning_pipeline.py: 11
+tests/test_reward.py: 14
+tests/test_runtime_llm.py: 5
+tests/test_runtime_wiring.py: 13
+tests/test_scenario_fc3_integration.py: 11
+tests/test_scheduler_mcts.py: 19
+tests/test_schemas_fc3.py: 14
+tests/test_schemas_structured_feedback.py: 15
+tests/test_task_01_core_models.py: 4
+tests/test_task_02_plugin_contracts.py: 4
+tests/test_task_03_cli_contract.py: 6
+tests/test_task_04_event_protocol.py: 3
+tests/test_task_05_config_layer.py: 4
+tests/test_task_06_storage_foundation.py: 4
+tests/test_task_07_workspace_manager.py: 5
+tests/test_task_08_execution_backend.py: 5
+tests/test_task_09_loop_engine.py: 2
+tests/test_task_10_run_service.py: 5
+tests/test_task_11_branch_trace_store.py: 2
+tests/test_task_12_llm_adapter.py: 3
+tests/test_task_13_data_science_plugin_v1.py: 2
+tests/test_task_14_cli_integration.py: 3
+tests/test_task_15_trace_ui.py: 1
+tests/test_task_16_observability_security.py: 3
+tests/test_task_17_reliability.py: 1
+tests/test_task_17_reproducibility.py: 1
+tests/test_task_18_v1_contracts.py: 9
+tests/test_task_19_synthetic_research.py: 4
+tests/test_task_20_per_step_config.py: 3
+tests/test_task_21_control_plane.py: 6
+tests/test_task_22_branch_aware_ui.py: 3
+tests/test_task_23_v1_hardening.py: 3
+tests/test_trace_merging.py: 9
+tests/test_virtual_eval.py: 11
+
+TOTAL: 545
+
+Interpretation:
+- Final test count exceeds the original baseline and matches the full regression result.
+- Wave 4 specifically contributes the expanded `tests/test_e2e_fc2_fc3.py` (7 tests) and new `tests/test_e2e_fc3.py` (4 tests).

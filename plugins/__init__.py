@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from importlib import import_module
+from typing import Any, Optional, TYPE_CHECKING
 
 from service_contracts import ScenarioManifest
 
@@ -17,12 +18,6 @@ from .contracts import (
     ScenarioPlugin,
 )
 from .registry import PluginRegistry
-from scenarios import (
-    DataScienceV1Config,
-    SyntheticResearchConfig,
-    build_data_science_v1_bundle,
-    build_synthetic_research_bundle,
-)
 
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
@@ -30,8 +25,13 @@ if TYPE_CHECKING:
     from llm import LLMAdapter
 
 
-def _data_science_manifest(config: Optional[DataScienceV1Config] = None) -> ScenarioManifest:
-    plugin_config = config or DataScienceV1Config()
+def _load_scenarios_module() -> Any:
+    return import_module("scenarios")
+
+
+def _data_science_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+    scenarios_module = _load_scenarios_module()
+    plugin_config = config or scenarios_module.DataScienceV1Config()
     return ScenarioManifest(
         scenario_name="data_science",
         title="Data Science",
@@ -44,8 +44,9 @@ def _data_science_manifest(config: Optional[DataScienceV1Config] = None) -> Scen
     )
 
 
-def _synthetic_research_manifest(config: Optional[SyntheticResearchConfig] = None) -> ScenarioManifest:
-    plugin_config = config or SyntheticResearchConfig()
+def _synthetic_research_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+    scenarios_module = _load_scenarios_module()
+    plugin_config = config or scenarios_module.SyntheticResearchConfig()
     return ScenarioManifest(
         scenario_name="synthetic_research",
         title="Synthetic Research",
@@ -59,18 +60,20 @@ def _synthetic_research_manifest(config: Optional[SyntheticResearchConfig] = Non
 
 
 def build_default_registry(
-    data_science_config: Optional[DataScienceV1Config] = None,
-    synthetic_research_config: Optional[SyntheticResearchConfig] = None,
+    data_science_config: Optional[Any] = None,
+    synthetic_research_config: Optional[Any] = None,
     llm_adapter: Optional["LLMAdapter"] = None,
     reasoning_pipeline: Optional["ReasoningPipeline"] = None,
     virtual_evaluator: Optional["VirtualEvaluator"] = None,
 ) -> PluginRegistry:
     """Create registry with built-in minimal plugins."""
 
+    scenarios_module = _load_scenarios_module()
+
     registry = PluginRegistry()
     registry.register(
         "data_science",
-        lambda: build_data_science_v1_bundle(
+        lambda: scenarios_module.build_data_science_v1_bundle(
             data_science_config,
             llm_adapter=llm_adapter,
             reasoning_pipeline=reasoning_pipeline,
@@ -80,7 +83,7 @@ def build_default_registry(
     )
     registry.register(
         "synthetic_research",
-        lambda: build_synthetic_research_bundle(
+        lambda: scenarios_module.build_synthetic_research_bundle(
             synthetic_research_config,
             llm_adapter=llm_adapter,
             reasoning_pipeline=reasoning_pipeline,

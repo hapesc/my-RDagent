@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from data_models import CodeArtifact, ExperimentNode, FeedbackRecord, Proposal, Score
 from plugins.contracts import Coder, FeedbackAnalyzer, Runner, ScenarioContext
+
+if TYPE_CHECKING:
+    from llm.schemas import StructuredFeedback
 
 _log = logging.getLogger(__name__)
 
@@ -32,6 +35,9 @@ class CoSTEEREvolver:
         code: str,
         execution_output: str,
     ) -> "StructuredFeedback":
+        if self._llm_adapter is None:
+            raise RuntimeError("Structured feedback requires llm_adapter")
+
         from llm.prompts import structured_feedback_prompt
         from llm.schemas import StructuredFeedback
 

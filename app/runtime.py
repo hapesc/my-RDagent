@@ -153,6 +153,8 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         event_store=runtime.sqlite_store,
         branch_store=runtime.branch_store,
         costeer_max_rounds=runtime.config.costeer_max_rounds,
+        llm_adapter=runtime.llm_adapter,
+        memory_service=runtime.memory_service,
     )
     loop_engine = LoopEngine(
         config=LoopEngineConfig(exception_archive_root=runtime.config.artifact_root),

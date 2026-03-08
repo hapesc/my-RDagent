@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
+from core.reasoning.virtual_eval import VirtualEvaluator
 from data_models import BranchState, ExplorationGraph, GraphEdge, NodeRecord
 from exploration_manager.scheduler import MCTSScheduler
 from exploration_manager.service import ExplorationManager, ExplorationManagerConfig
@@ -196,6 +197,25 @@ class TestGenerateDiverseRoots(unittest.TestCase):
             self.assertTrue(node.node_id.startswith("root-"))
             assert node.proposal_id is not None
             self.assertTrue(node.proposal_id.startswith("layer0-"))
+
+    def test_diverse_roots_uses_call_time_n_and_k(self) -> None:
+        from llm.adapter import LLMAdapter, MockLLMProvider
+
+        adapter = LLMAdapter(MockLLMProvider())
+        evaluator = VirtualEvaluator(adapter, n_candidates=2, k_forward=1)
+        manager = ExplorationManager(
+            ExplorationManagerConfig(),
+            scheduler=MCTSScheduler(),
+            virtual_evaluator=evaluator,
+        )
+        graph = manager.generate_diverse_roots(
+            ExplorationGraph(),
+            "classify images",
+            "data_science",
+            n_candidates=4,
+            k_forward=3,
+        )
+        self.assertEqual(len(graph.nodes), 3)
 
     def test_fallback_single_root_when_no_evaluator(self) -> None:
         config = ExplorationManagerConfig()

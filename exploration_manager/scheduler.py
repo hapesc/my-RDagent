@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from data_models import BranchState, ExplorationGraph, NodeRecord
 from exploration_manager.reward import RewardCalculator
@@ -26,16 +26,6 @@ class MCTSScheduler:
 
         self._c_puct = c_puct
         self._reward_calculator = reward_calculator or RewardCalculator()
-
-    def __getattr__(self, name: str) -> Callable[[ExplorationGraph, str], ExplorationGraph]:
-        if name != "update_visit_count":
-            raise AttributeError(name)
-
-        def _legacy_update_visit_count(graph: ExplorationGraph, node_id: str) -> ExplorationGraph:
-            self.backpropagate(graph, node_id, 0.0)
-            return graph
-
-        return _legacy_update_visit_count
 
     def select_node(self, graph: ExplorationGraph) -> Optional[str]:
         """Select one ACTIVE node by paper-faithful PUCT."""

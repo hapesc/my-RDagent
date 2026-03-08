@@ -4,11 +4,11 @@ Command:
 python -m pytest tests/ --tb=short
 
 Result summary:
-545 passed, 3 warnings in 13.19s
+547 passed, 3 warnings in 14.09s
 
 Warnings:
 - PytestCollectionWarning for app/fastapi_compat.py: TestClient has __init__ constructor in three pre-existing task_21/task_22/task_23 test modules.
 
 Interpretation:
-- Total test count increased from the earlier 538 to 545 after adding Wave 4 E2E coverage.
+- Total test count increased from the earlier 538 to 547 after adding Wave 4 E2E coverage and final runtime wiring / parameter-semantic fixes.
 - No failures or errors remain.

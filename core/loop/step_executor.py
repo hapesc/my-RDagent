@@ -52,6 +52,8 @@ class StepExecutor:
         event_store: EventMetadataStore,
         branch_store: Optional[BranchTraceStore] = None,
         costeer_max_rounds: int = 1,
+        llm_adapter=None,
+        memory_service=None,
     ) -> None:
         self._plugin_bundle = plugin_bundle
         self._evaluation_service = evaluation_service
@@ -59,6 +61,8 @@ class StepExecutor:
         self._event_store = event_store
         self._branch_store = branch_store
         self._costeer_max_rounds = costeer_max_rounds
+        self._llm_adapter = llm_adapter
+        self._memory_service = memory_service
 
     def execute_iteration(
         self,
@@ -154,6 +158,8 @@ class StepExecutor:
                 runner=self._plugin_bundle.runner,
                 feedback_analyzer=self._plugin_bundle.feedback_analyzer,
                 max_rounds=self._costeer_max_rounds,
+                llm_adapter=self._llm_adapter,
+                memory_service=self._memory_service,
             )
             artifact = evolver.evolve(experiment=experiment, proposal=proposal, scenario=scenario_context)
         else:

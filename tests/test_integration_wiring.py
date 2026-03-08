@@ -188,7 +188,6 @@ def test_engine_calls_prune_after_register_scheduler_path() -> None:
 
     scheduler = Mock()
     scheduler.select_node.return_value = "root-a"
-    scheduler.update_visit_count.side_effect = lambda graph, _node_id: graph
 
     memory_service = Mock()
     memory_service.query_context.return_value = Mock(items=[])

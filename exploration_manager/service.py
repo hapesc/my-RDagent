@@ -162,7 +162,20 @@ class ExplorationManager:
         if self._virtual_evaluator is None:
             return self.register_node(graph, NodeRecord(node_id="root"))
 
-        designs = self._virtual_evaluator.evaluate(
+        from core.reasoning.virtual_eval import VirtualEvaluator
+
+        evaluator = self._virtual_evaluator
+        if isinstance(evaluator, VirtualEvaluator) and (
+            getattr(evaluator, "_n_candidates", n_candidates) != n_candidates
+            or getattr(evaluator, "_k_forward", k_forward) != k_forward
+        ):
+            evaluator = evaluator.__class__(
+                evaluator._llm_adapter,
+                n_candidates=n_candidates,
+                k_forward=k_forward,
+            )
+
+        designs = evaluator.evaluate(
             task_summary=task_summary,
             scenario_name=scenario_name,
             iteration=0,

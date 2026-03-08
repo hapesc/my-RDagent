@@ -12,7 +12,7 @@ tests/test_data_models_mcts.py: 13
 tests/test_e2e_fc2_fc3.py: 7
 tests/test_e2e_fc3.py: 4
 tests/test_engine_multibranch.py: 9
-tests/test_exploration_manager.py: 22
+tests/test_exploration_manager.py: 23
 tests/test_fc1456_data_models.py: 6
 tests/test_fc1456_e2e.py: 6
 tests/test_fc1456_mocks.py: 4
@@ -37,7 +37,7 @@ tests/test_prompts_fc3.py: 36
 tests/test_reasoning_pipeline.py: 11
 tests/test_reward.py: 14
 tests/test_runtime_llm.py: 5
-tests/test_runtime_wiring.py: 13
+tests/test_runtime_wiring.py: 14
 tests/test_scenario_fc3_integration.py: 11
 tests/test_scheduler_mcts.py: 19
 tests/test_schemas_fc3.py: 14
@@ -69,8 +69,9 @@ tests/test_task_23_v1_hardening.py: 3
 tests/test_trace_merging.py: 9
 tests/test_virtual_eval.py: 11
 
-TOTAL: 545
+TOTAL: 547
 
 Interpretation:
 - Final test count exceeds the original baseline and matches the full regression result.
 - Wave 4 specifically contributes the expanded `tests/test_e2e_fc2_fc3.py` (7 tests) and new `tests/test_e2e_fc3.py` (4 tests).
+- Final cleanup also adds runtime-wiring and parameter-semantics guards, bringing the total to 547.

@@ -195,7 +195,6 @@ class LoopEngine:
                                 )
                             )
                             return loop_context
-                        traceback.print_exc()
                         continue
 
                     node = NodeRecord(

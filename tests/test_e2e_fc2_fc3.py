@@ -84,7 +84,7 @@ class TestFC2FC3Integration(unittest.TestCase):
             self.assertTrue(design.summary.strip())
             self.assertGreaterEqual(design.virtual_score, 0.0)
 
-    def test_mcts_selection_with_multiple_nodes(self) -> None:
+    def test_mcts_selection_and_feedback_with_multiple_nodes(self) -> None:
         nodes = [
             NodeRecord(node_id="n1", score=0.9, branch_state=BranchState.ACTIVE),
             NodeRecord(node_id="n2", score=0.7, branch_state=BranchState.ACTIVE),

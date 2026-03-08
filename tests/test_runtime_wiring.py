@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from app.config import AppConfig, load_config
-from app.runtime import RuntimeContext, build_runtime
+from app.runtime import RuntimeContext, build_run_service, build_runtime
 from core.reasoning.virtual_eval import VirtualEvaluator
 from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
@@ -280,6 +280,28 @@ class TestRuntimeWiring(unittest.TestCase):
         assert runtime.virtual_evaluator is not None
         self.assertEqual(runtime.virtual_evaluator._n_candidates, 8)
         self.assertEqual(runtime.virtual_evaluator._k_forward, 4)
+
+    def test_build_run_service_wires_costeer_dependencies_into_step_executor(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-wiring",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-wiring",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-wiring/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-wiring/meta.db",
+                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            run_service = build_run_service(runtime, "data_science")
+            step_executor = run_service._loop_engine._step_executor
+
+            self.assertIs(step_executor._llm_adapter, runtime.llm_adapter)
+            self.assertIs(step_executor._memory_service, runtime.memory_service)
+            self.assertEqual(step_executor._costeer_max_rounds, 2)
 
 
 if __name__ == "__main__":

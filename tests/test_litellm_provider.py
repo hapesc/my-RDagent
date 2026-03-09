@@ -52,6 +52,7 @@ class LiteLLMProviderTests(unittest.TestCase):
             api_key="sk-test",
             base_url="https://example.invalid/v1",
             timeout=60,
+            stream=False,
         )
 
     @patch("litellm.completion")
@@ -95,6 +96,8 @@ class LiteLLMProviderTests(unittest.TestCase):
             temperature=0.3,
             max_tokens=256,
             timeout=60,
+            response_format={"type": "json_object"},
+            stream=False,
         )
 
     @patch("litellm.completion")
@@ -110,8 +113,9 @@ class LiteLLMProviderTests(unittest.TestCase):
             model="gemini/gemini-2.5-pro",
             messages=[{"role": "user", "content": "think"}],
             api_key="sk-test",
-            max_tokens=8192,
-            timeout=120,
+            max_tokens=16384,
+            timeout=180,
+            stream=False,
         )
 
     @patch("llm.providers.litellm_provider.time.sleep")
@@ -129,7 +133,7 @@ class LiteLLMProviderTests(unittest.TestCase):
 
         self.assertEqual(result, "recovered")
         self.assertEqual(mock_completion.call_count, 2)
-        mock_sleep.assert_called_once_with(0.1)
+        mock_sleep.assert_called_once_with(0.5)
 
     @patch("llm.providers.litellm_provider.time.sleep")
     @patch("litellm.completion")
@@ -147,10 +151,11 @@ class LiteLLMProviderTests(unittest.TestCase):
             provider.complete("hello")
 
         self.assertIn("LLM provider unavailable", str(ctx.exception))
-        self.assertEqual(mock_completion.call_count, 3)
-        self.assertEqual(mock_sleep.call_count, 2)
-        mock_sleep.assert_any_call(0.1)
-        mock_sleep.assert_any_call(0.3)
+        self.assertEqual(mock_completion.call_count, 4)
+        self.assertEqual(mock_sleep.call_count, 3)
+        mock_sleep.assert_any_call(0.5)
+        mock_sleep.assert_any_call(1.0)
+        mock_sleep.assert_any_call(2.0)
 
     @patch("llm.providers.litellm_provider.time.sleep")
     @patch("litellm.completion")

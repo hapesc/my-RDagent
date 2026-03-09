@@ -24,7 +24,7 @@ from exploration_manager.merging import TraceMerger
 from exploration_manager.pruning import BranchPruner
 from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
-from llm import LLMAdapter, MockLLMProvider
+from llm import LLMAdapter
 from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
 from memory_service.hypothesis_selector import HypothesisSelector
@@ -100,7 +100,11 @@ def _create_llm_provider(config: AppConfig):
             model=config.llm_model,
             base_url=config.llm_base_url,
         )
-    return MockLLMProvider()
+    raise RuntimeError(
+        f"Unknown or missing LLM provider: '{config.llm_provider}'. "
+        "Set RD_AGENT_LLM_PROVIDER=litellm and provide RD_AGENT_LLM_API_KEY. "
+        "Supported providers: litellm"
+    )
 
 
 def _create_memory_service(config: AppConfig, llm_adapter: LLMAdapter) -> MemoryService:

@@ -21,6 +21,8 @@ from llm.adapter import LLMAdapter, MockLLMProvider
 from llm.schemas import ReasoningTrace, StructuredFeedback
 from plugins.contracts import ScenarioContext
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class TestFC3E2E(unittest.TestCase):
     def setUp(self) -> None:
@@ -39,8 +41,11 @@ class TestFC3E2E(unittest.TestCase):
             clear=False,
         )
         self._env_patch.start()
+        self._llm_patch = patch_runtime_llm_provider()
+        self._llm_patch.start()
 
     def tearDown(self) -> None:
+        self._llm_patch.stop()
         self._env_patch.stop()
         self._tmpdir.cleanup()
 

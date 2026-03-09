@@ -465,6 +465,8 @@ class LLMAdapter:
             raw = ""
             try:
                 raw = self._provider.complete(enhanced, model_config=model_config)
+                if not raw or not raw.strip():
+                    raise ConnectionError("LLM provider returned empty response")
                 return self._parse_with_schema(raw, schema_cls)
             except Exception as exc:
                 retryable, stage = self._classify_parse_error(exc)

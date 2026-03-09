@@ -1,3 +1,0 @@
-=== Quality Check ===
-Placeholder count: 0
-Word count:     2595

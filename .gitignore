@@ -48,3 +48,8 @@ config.yaml
 *.db
 logs/
 /tmp/
+
+# Tool / AI working artifacts
+.sisyphus/
+.claude/
+FC4_*.md

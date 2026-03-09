@@ -1,6 +1,0 @@
-=== Structure Check ===
-EXISTS
-Main sections: 11
-Paper Vision sections: 6
-Current State sections: 6
-Gap sections: 6

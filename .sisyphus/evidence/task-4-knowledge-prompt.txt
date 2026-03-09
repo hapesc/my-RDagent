@@ -1,0 +1,42 @@
+TASK-4 EVIDENCE: knowledge_extraction_prompt Implementation
+============================================================
+
+OBJECTIVE:
+Add knowledge_extraction_prompt() function to llm/prompts.py following TDD pattern.
+
+IMPLEMENTATION DETAILS:
+Function: knowledge_extraction_prompt(trace_summary: str, scenario: str) -> str
+Location: llm/prompts.py (lines 569-600)
+Purpose: Build prompt for FC-3 knowledge self-generation from CoSTEER loop traces
+
+Pattern Matching:
+✓ Returns f-string with role assignment ("You are a research scientist...")
+✓ Includes context sections (## Scenario, ## Experiment Trace Summary)
+✓ Includes Instructions section with 4 extraction tasks:
+  - What worked well and should be repeated
+  - What failed and should be avoided
+  - General principles and patterns that emerged
+  - Specific techniques or configurations proved effective
+✓ Includes Output Fields section with structured guidance:
+  - Concise knowledge summary (1-3 sentences)
+  - Focus on transferable, actionable insights
+  - Parameterized scenario reference
+
+TEST RESULTS:
+TestKnowledgeExtractionPrompt (4 tests):
+- test_signature_and_return_type: PASSED
+- test_includes_trace_summary: PASSED
+- test_has_output_fields_or_instructions: PASSED
+- test_includes_scenario: PASSED
+
+All 4 tests passing ✓
+
+REGRESSION VERIFICATION:
+- test_prompts_fc3.py: 36 tests PASSED (new: 10, existing: 26)
+- Full test suite: 481 tests PASSED (baseline: 471)
+- No regressions detected ✓
+
+COMBINED TEST RESULTS:
+- TestStructuredFeedbackPrompt: 6/6 PASSED ✓
+- TestKnowledgeExtractionPrompt: 4/4 PASSED ✓
+- Total new tests: 10/10 PASSED ✓

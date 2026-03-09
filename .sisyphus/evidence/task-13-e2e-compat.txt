@@ -1,0 +1,11 @@
+Task 13 evidence: legacy FC-2/FC-3 integration compatibility
+
+Command:
+python -m pytest tests/test_e2e_fc2_fc3.py::TestFC2FC3Integration::test_full_loop_with_reasoning_and_branches -v
+
+Result:
+tests/test_e2e_fc2_fc3.py::TestFC2FC3Integration::test_full_loop_with_reasoning_and_branches PASSED [100%]
+
+Interpretation:
+- The original integrated loop test still passes after the FC-2 MCTS upgrade.
+- This confirms Wave 3 + Wave 4 changes preserved end-to-end behavior while replacing legacy update_visit_count with observe_feedback.

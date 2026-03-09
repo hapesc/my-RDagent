@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from core.execution import DockerExecutionBackend, DockerExecutionBackendConfig
 from data_models import (
@@ -21,7 +21,17 @@ from data_models import (
     Score,
     StepState,
 )
-from llm import CodeDraft, FeedbackDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm import (
+    CodeDraft,
+    FeedbackDraft,
+    LLMAdapter,
+    LLMAdapterConfig,
+    MockLLMProvider,
+    ProposalDraft,
+    coding_prompt,
+    feedback_prompt,
+    proposal_prompt,
+)
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -31,8 +41,13 @@ from plugins.contracts import (
     Runner,
     ScenarioContext,
     ScenarioPlugin,
+    UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+
+if TYPE_CHECKING:
+    from core.reasoning.pipeline import ReasoningPipeline
+    from core.reasoning.virtual_eval import VirtualEvaluator
 
 
 def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
@@ -42,7 +57,7 @@ def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideC
             provider="mock",
             model="ds-coding-default",
             max_retries=2,
-            max_tokens=512,
+            max_tokens=2048,
         ),
         running=RunningStepConfig(timeout_sec=timeout_sec),
         feedback=ModelSelectorConfig(provider="mock", model="ds-feedback-default", max_retries=2),
@@ -73,8 +88,15 @@ class DataScienceScenarioPlugin(ScenarioPlugin):
 
 
 class DataScienceProposalEngine(ProposalEngine):
-    def __init__(self, llm_adapter: LLMAdapter) -> None:
+    def __init__(
+        self,
+        llm_adapter: LLMAdapter,
+        reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+        virtual_evaluator: Optional["VirtualEvaluator"] = None,
+    ) -> None:
         self._llm_adapter = llm_adapter
+        self._reasoning_pipeline = reasoning_pipeline
+        self._virtual_evaluator = virtual_evaluator
 
     def propose(
         self,
@@ -88,8 +110,75 @@ class DataScienceProposalEngine(ProposalEngine):
         _ = parent_ids
         _ = plan
         summary = task_summary or scenario.task_summary or "data science task"
+        iteration = int(scenario.input_payload.get("loop_index", 0))
+
+        if self._virtual_evaluator is not None:
+            from core.reasoning.virtual_eval import VirtualEvaluator
+
+            evaluator = self._virtual_evaluator
+            if isinstance(evaluator, VirtualEvaluator):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                designs = evaluator.evaluate(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                if designs:
+                    best = designs[0]
+                    constraints = list(best.constraints)
+                    if scenario.step_config.proposal.model:
+                        constraints.append(f"model:{scenario.step_config.proposal.model}")
+                    return Proposal(
+                        proposal_id="proposal-ds-fc3",
+                        summary=best.summary,
+                        constraints=constraints,
+                        virtual_score=best.virtual_score,
+                    )
+
+        if self._reasoning_pipeline is not None:
+            from core.reasoning.pipeline import ReasoningPipeline
+
+            pipeline = self._reasoning_pipeline
+            if isinstance(pipeline, ReasoningPipeline):
+                previous_results = [
+                    str(result) for result in scenario.input_payload.get("previous_results", [])
+                ]
+                current_scores = [
+                    float(score) for score in scenario.input_payload.get("current_scores", [])
+                ]
+                design = pipeline.reason(
+                    task_summary=summary,
+                    scenario_name=scenario.scenario_name,
+                    iteration=iteration,
+                    previous_results=previous_results,
+                    current_scores=current_scores,
+                    model_config=scenario.step_config.proposal,
+                )
+                constraints = list(design.constraints)
+                if scenario.step_config.proposal.model:
+                    constraints.append(f"model:{scenario.step_config.proposal.model}")
+                return Proposal(
+                    proposal_id="proposal-ds-fc3-pipeline",
+                    summary=design.summary,
+                    constraints=constraints,
+                    virtual_score=design.virtual_score,
+                )
+
+        prompt = proposal_prompt(
+            task_summary=summary,
+            scenario_name=scenario.scenario_name,
+            iteration=iteration,
+        )
         draft = self._llm_adapter.generate_structured(
-            f"proposal:{summary}",
+            prompt,
             ProposalDraft,
             model_config=scenario.step_config.proposal,
         )
@@ -149,8 +238,15 @@ class DataScienceCoder(Coder):
         artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
         if self._llm_adapter is not None:
+            prompt = coding_prompt(
+                proposal_summary=proposal.summary,
+                constraints=proposal.constraints,
+                experiment_node_id=experiment.node_id,
+                workspace_ref=experiment.workspace_ref,
+                scenario_name=scenario.scenario_name,
+            )
             code_draft = self._llm_adapter.generate_structured(
-                f"coding:{proposal.summary}",
+                prompt,
                 CodeDraft,
                 model_config=scenario.step_config.coding,
             )
@@ -171,11 +267,13 @@ class DataScienceCoder(Coder):
             "import os\n"
             f"data_source = {data_source!r}\n"
             "row_count = 0\n"
+            "column_count = 0\n"
             "if data_source and os.path.exists(data_source):\n"
             "    with open(data_source, newline='', encoding='utf-8') as handle:\n"
             "        reader = csv.DictReader(handle)\n"
+            "        column_count = len(reader.fieldnames or [])\n"
             "        row_count = sum(1 for _ in reader)\n"
-            "metrics = {'row_count': row_count, 'status': 'ok'}\n"
+            "metrics = {'row_count': row_count, 'column_count': column_count, 'status': 'ok'}\n"
             "with open('metrics.json', 'w', encoding='utf-8') as handle:\n"
             "    json.dump(metrics, handle)\n"
             "print(json.dumps(metrics))\n"
@@ -204,6 +302,10 @@ class DataScienceRunner(Runner):
             exit_code=backend_result.exit_code,
             logs_ref=logs,
             artifacts_ref=json.dumps(backend_result.artifact_paths),
+            duration_sec=backend_result.duration_sec,
+            timed_out=backend_result.timed_out,
+            artifact_manifest=backend_result.artifact_manifest,
+            outcome=backend_result.outcome,
         )
 
 
@@ -217,33 +319,131 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
         result: ExecutionResult,
         score: Optional[Score] = None,
     ) -> FeedbackRecord:
-        _ = score
-        prompt = f"feedback:exit_code={result.exit_code};logs={result.logs_ref[:120]}"
+        score_text = "none" if score is None else f"{score.metric_name}:{score.value:.4f}"
+        hypothesis_text = (
+            experiment.hypothesis.get("text", "")
+            if isinstance(experiment.hypothesis, dict)
+            else str(experiment.hypothesis)
+        )
+        iteration = experiment.loop_index
         feedback_config = ModelSelectorConfig.from_dict(
             experiment.hypothesis.get("_feedback_model_config")
             if isinstance(experiment.hypothesis, dict)
             else None
+        )
+        prompt = feedback_prompt(
+            hypothesis_text=hypothesis_text,
+            exit_code=result.exit_code,
+            score_text=score_text,
+            logs_summary=result.logs_ref,
+            iteration=iteration,
         )
         draft = self._llm_adapter.generate_structured(
             prompt,
             FeedbackDraft,
             model_config=feedback_config,
         )
+        usefulness_eligible = result.resolve_outcome().usefulness_eligible
         return FeedbackRecord(
             feedback_id=f"fb-{experiment.node_id}",
-            decision=draft.decision and result.exit_code == 0,
-            acceptable=draft.acceptable and result.exit_code == 0,
+            decision=draft.decision and usefulness_eligible,
+            acceptable=draft.acceptable and usefulness_eligible,
             reason=draft.reason,
             observations=draft.observations,
             code_change_summary=draft.code_change_summary,
         )
 
 
-def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -> PluginBundle:
+def _validate_data_science_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]:
+    payload = gate_input.structured_payload
+    if not isinstance(payload, dict):
+        return "missing structured payload"
+    if "status" not in payload:
+        return "missing key field: status"
+    if "row_count" not in payload:
+        return "missing key field: row_count"
+    status_value = str(payload.get("status", "")).strip().lower()
+    if status_value in {"", "todo", "tbd", "placeholder"}:
+        return "template-only status"
+    row_count = payload.get("row_count")
+    if not isinstance(row_count, int):
+        return "row_count must be integer"
+    if row_count < 0:
+        return "row_count cannot be negative"
+    if _is_row_count_only_payload(payload):
+        return "row-count-only payload"
+    if not _has_informative_metrics(payload):
+        return "missing informative metrics"
+    return None
+
+
+_DS_NON_INFORMATIVE_KEYS = {
+    "status",
+    "row_count",
+    "result",
+    "outcome",
+    "message",
+    "ok",
+    "success",
+    "state",
+    "detail",
+}
+
+_DS_PLACEHOLDER_VALUES = {
+    "",
+    "todo",
+    "tbd",
+    "placeholder",
+    "template",
+    "n/a",
+    "na",
+    "unknown",
+    "null",
+}
+
+
+def _is_row_count_only_payload(payload: Dict[str, Any]) -> bool:
+    keys = {str(key).strip().lower() for key in payload}
+    return bool(keys) and keys.issubset({"status", "row_count"})
+
+
+def _has_informative_metrics(payload: Dict[str, Any]) -> bool:
+    for key, value in payload.items():
+        normalized_key = str(key).strip().lower()
+        if normalized_key in _DS_NON_INFORMATIVE_KEYS:
+            continue
+        if _is_informative_value(value):
+            return True
+    return False
+
+
+def _is_informative_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return True
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        return bool(normalized) and normalized not in _DS_PLACEHOLDER_VALUES
+    if isinstance(value, dict):
+        return any(_is_informative_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_is_informative_value(item) for item in value)
+    return False
+
+
+def build_data_science_v1_bundle(
+    config: Optional[DataScienceV1Config] = None,
+    llm_adapter: Optional[LLMAdapter] = None,
+    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
+    virtual_evaluator: Optional["VirtualEvaluator"] = None,
+) -> PluginBundle:
     """Build Data Science plugin v1 bundle."""
 
     plugin_config = config or DataScienceV1Config()
-    llm_adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
+    adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
     backend = DockerExecutionBackend(
         DockerExecutionBackendConfig(
             docker_image=plugin_config.docker_image,
@@ -257,10 +457,15 @@ def build_data_science_v1_bundle(config: Optional[DataScienceV1Config] = None) -
     return PluginBundle(
         scenario_name="data_science",
         scenario_plugin=DataScienceScenarioPlugin(),
-        proposal_engine=DataScienceProposalEngine(llm_adapter),
+        proposal_engine=DataScienceProposalEngine(
+            adapter,
+            reasoning_pipeline=reasoning_pipeline,
+            virtual_evaluator=virtual_evaluator,
+        ),
         experiment_generator=DataScienceExperimentGenerator(workspace_root=plugin_config.workspace_root),
-        coder=DataScienceCoder(llm_adapter),
+        coder=DataScienceCoder(adapter),
         runner=DataScienceRunner(backend),
-        feedback_analyzer=DataScienceFeedbackAnalyzer(llm_adapter),
+        feedback_analyzer=DataScienceFeedbackAnalyzer(adapter),
+        scene_usefulness_validator=_validate_data_science_usefulness,
         default_step_overrides=plugin_config.default_step_overrides,
     )

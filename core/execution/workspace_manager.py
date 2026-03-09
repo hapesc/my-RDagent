@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import shutil
+import uuid
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +15,8 @@ from typing import Callable, Dict, List, Optional, Union
 from core.path_safety import ensure_within_root, resolve_relative_to_root, validate_path_component
 from core.storage import CheckpointStoreConfig, FileCheckpointStore
 from data_models import FileManifestEntry, WorkspaceSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -61,6 +65,9 @@ class WorkspaceManager:
             workspace_dir.mkdir(parents=True, exist_ok=True)
         return str(workspace_dir)
 
+    def workspace_path(self, run_id: str, workspace_id: str) -> str:
+        return str(self._workspace_dir(run_id, workspace_id))
+
     def copy_workspace(self, source_workspace: str, run_id: str, workspace_id: str) -> str:
         return self.create_workspace(run_id=run_id, workspace_id=workspace_id, source_path=source_workspace)
 
@@ -95,12 +102,34 @@ class WorkspaceManager:
         validate_path_component(run_id, "run_id")
         validate_path_component(checkpoint_id, "checkpoint_id")
         workspace_dir = self._resolve_workspace_path(workspace_path)
-        if workspace_dir.exists():
-            shutil.rmtree(workspace_dir)
-        workspace_dir.mkdir(parents=True, exist_ok=True)
 
         payload = self._checkpoint_store.load_checkpoint(run_id=run_id, checkpoint_id=checkpoint_id)
-        self._unzip_workspace(payload, workspace_dir)
+        staging_dir = workspace_dir.parent / f".{workspace_dir.name}.restore-{uuid.uuid4().hex[:8]}"
+        backup_dir = workspace_dir.parent / f".{workspace_dir.name}.backup-{uuid.uuid4().hex[:8]}"
+        staging_dir.mkdir(parents=True, exist_ok=False)
+        backup_created = False
+
+        try:
+            self._unzip_workspace(payload, staging_dir)
+            if workspace_dir.exists():
+                workspace_dir.rename(backup_dir)
+                backup_created = True
+            staging_dir.rename(workspace_dir)
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+        except Exception as exc:
+            logger.exception(
+                "Failed to restore checkpoint run_id=%s checkpoint_id=%s: %s",
+                run_id,
+                checkpoint_id,
+                exc,
+            )
+            if backup_created and backup_dir.exists() and not workspace_dir.exists():
+                backup_dir.rename(workspace_dir)
+            if staging_dir.exists():
+                shutil.rmtree(staging_dir)
+            raise
+
         manifest = self._build_manifest(workspace_dir)
         return WorkspaceSnapshot(
             workspace_id=checkpoint_id,
@@ -124,7 +153,8 @@ class WorkspaceManager:
         try:
             operation(workspace_dir)
             return True
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Operation failed in execute_with_recovery(run_id={run_id}); restoring checkpoint {checkpoint_id}")
             self.restore_checkpoint(run_id=run_id, checkpoint_id=checkpoint_id, workspace_path=workspace_path)
             return False
 
@@ -137,17 +167,23 @@ class WorkspaceManager:
         return buffer.getvalue()
 
     def _unzip_workspace(self, payload: bytes, workspace_dir: Path) -> None:
-        with zipfile.ZipFile(io.BytesIO(payload), mode="r") as zip_file:
-            for member in zip_file.infolist():
-                if not member.filename:
-                    raise ValueError("zip member filename must not be empty")
-                target = resolve_relative_to_root(workspace_dir, member.filename, "zip_member")
-                if member.is_dir():
-                    target.mkdir(parents=True, exist_ok=True)
-                    continue
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with zip_file.open(member, "r") as source:
-                    target.write_bytes(source.read())
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload), mode="r") as zip_file:
+                bad_member = zip_file.testzip()
+                if bad_member is not None:
+                    raise ValueError(f"checkpoint zip integrity check failed at {bad_member}")
+                for member in zip_file.infolist():
+                    if not member.filename:
+                        raise ValueError("zip member filename must not be empty")
+                    target = resolve_relative_to_root(workspace_dir, member.filename, "zip_member")
+                    if member.is_dir():
+                        target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with zip_file.open(member, "r") as source:
+                        target.write_bytes(source.read())
+        except zipfile.BadZipFile as exc:
+            raise ValueError("checkpoint payload is not a valid zip archive") from exc
 
     def _build_manifest(self, workspace_dir: Path) -> List[FileManifestEntry]:
         manifest: List[FileManifestEntry] = []

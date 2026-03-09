@@ -1,0 +1,39 @@
+# ADR 006: Use MCTS/PUCT with Adjacency List over NetworkX DAG
+
+## Status
+Accepted
+
+## Context
+FC-2 (DAG-based multi-branch exploration) requires a graph structure to represent the exploration tree and a scheduling algorithm to decide which branches to expand next. The paper describes a natural selection process based on MCTS (Monte Carlo Tree Search) with the PUCT (Predictor + Upper Confidence bounds applied to Trees) formula for balancing exploration and exploitation.
+
+We considered the following options:
+1. **NetworkX**: A full-featured graph library providing DAG operations, traversal algorithms, and visualization. Popular in Python data science but adds a heavyweight dependency.
+2. **Adjacency list (`list[tuple[int,...]]`)**: A minimal hand-rolled graph representation using Python built-in types, as seen in the RD-Agent reference implementation.
+3. **Custom graph class with NetworkX backend**: Wrap NetworkX behind our own API for future flexibility.
+
+The reference implementation (`RD-Agent` on GitHub) uses a simple adjacency list representation for its exploration traces rather than any graph library. The PUCT formula for node selection is straightforward to implement (~20 lines) and does not benefit from a graph library's algorithms.
+
+## Decision
+We decided to use **MCTS/PUCT with a plain adjacency list** (`list[tuple[int,...]]` stored in `ExplorationGraph.traces`) for the FC-2 DAG, following the reference implementation pattern.
+
+The implementation is structured across three modules:
+- `exploration_manager/scheduler.py` — `MCTSScheduler` implements the PUCT formula (`exploration_weight=√2`) for branch selection
+- `exploration_manager/pruning.py` — `BranchPruner` removes low-scoring branches based on a relative threshold (default 0.5)
+- `exploration_manager/merging.py` — `TraceMerger` synthesizes insights from multiple branch traces via LLM
+
+The `ExplorationGraph` (in `data_models.py`) stores the DAG as:
+- `traces: list[tuple[int,...]]` — parent-child edge list
+- `nodes: dict[int, NodeRecord]` — node metadata including scores, visit counts, and branch state
+
+PUCT selection follows Algorithm 1 from the paper:
+```
+score(child) = exploitation(child) + exploration_weight * sqrt(ln(parent_visits) / child_visits)
+```
+
+## Consequences
+- **Minimal dependencies**: No new third-party packages required. The graph is pure Python built-in types.
+- **Reference fidelity**: Matches the RD-Agent codebase structure, reducing divergence risk.
+- **Simplicity**: The adjacency list is trivially serializable (JSON, pickle) for checkpoint/resume.
+- **PUCT provides principled selection**: The exploration/exploitation balance is mathematically grounded, not ad-hoc.
+- **Limited graph operations**: Complex graph queries (shortest path, cycle detection, topological sort) would need manual implementation if needed in the future. However, the current FC-2 requirements do not need any of these.
+- **Migration path**: If advanced graph operations become necessary (e.g., for FC-4 cross-branch memory), the `ExplorationGraph` API can be backed by NetworkX without changing consumers.

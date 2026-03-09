@@ -66,6 +66,29 @@ class CLIContractTests(unittest.TestCase):
         self.assertEqual(payload["scenario"], "data_science")
         self.assertIn("run_id", payload)
 
+    def test_run_command_accepts_config_flag(self) -> None:
+        tmp_path = Path(self._tmpdir.name)
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "sqlite_path: " + str(tmp_path / "config-meta.db") + "\nallow_local_execution: true\n",
+            encoding="utf-8",
+        )
+        code, out, err = self._run_cli(
+            [
+                "run",
+                "--config",
+                str(config_path),
+                "--scenario",
+                "data_science",
+                "--input",
+                '{"task_summary":"cli config test","max_loops":1}',
+            ]
+        )
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertEqual(err, "")
+        payload = json.loads(out)
+        self.assertEqual(payload["command"], "run")
+
     def test_invalid_input_returns_invalid_args_code(self) -> None:
         code, _out, err = self._run_cli(["run", "--scenario", "data_science", "--input", "not-json"])
         self.assertEqual(code, int(ExitCode.INVALID_ARGS))

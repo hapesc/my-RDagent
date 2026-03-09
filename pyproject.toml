@@ -1,0 +1,122 @@
+[project]
+name = "rdagent"
+version = "0.1.0"
+description = "Agentic R&D Platform - LLM-agent system for automated data science and ML workflows"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "RDAgent Team"}
+]
+keywords = ["llm", "agent", "data-science", "machine-learning", "mcts", "research"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+# LLM provider support
+llm = [
+    "litellm>=1.0.0",
+]
+
+# REST API and web server
+api = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+]
+
+# Streamlit UI
+ui = [
+    "streamlit>=1.28.0",
+]
+
+# Testing
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+# Development tools
+dev = [
+    "ruff>=0.4.0",
+    "pre-commit>=3.5.0",
+]
+
+# All optional dependencies
+all = [
+    "litellm>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "streamlit>=1.28.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.5.0",
+]
+
+[project.scripts]
+rdagent = "agentrd_cli:main"
+rdagent-cli = "cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/rdagent"
+Documentation = "https://github.com/yourusername/rdagent#readme"
+Repository = "https://github.com/yourusername/rdagent"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+# uv-specific configuration
+python-preference = "only-system"
+
+[tool.uv.pip]
+# Generate requirements.txt from pyproject.toml
+# Run: uv pip compile pyproject.toml -o requirements.txt
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "venv/*", ".venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+exclude = [".venv", "venv", "build", "dist", ".eggs", ".git", ".tox", ".mypy_cache", ".ruff_cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "core", "llm", "plugins", "scenarios", "ui", "observability"]
+
+[tool.ruff.format]

@@ -1,0 +1,19 @@
+Command:
+python - <<'PY'
+from pathlib import Path
+import re
+paths = [Path('README.md')] + sorted(Path('dev_doc').rglob('*.md'))
+pattern = re.compile(r'(^|[^A-Za-z0-9_/])main\.py([^A-Za-z0-9_]|$)|orchestrator_rd_loop_engine')
+for path in paths:
+    for idx, line in enumerate(path.read_text().splitlines(), 1):
+        if pattern.search(line):
+            print(f'{path}:{idx}: {line}')
+PY
+
+Status: PASS
+
+Output:
+dev_doc/adr/005-dual-architecture-cleanup.md:16: 2.  **Delete dead code**: Remove truly unused files that are not part of either system, such as `main.py`, `demo` files, and the obsolete `orchestrator_rd_loop_engine/` directory.
+
+Interpretation:
+- Only the historical ADR retains the legacy names; no operational README/dev_doc guidance uses them as current entrypoints.

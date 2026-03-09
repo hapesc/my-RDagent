@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,8 @@ from typing import Iterator, List, Optional
 
 from data_models import Event, RunSession
 from observability import sanitize_payload
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,6 +44,7 @@ class SQLiteMetadataStore:
             yield connection
             connection.commit()
         except Exception:
+            logger.exception(f"Database operation failed in SQLiteMetadataStore._managed_connection(db_path={self._db_path}); rolling back")
             connection.rollback()
             raise
         finally:

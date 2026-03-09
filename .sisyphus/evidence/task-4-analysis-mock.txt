@@ -1,0 +1,24 @@
+Scenario: Mock produces valid AnalysisResult JSON
+Status: PASS
+
+Evidence:
+from llm.adapter import LLMAdapter, MockLLMProvider
+from llm.schemas import AnalysisResult
+
+adapter = LLMAdapter(MockLLMProvider())
+result = adapter.generate_structured(
+    'Analyze... ## Output Fields\n- `strengths`: ...\n- `weaknesses`: ...',
+    AnalysisResult
+)
+assert hasattr(result, 'strengths')
+assert hasattr(result, 'weaknesses')
+
+Result:
+✓ AnalysisResult detected and parsed
+✓ strengths=['Mock strength 1', 'Mock strength 2']
+✓ weaknesses=['Mock weakness 1']
+✓ current_performance set to default value
+✓ key_observations set to default value
+
+All assertions passed. Mock successfully detects "strengths" and "weaknesses" fields
+and returns valid AnalysisResult JSON that parses correctly.

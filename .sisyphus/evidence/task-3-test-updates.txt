@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0 -- /Users/michael-liang/miniforge3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 8 items
+
+tests/test_task_01_core_models.py::CoreModelContractTests::test_experiment_workspace_feedback_models PASSED [ 12%]
+tests/test_task_01_core_models.py::CoreModelContractTests::test_run_session_and_event_serialization PASSED [ 25%]
+tests/test_task_01_core_models.py::CoreModelContractTests::test_schema_example_is_present PASSED [ 37%]
+tests/test_task_01_core_models.py::ModelLayerUsageTests::test_core_services_import_model_layer PASSED [ 50%]
+tests/test_task_02_plugin_contracts.py::PluginContractTests::test_builtin_registry_loads_data_science_bundle PASSED [ 62%]
+tests/test_task_02_plugin_contracts.py::PluginContractTests::test_minimal_plugin_bundle_executes_full_chain PASSED [ 75%]
+tests/test_task_02_plugin_contracts.py::PluginContractTests::test_registry_rejects_duplicate_and_unknown_scenario PASSED [ 87%]
+tests/test_task_02_plugin_contracts.py::MainFlowAcceptanceTests::test_entry_point_uses_registry_without_scenario_if_else PASSED [100%]
+
+============================== 8 passed in 2.92s ===============================

@@ -16,8 +16,47 @@ from data_models import (
     Score,
     StopConditions,
 )
-from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm import CodeDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
+from llm.adapter import StructuredOutputParseError
+from service_contracts import ModelSelectorConfig
 from plugins.examples import build_minimal_data_science_bundle
+
+
+class SchemaWithoutFromDict:
+    """Test class without from_dict method."""
+    pass
+
+
+class SchemaWithNonCallableFromDict:
+    """Test class with non-callable from_dict attribute."""
+    from_dict = "not-callable"
+
+
+class CountingResponsesProvider:
+    def __init__(self, responses: list[str]) -> None:
+        self._responses = list(responses)
+        self.calls = 0
+
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        self.calls += 1
+        return self._responses.pop(0)
+
+
+class DisconnectThenRecoverProvider:
+    def __init__(self, responses: list[object]) -> None:
+        self._responses = list(responses)
+        self.calls = 0
+
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        _ = prompt
+        _ = model_config
+        self.calls += 1
+        response = self._responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        if not isinstance(response, str):
+            raise TypeError(f"unexpected response type: {type(response).__name__}")
+        return response
 
 
 class LLMAdapterTests(unittest.TestCase):
@@ -40,6 +79,139 @@ class LLMAdapterTests(unittest.TestCase):
         draft = adapter.generate_structured("proposal:any", ProposalDraft)
         self.assertEqual(draft.summary, "retry ok")
         self.assertAlmostEqual(draft.virtual_score, 0.9)
+
+    def test_schema_without_from_dict_raises_type_error(self) -> None:
+        adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
+        with self.assertRaises(ValueError) as ctx:
+            adapter.generate_structured("proposal:any", SchemaWithoutFromDict)
+        self.assertIn("structured output parse failed", str(ctx.exception))
+
+    def test_schema_with_non_callable_from_dict_raises_type_error(self) -> None:
+        adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
+        with self.assertRaises(ValueError) as ctx:
+            adapter.generate_structured("proposal:any", SchemaWithNonCallableFromDict)
+        self.assertIn("structured output parse failed", str(ctx.exception))
+
+    def test_missing_required_fields_retries_then_fails_with_diagnostics(self) -> None:
+        provider = MockLLMProvider(
+            responses=[
+                '{"summary":"only-summary"}',
+                '{"summary":"still-missing"}',
+            ]
+        )
+        adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=1))
+        with self.assertRaises(StructuredOutputParseError) as ctx:
+            adapter.generate_structured("proposal:any", ProposalDraft)
+
+        self.assertIn("required_fields", str(ctx.exception))
+        self.assertEqual(len(ctx.exception.diagnostics), 2)
+        self.assertEqual(ctx.exception.retry_count, 1)
+        self.assertEqual(ctx.exception.failure_counts, {"required_fields": 2})
+        self.assertTrue(all(d.retryable for d in ctx.exception.diagnostics))
+
+    def test_wrong_type_virtual_score_is_rejected(self) -> None:
+        adapter = LLMAdapter(
+            provider=MockLLMProvider(
+                responses=['{"summary":"ok","constraints":[],"virtual_score":"0.9"}']
+            ),
+            config=LLMAdapterConfig(max_retries=0),
+        )
+
+        with self.assertRaises(StructuredOutputParseError) as ctx:
+            adapter.generate_structured("proposal:any", ProposalDraft)
+
+        self.assertIn("field type validation failed", str(ctx.exception))
+        self.assertEqual(ctx.exception.failure_counts, {"field_types": 1})
+
+    def test_wrong_type_constraints_is_rejected(self) -> None:
+        adapter = LLMAdapter(
+            provider=MockLLMProvider(
+                responses=['{"summary":"ok","constraints":"x","virtual_score":0.9}']
+            ),
+            config=LLMAdapterConfig(max_retries=0),
+        )
+
+        with self.assertRaises(StructuredOutputParseError) as ctx:
+            adapter.generate_structured("proposal:any", ProposalDraft)
+
+        self.assertIn("field type validation failed", str(ctx.exception))
+        self.assertEqual(ctx.exception.failure_counts, {"field_types": 1})
+
+    def test_non_object_payload_emits_deterministic_failure_markers(self) -> None:
+        adapter = LLMAdapter(
+            provider=MockLLMProvider(responses=['["not","an","object"]']),
+            config=LLMAdapterConfig(max_retries=0),
+        )
+
+        with self.assertRaises(StructuredOutputParseError) as ctx:
+            adapter.generate_structured("proposal:any", ProposalDraft)
+
+        self.assertEqual(ctx.exception.retry_count, 0)
+        self.assertEqual(ctx.exception.failure_counts, {"payload_type": 1})
+        self.assertEqual(ctx.exception.failure_stages, ("payload_type",))
+
+    def test_provider_disconnect_retries_then_succeeds(self) -> None:
+        provider = DisconnectThenRecoverProvider(
+            responses=[
+                ConnectionError("provider socket closed"),
+                '{"summary":"recovered","constraints":["ok"],"virtual_score":0.7}',
+            ]
+        )
+        adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=1))
+
+        draft = adapter.generate_structured("proposal:any", ProposalDraft)
+
+        self.assertEqual(provider.calls, 2)
+        self.assertEqual(draft.summary, "recovered")
+        self.assertEqual(draft.constraints, ["ok"])
+
+    def test_schema_error_is_permanent_and_stops_retries(self) -> None:
+        provider = CountingResponsesProvider(
+            responses=[
+                '{"summary":"x","constraints":[],"virtual_score":0.2}',
+                '{"summary":"y","constraints":[],"virtual_score":0.3}',
+            ]
+        )
+        adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=3))
+
+        with self.assertRaises(StructuredOutputParseError) as ctx:
+            adapter.generate_structured("proposal:any", SchemaWithoutFromDict)
+
+        self.assertEqual(provider.calls, 1)
+        self.assertIn("stage=schema", str(ctx.exception))
+
+    def test_generate_code_parses_metadata_and_strips_code_fence(self) -> None:
+        provider = MockLLMProvider(
+            responses=[
+                """
+                metadata:
+                {"artifact_id":"artifact-llm","description":"desc","location":"/tmp/ws"}
+
+                ```python
+                print('ok')
+                ```
+                """
+            ]
+        )
+        adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=0))
+
+        metadata, code = adapter.generate_code("coding:any", CodeDraft)
+
+        self.assertEqual(metadata.artifact_id, "artifact-llm")
+        self.assertEqual(code, "print('ok')")
+
+    def test_repair_json_allows_trailing_comma_recovery(self) -> None:
+        adapter = LLMAdapter(
+            provider=MockLLMProvider(
+                responses=['{"summary":"ok","constraints":[],"virtual_score":0.4,}']
+            ),
+            config=LLMAdapterConfig(max_retries=0),
+        )
+        broken = '{"summary":"ok","constraints":[],"virtual_score":0.4,}'
+        repaired = adapter._repair_json(broken)
+        self.assertNotIn(",}", repaired)
+        parsed = adapter.generate_structured("proposal:any", ProposalDraft)
+        self.assertIsInstance(parsed, ProposalDraft)
 
     def test_plugin_paths_use_llm_adapter(self) -> None:
         bundle = build_minimal_data_science_bundle()
@@ -86,7 +258,7 @@ class LLMAdapterTests(unittest.TestCase):
 
         self.assertEqual(proposal.proposal_id, "proposal-llm")
         self.assertEqual(artifact.artifact_id, "artifact-llm")
-        self.assertIn("exit_code=0", feedback.reason)
+        self.assertIn("succeeded", feedback.reason)
 
 
 if __name__ == "__main__":

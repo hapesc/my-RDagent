@@ -62,7 +62,9 @@ class ControlPlaneTests(unittest.TestCase):
             json={
                 "scenario": "data_science",
                 "task_summary": "controlled data science run",
-                "entry_input": {"command": 'python3 -c "import time; time.sleep(0.2)"'},
+                "entry_input": {
+                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
+                },
                 "stop_conditions": {"max_loops": 4, "max_duration_sec": 60},
             },
         )
@@ -87,7 +89,9 @@ class ControlPlaneTests(unittest.TestCase):
             json={
                 "scenario": "data_science",
                 "task_summary": "stop run",
-                "entry_input": {"command": 'python3 -c "import time; time.sleep(0.2)"'},
+                "entry_input": {
+                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
+                },
                 "stop_conditions": {"max_loops": 5, "max_duration_sec": 60},
             },
         )
@@ -206,6 +210,62 @@ class ControlPlaneTests(unittest.TestCase):
                 payload = response.json()
                 self.assertEqual(payload["error"]["code"], "invalid_state")
                 self.assertIn(run_id, payload["error"]["message"])
+
+    def test_build_config_snapshot_serializes_stop_conditions_without_to_dict_method(self) -> None:
+        from app.control_plane import _build_config_snapshot
+        from service_contracts import RunCreateRequest, StepOverrideConfig
+        
+        # Create a RunCreateRequest with StopConditions (which lacks to_dict method)
+        request = RunCreateRequest(
+            scenario="synthetic_research",
+            task_summary="test-snapshot",
+            stop_conditions=StopConditions(max_loops=5, max_steps=10, max_duration_sec=3600),
+            step_overrides=StepOverrideConfig(),
+        )
+        
+        runtime = build_runtime()
+        manifest = runtime.plugin_registry.get_manifest("synthetic_research")
+        snapshot = _build_config_snapshot(runtime, request, manifest)
+        
+        # Verify stop_conditions was serialized correctly via fallback
+        self.assertEqual(snapshot["stop_conditions"]["max_loops"], 5)
+        self.assertEqual(snapshot["stop_conditions"]["max_steps"], 10)
+        self.assertEqual(snapshot["stop_conditions"]["max_duration_sec"], 3600)
+        self.assertIn("scenario", snapshot)
+        self.assertIn("step_overrides", snapshot)
+
+    def test_build_config_snapshot_includes_runtime_guardrail_profile_and_warnings(self) -> None:
+        from app.control_plane import _build_config_snapshot
+        from service_contracts import RunCreateRequest
+
+        with patch.dict(
+            os.environ,
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_MODEL": "gemini-1.5-flash",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            manifest = runtime.plugin_registry.get_manifest("synthetic_research")
+            request = RunCreateRequest.from_dict(
+                {
+                    "scenario": "synthetic_research",
+                    "task_summary": "runtime snapshot parity",
+                    "stop_conditions": {"max_loops": 1, "max_duration_sec": 60},
+                    "step_overrides": {"running": {"timeout_sec": 180}},
+                }
+            )
+
+            snapshot = _build_config_snapshot(runtime, request, manifest)
+
+        runtime_snapshot = snapshot["runtime"]
+        self.assertTrue(runtime_snapshot["uses_real_llm_provider"])
+        self.assertIn("real_provider_safe_profile", runtime_snapshot)
+        self.assertIn("guardrail_warnings", runtime_snapshot)
+        self.assertTrue(
+            any("running.timeout_sec=180" in warning for warning in runtime_snapshot["guardrail_warnings"])
+        )
 
     def test_invalid_event_pagination_returns_structured_invalid_request(self) -> None:
         create_response = self.client.post(

@@ -1,0 +1,35 @@
+Task 12 - CoSTEER multi-round code evolution evidence
+
+Changed files:
+- core/loop/costeer.py
+- core/loop/step_executor.py
+- core/loop/__init__.py
+- app/runtime.py
+- tests/test_costeer.py
+
+TDD RED:
+- Command: python -m pytest tests/test_costeer.py -v
+- Result: 5 failed
+- Failure: ModuleNotFoundError: No module named 'core.loop.costeer'
+
+Target test GREEN:
+- Command: python -m pytest tests/test_costeer.py -v
+- Result: 5 passed
+
+Full regression:
+- Command: python -m pytest tests/ -v
+- Result: 116 passed, 3 warnings
+
+QA scenario 1 (multi-round):
+- Command: python -c "..."
+- Output: artifact=v2, rounds=2
+
+QA scenario 2 (single-round):
+- Command: python -c "..."
+- Output: artifact=v1, rounds=1
+
+Implementation notes:
+- StepExecutor now accepts costeer_max_rounds (default 1 for backward compatibility).
+- CoSTEER loop is only enabled in coding stage when costeer_max_rounds > 1.
+- build_run_service passes runtime.config.costeer_max_rounds into StepExecutor.
+- CoSTEER feedback uses stub score Score(score_id='costeer-round-{n}', value=0.0, metric_name='costeer').

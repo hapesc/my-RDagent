@@ -7,9 +7,10 @@ import json
 import sys
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, NoReturn, Optional
 
-from app.runtime import build_run_service, build_runtime
+from app.config import REAL_PROVIDER_SAFE_PROFILE
+from app.runtime import build_run_service, build_runtime, resolve_scenario_runtime_profile
 from data_models import model_to_dict
 from service_contracts import (
     ArtifactDescriptor,
@@ -48,7 +49,7 @@ def _infer_field_from_text(message: str) -> Optional[str]:
 class CLIArgumentParser(argparse.ArgumentParser):
     """Argument parser that routes validation failures through structured errors."""
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> NoReturn:
         raise ServiceContractError(
             code=ErrorCode.INVALID_REQUEST,
             message=message,
@@ -69,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Create and start a run",
         description="Create a new run session from scenario input.",
     )
+    run_parser.add_argument("--config", default=None, help="Path to YAML config file")
     run_parser.add_argument("--scenario", required=True, help="Scenario plugin name")
     run_parser.add_argument("--input", required=True, help="Inline JSON payload or path to JSON file")
     run_parser.add_argument("--loops-per-call", default=1, type=int, help="Iterations to execute now")
@@ -79,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Resume an existing run",
         description="Resume a paused/stopped run from latest or specific checkpoint.",
     )
+    resume_parser.add_argument("--config", default=None, help="Path to YAML config file")
     resume_parser.add_argument("--run-id", required=True, help="Run identifier")
     resume_parser.add_argument("--checkpoint", required=False, help="Checkpoint identifier")
     resume_parser.add_argument("--loops-per-call", default=1, type=int, help="Iterations to execute now")
@@ -90,6 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Pause a run",
         description="Pause an active run.",
     )
+    pause_parser.add_argument("--config", default=None, help="Path to YAML config file")
     pause_parser.add_argument("--run-id", required=True, help="Run identifier")
 
     stop_parser = subparsers.add_parser(
@@ -97,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Stop a run",
         description="Stop an active run.",
     )
+    stop_parser.add_argument("--config", default=None, help="Path to YAML config file")
     stop_parser.add_argument("--run-id", required=True, help="Run identifier")
 
     trace_parser = subparsers.add_parser(
@@ -104,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Query run trace",
         description="Query trace events for a run.",
     )
+    trace_parser.add_argument("--config", default=None, help="Path to YAML config file")
     trace_parser.add_argument("--run-id", required=True, help="Run identifier")
     trace_parser.add_argument("--branch-id", required=False, help="Branch identifier")
     trace_parser.add_argument(
@@ -118,6 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Start trace UI",
         description="Start MVP trace UI server.",
     )
+    ui_parser.add_argument("--config", default=None, help="Path to YAML config file")
     ui_parser.add_argument("--host", default="127.0.0.1", help="Bind host")
     ui_parser.add_argument("--port", default=8501, type=int, help="Bind port")
 
@@ -126,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run system health checks",
         description="Run dependency and readiness checks.",
     )
+    health_parser.add_argument("--config", default=None, help="Path to YAML config file")
     health_parser.add_argument("--verbose", action="store_true", help="Enable verbose health details")
 
     return parser
@@ -221,22 +229,34 @@ def _require_scenario_manifest(runtime, scenario: str):
 
 
 def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
-    effective_step_config = resolve_step_override_config(
+    profile = resolve_scenario_runtime_profile(
+        runtime.config,
         manifest.default_step_overrides,
         request.step_overrides,
     )
     return {
         "scenario": request.scenario,
         "stop_conditions": model_to_dict(request.stop_conditions),
-        "step_overrides": effective_step_config.to_dict(),
+        "step_overrides": profile.effective_step_config.to_dict(),
         "requested_step_overrides": request.step_overrides.to_dict(),
         "scenario_manifest": manifest.to_dict(),
         "runtime": {
+            "llm_provider": runtime.config.llm_provider,
+            "llm_model": runtime.config.llm_model,
+            "uses_real_llm_provider": runtime.config.uses_real_llm_provider,
             "sandbox_timeout_sec": runtime.config.sandbox_timeout_sec,
             "allow_local_execution": runtime.config.allow_local_execution,
             "default_scenario": runtime.config.default_scenario,
+            "real_provider_safe_profile": dict(REAL_PROVIDER_SAFE_PROFILE),
+            "guardrail_warnings": list(profile.guardrail_warnings),
         },
     }
+
+
+def _emit_guardrail_warnings(config_snapshot: Dict[str, Any]) -> None:
+    runtime_snapshot = config_snapshot.get("runtime", {})
+    for warning in runtime_snapshot.get("guardrail_warnings", []):
+        print(f"WARNING: {warning}", file=sys.stderr)
 
 
 def _artifact_list_response(runtime, run_id: str) -> ArtifactListResponse:
@@ -274,7 +294,7 @@ def _list_run_artifacts(runtime, run_id: str) -> List[str]:
 
 def _handle_run(args: argparse.Namespace) -> int:
     payload = _load_json_input(args.input)
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     request = RunCreateRequest.from_dict(
         {
             **payload,
@@ -294,11 +314,14 @@ def _handle_run(args: argparse.Namespace) -> int:
         entry_input=_build_entry_input(payload),
         config_snapshot=_build_config_snapshot(runtime, request, manifest),
     )
+    _emit_guardrail_warnings(run_session.config_snapshot)
     context = run_service.start_run(
         run_id=run_session.run_id,
         task_summary=task_summary,
         loops_per_call=args.loops_per_call,
     )
+    if context.run_session is None:
+        raise RuntimeError("run session missing after start")
     run_summary = RunSummaryResponse.from_run_session(context.run_session)
     artifacts_page = _artifact_list_response(runtime, run_session.run_id)
     _print_json(
@@ -317,7 +340,7 @@ def _handle_run(args: argparse.Namespace) -> int:
 
 
 def _handle_resume(args: argparse.Namespace) -> int:
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     run_session = runtime.sqlite_store.get_run(args.run_id)
     if run_session is None:
         raise KeyError(f"run not found: {args.run_id}")
@@ -331,10 +354,12 @@ def _handle_resume(args: argparse.Namespace) -> int:
         task_summary=task_summary,
         loops_per_call=args.loops_per_call,
     )
+    if context.run_session is None:
+        raise RuntimeError("run session missing after resume")
     control = RunControlResponse(
         run_id=args.run_id,
         action="resume",
-        status=context.run_session.status.value if context.run_session is not None else "UNKNOWN",
+        status=context.run_session.status.value,
         message="run resumed",
     )
     _print_json(
@@ -343,7 +368,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
             "run_id": args.run_id,
             "checkpoint": args.checkpoint,
             "branch_id": context.run_session.active_branch_ids[0] if context.run_session.active_branch_ids else "main",
-            "status": context.run_session.status.value if context.run_session is not None else "UNKNOWN",
+            "status": context.run_session.status.value,
             "iteration": context.loop_state.iteration,
             "control": control.to_dict(),
         }
@@ -352,7 +377,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
 
 
 def _handle_pause(args: argparse.Namespace) -> int:
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     run_session = runtime.sqlite_store.get_run(args.run_id)
     if run_session is None:
         raise KeyError(f"run not found: {args.run_id}")
@@ -370,7 +395,7 @@ def _handle_pause(args: argparse.Namespace) -> int:
 
 
 def _handle_stop(args: argparse.Namespace) -> int:
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     run_session = runtime.sqlite_store.get_run(args.run_id)
     if run_session is None:
         raise KeyError(f"run not found: {args.run_id}")
@@ -388,7 +413,7 @@ def _handle_stop(args: argparse.Namespace) -> int:
 
 
 def _handle_trace(args: argparse.Namespace) -> int:
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     run_session = runtime.sqlite_store.get_run(args.run_id)
     if run_session is None:
         raise KeyError(f"run not found: {args.run_id}")
@@ -441,7 +466,7 @@ def _handle_ui(args: argparse.Namespace) -> int:
 
 
 def _handle_health_check(args: argparse.Namespace) -> int:
-    runtime = build_runtime()
+    runtime = build_runtime(config_path=args.config)
     sqlite_exists = Path(runtime.config.sqlite_path).exists()
     plugin_scenarios = runtime.plugin_registry.list_scenarios()
     manifests = runtime.plugin_registry.list_manifests()

@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from app.config import REAL_PROVIDER_SAFE_PROFILE
 from app.query_services import (
     load_artifact_page,
     load_branch_page,
@@ -13,6 +14,7 @@ from app.query_services import (
     load_run_summary,
 )
 from app.runtime import build_runtime
+from data_models import model_to_dict
 from service_contracts import (
     ErrorCode,
     ErrorResponse,
@@ -21,14 +23,14 @@ from service_contracts import (
     RunSummaryResponse,
     ServiceContractError,
     StructuredError,
-    resolve_step_override_config,
 )
 
 from .fastapi_compat import FastAPI, HTTPException, Query, status
 from .run_supervisor import RunSupervisor
+from .runtime import resolve_scenario_runtime_profile
 
 
-def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> FastAPI:
+def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
     app = FastAPI(title="AgentRD Control Plane")
     app.state.supervisor = supervisor or RunSupervisor()
 
@@ -184,7 +186,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> FastA
     return app
 
 
-def _http_error(code: str, message: str, field: Optional[str] = None) -> HTTPException:
+def _http_error(code: str, message: str, field: Optional[str] = None) -> Any:
     status_code = status.HTTP_400_BAD_REQUEST
     if code == ErrorCode.NOT_FOUND:
         status_code = status.HTTP_404_NOT_FOUND
@@ -206,20 +208,25 @@ def _require_scenario_manifest(runtime, scenario: str):
 
 
 def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
-    effective_step_config = resolve_step_override_config(manifest.default_step_overrides, request.step_overrides)
+    profile = resolve_scenario_runtime_profile(
+        runtime.config,
+        manifest.default_step_overrides,
+        request.step_overrides,
+    )
     return {
         "scenario": request.scenario,
-        "stop_conditions": request.stop_conditions.to_dict() if hasattr(request.stop_conditions, "to_dict") else {
-            "max_loops": request.stop_conditions.max_loops,
-            "max_steps": request.stop_conditions.max_steps,
-            "max_duration_sec": request.stop_conditions.max_duration_sec,
-        },
-        "step_overrides": effective_step_config.to_dict(),
+        "stop_conditions": model_to_dict(request.stop_conditions),
+        "step_overrides": profile.effective_step_config.to_dict(),
         "requested_step_overrides": request.step_overrides.to_dict(),
         "scenario_manifest": manifest.to_dict(),
         "runtime": {
+            "llm_provider": runtime.config.llm_provider,
+            "llm_model": runtime.config.llm_model,
+            "uses_real_llm_provider": runtime.config.uses_real_llm_provider,
             "sandbox_timeout_sec": runtime.config.sandbox_timeout_sec,
             "allow_local_execution": runtime.config.allow_local_execution,
             "default_scenario": runtime.config.default_scenario,
+            "real_provider_safe_profile": dict(REAL_PROVIDER_SAFE_PROFILE),
+            "guardrail_warnings": list(profile.guardrail_warnings),
         },
     }

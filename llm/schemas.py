@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -52,4 +52,159 @@ class FeedbackDraft:
             reason=str(data.get("reason", "")),
             observations=str(data.get("observations", "")),
             code_change_summary=str(data.get("code_change_summary", "")),
+        )
+
+
+@dataclass
+class AnalysisResult:
+    strengths: List[str] = field(default_factory=list)
+    weaknesses: List[str] = field(default_factory=list)
+    current_performance: str = ""
+    key_observations: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "AnalysisResult":
+        return cls(
+            strengths=[str(item) for item in data.get("strengths", [])],
+            weaknesses=[str(item) for item in data.get("weaknesses", [])],
+            current_performance=str(data.get("current_performance", "")),
+            key_observations=str(data.get("key_observations", "")),
+        )
+
+
+@dataclass
+class ProblemIdentification:
+    problem: str = ""
+    severity: str = ""
+    evidence: str = ""
+    affected_component: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ProblemIdentification":
+        return cls(
+            problem=str(data.get("problem", "")),
+            severity=str(data.get("severity", "")),
+            evidence=str(data.get("evidence", "")),
+            affected_component=str(data.get("affected_component", "")),
+        )
+
+
+@dataclass
+class HypothesisFormulation:
+    hypothesis: str = ""
+    mechanism: str = ""
+    expected_improvement: str = ""
+    testable_prediction: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "HypothesisFormulation":
+        return cls(
+            hypothesis=str(data.get("hypothesis", "")),
+            mechanism=str(data.get("mechanism", "")),
+            expected_improvement=str(data.get("expected_improvement", "")),
+            testable_prediction=str(data.get("testable_prediction", "")),
+        )
+
+
+@dataclass
+class ExperimentDesign:
+    summary: str = ""
+    constraints: List[str] = field(default_factory=list)
+    virtual_score: float = 0.0
+    implementation_steps: List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ExperimentDesign":
+        return cls(
+            summary=str(data.get("summary", "")),
+            constraints=[str(item) for item in data.get("constraints", [])],
+            virtual_score=float(data.get("virtual_score", 0.0)),
+            implementation_steps=[str(item) for item in data.get("implementation_steps", [])],
+        )
+
+
+@dataclass
+class VirtualEvalResult:
+    rankings: List[int] = field(default_factory=list)
+    reasoning: str = ""
+    selected_indices: List[int] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "VirtualEvalResult":
+        return cls(
+            rankings=[int(item) for item in data.get("rankings", [])],
+            reasoning=str(data.get("reasoning", "")),
+            selected_indices=[int(item) for item in data.get("selected_indices", [])],
+        )
+
+
+@dataclass
+class PlanningStrategy:
+    strategy_name: str = ""
+    method_selection: str = ""
+    exploration_weight: float = 0.5
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "PlanningStrategy":
+        return cls(
+            strategy_name=str(data.get("strategy_name", "")),
+            method_selection=str(data.get("method_selection", "")),
+            exploration_weight=float(data.get("exploration_weight", 0.5)),
+            reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class HypothesisModification:
+    modified_hypothesis: str = ""
+    modification_type: str = ""
+    source_hypothesis: str = ""
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "HypothesisModification":
+        return cls(
+            modified_hypothesis=str(data.get("modified_hypothesis", "")),
+            modification_type=str(data.get("modification_type", "")),
+            source_hypothesis=str(data.get("source_hypothesis", "")),
+            reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class StructuredFeedback:
+    """FC-3 three-dimensional structured feedback (execution + return_checking + code)."""
+    execution: str = ""
+    return_checking: Optional[str] = None
+    code: str = ""
+    final_decision: Optional[bool] = None
+    reasoning: str = ""
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "StructuredFeedback":
+        return cls(
+            execution=str(data.get("execution", "")),
+            return_checking=data.get("return_checking") if data.get("return_checking") is not None else None,
+            code=str(data.get("code", "")),
+            final_decision=bool(data["final_decision"]) if "final_decision" in data and data["final_decision"] is not None else None,
+            reasoning=str(data.get("reasoning", "")),
+        )
+
+
+@dataclass
+class ReasoningTrace:
+    """FC-3 reasoning pipeline trace record."""
+    trace_id: str = ""
+    stages: Dict[str, Any] = field(default_factory=dict)
+    timestamp: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "ReasoningTrace":
+        return cls(
+            trace_id=str(data.get("trace_id", "")),
+            stages=dict(data.get("stages", {})),
+            timestamp=str(data.get("timestamp", "")),
+            metadata=dict(data.get("metadata", {})),
         )

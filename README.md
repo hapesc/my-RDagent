@@ -1,121 +1,252 @@
-# Agentic R&D Platform V1
+# Agentic R&D Platform
 
-`Agentic R&D Platform` 的当前实现已达到 PRD V1：正式双场景入口、per-step 配置、FastAPI 控制面、branch-aware UI、恢复与分支查询链路均已接通。
+An open-source implementation of the [R&D-Agent](https://arxiv.org/abs/2404.11276) framework — an LLM-agent system that automates iterative data science and machine learning engineering workflows.
 
-## V1 边界
+Instead of running experiments manually, you describe a task and the platform runs an autonomous loop: **propose → code → execute → evaluate → repeat**, improving with each iteration.
 
-- 包含：单线程 loop、checkpoint/resume、插件化双场景、CLI、FastAPI 控制面、branch-aware Trace UI、可观测与脱敏、per-step override 审计。
-- 不包含：Human Instructions、Knowledge Base、多 worker、审批流、高级分支对比。
+## What It Does
 
-## 快速启动
+The platform implements the R&D-Agent paper's six framework components:
 
-1. 检查配置加载：
+| Component | Status | Description |
+|-----------|--------|-------------|
+| FC-2 Exploration Path | Implemented | MCTS-based tree search over experiment branches with pruning and trace merging |
+| FC-3 Reasoning Pipeline | Implemented | 4-stage scientific reasoning (Analyze → Identify → Hypothesize → Design) with virtual evaluation |
+| FC-1 Planning | Partial | Static planning; dynamic time-aware budget allocation not yet implemented |
+| FC-4 Memory Context | Partial | Basic memory service; embedding-based retrieval and cross-branch knowledge sharing pending |
+| FC-5 Coding Workflow | Partial | Single-round coding; multi-round CoSTEER evolution in progress |
+| FC-6 Evaluation Strategy | Partial | Basic scoring; automated data splitting and multi-candidate ranking pending |
+
+See [`dev_doc/paper_gap_analysis.md`](dev_doc/paper_gap_analysis.md) for a detailed comparison with the paper.
+
+## Architecture
+
+```
+User ──→ CLI / REST API ──→ Run Orchestrator ──→ Scenario Plugin
+              │                    │                    │
+              │                    ├── Loop Engine       ├── Proposal Engine
+              │                    ├── Step Executor     ├── Experiment Generator
+              │                    ├── Branch Manager    ├── Coder
+              │                    └── Resume Manager    ├── Runner
+              │                                         └── Feedback Analyzer
+              │
+         Trace UI ──→ SQLite + Trace Store + Artifact Store
+```
+
+The system is plugin-based. The loop engine is generic — scenario-specific logic lives in plugins. Two scenarios ship out of the box:
+
+- **`data_science`** — generates and executes small data science experiments
+- **`synthetic_research`** — generates lightweight research briefs and findings
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.9+
+- (Optional) Docker for sandboxed code execution
+- (Optional) An LLM API key for real model calls (runs with a mock provider by default)
+
+### 1. Verify Configuration
 
 ```bash
 python3 -m app.startup
+
+# or validate with a specific config file
+python3 -m app.startup --config ./config.yaml
 ```
 
-2. 启动一次 run：
+This prints the active configuration as JSON. All settings have sensible defaults — no setup required for a local trial.
+
+### 2. Run an Experiment
 
 ```bash
-export AGENTRD_ALLOW_LOCAL_EXECUTION=1  # 仅在需要本地执行时显式开启
-python3 agentrd_cli.py run \
-  --scenario data_science \
-  --loops-per-call 1 \
-  --max-loops 1 \
-  --input '{"task_summary":"quick start","max_loops":1}'
+# Simple CLI
+python3 cli.py --config ./config.yaml --scenario data_science --task "classify iris dataset" --max-steps 3
+
+# Dry run (validate config only, no execution)
+python3 cli.py --dry-run --task "verify setup"
 ```
 
-3. 查询 trace：
+Or use the full CLI with JSON input:
+
+```bash
+export AGENTRD_ALLOW_LOCAL_EXECUTION=1
+
+python3 agentrd_cli.py run \
+  --config ./config.yaml \
+  --scenario data_science \
+  --loops-per-call 1 \
+  --max-loops 3 \
+  --input '{"task_summary": "classify iris dataset", "max_loops": 3}'
+```
+
+### 3. Query Traces
 
 ```bash
 python3 agentrd_cli.py trace --run-id <RUN_ID> --format table
 ```
 
-4. 启动 V1 控制面与 branch-aware UI（需要额外安装 `fastapi` / `uvicorn` / `streamlit`）：
+### 4. Start the Control Plane & UI (Optional)
+
+Requires `fastapi`, `uvicorn`, and `streamlit`:
 
 ```bash
+pip install fastapi uvicorn streamlit
+
+# REST API
 uvicorn app.api_main:app --host 127.0.0.1 --port 8000
+
+# Trace UI (in a separate terminal)
 streamlit run ui/trace_ui.py
 ```
 
-## 支持场景
-
-- `data_science`: 生成并执行小型数据科学实验。
-- `synthetic_research`: 生成轻量研究 brief 与 findings，作为正式的第二场景入口。
-
-`health-check --verbose` 会返回共享的场景 manifest 列表：
+### 5. Health Check
 
 ```bash
 python3 agentrd_cli.py health-check --verbose
 ```
 
-`synthetic_research` 最小运行示例：
+## Configuration
+
+Configuration precedence is:
+
+1. Built-in defaults
+2. Optional YAML config file (`./config.yaml` by default)
+3. Environment variables (highest priority)
+
+**Note**: Empty-string environment variables (e.g., `export RD_AGENT_LLM_API_KEY=""`) are treated as unset and will not override YAML or default values.
+
+To start from a template:
 
 ```bash
-python3 agentrd_cli.py run \
-  --scenario synthetic_research \
-  --loops-per-call 1 \
-  --input '{"task_summary":"summarize LLM eval directions","reference_topics":["alignment","benchmarking"],"max_loops":1}'
+cp config.example.yaml config.yaml
 ```
+
+Use `--config <path>` in `app.startup`, `cli.py`, and `agentrd_cli.py` to load a non-default YAML file.
+
+### App / Runtime (`AGENTRD_*`)
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `AGENTRD_ENV` | string | `dev` | Runtime environment |
+| `AGENTRD_DEFAULT_SCENARIO` | string | `data_science` | Default scenario plugin |
+| `AGENTRD_ARTIFACT_ROOT` | path | `/tmp/rd_agent_artifacts` | Storage root for run artifacts |
+| `AGENTRD_WORKSPACE_ROOT` | path | `/tmp/rd_agent_workspace` | Workspace for intermediate state |
+| `AGENTRD_TRACE_STORAGE_PATH` | path | `/tmp/rd_agent_trace/events.jsonl` | Trace event log path |
+| `AGENTRD_SQLITE_PATH` | path | `/tmp/rd_agent.sqlite3` | SQLite metadata database |
+| `AGENTRD_SANDBOX_TIMEOUT_SEC` | int | `300` | Execution sandbox timeout (seconds) |
+| `AGENTRD_ALLOW_LOCAL_EXECUTION` | bool | `false` | Allow local Python execution (when Docker is unavailable) |
+| `AGENTRD_LOG_LEVEL` | string | `INFO` | Log verbosity |
+
+### Model / Loop Behavior (`RD_AGENT_*`)
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RD_AGENT_LLM_PROVIDER` | string | `mock` | LLM backend (`mock`, `litellm`, `openai`) |
+| `RD_AGENT_LLM_API_KEY` | string | — | API key for LLM provider |
+| `RD_AGENT_LLM_MODEL` | string | `gpt-4o-mini` | Model identifier |
+| `RD_AGENT_LLM_BASE_URL` | string | — | Custom LLM endpoint URL |
+| `RD_AGENT_COSTEER_MAX_ROUNDS` | int | `1` | Max reasoning rounds per step |
+| `RD_AGENT_MCTS_WEIGHT` | float | `1.41` | MCTS exploration weight (UCB coefficient) |
+| `RD_AGENT_MCTS_C_PUCT` | float | `1.41` | MCTS PUCT coefficient |
+| `RD_AGENT_LAYER0_N_CANDIDATES` | int | `5` | Layer-0 diverse root candidates |
+| `RD_AGENT_LAYER0_K_FORWARD` | int | `2` | Layer-0 roots to forward |
+| `RD_AGENT_PRUNE_THRESHOLD` | float | `0.5` | Branch pruning score threshold |
 
 ## Per-Step Overrides
 
-`Task-20` 起支持“场景默认值 + run 覆盖”的 per-step 配置：
-
-- `proposal`
-- `coding`
-- `running.timeout_sec`
-- `feedback`
-
-示例：
+Each run can override model and timeout settings per step (`proposal`, `coding`, `running`, `feedback`):
 
 ```bash
 python3 agentrd_cli.py run \
   --scenario data_science \
   --input '{
-    "task_summary":"override demo",
-    "max_loops":1,
-    "step_overrides":{
-      "proposal":{"model":"proposal-override"},
-      "coding":{"model":"coding-override"},
-      "running":{"timeout_sec":30},
-      "feedback":{"model":"feedback-override"}
+    "task_summary": "override demo",
+    "max_loops": 1,
+    "step_overrides": {
+      "proposal": {"model": "gpt-4o"},
+      "coding": {"model": "gpt-4o-mini"},
+      "running": {"timeout_sec": 30},
+      "feedback": {"model": "gpt-4o"}
     }
   }'
 ```
 
-审计本次 run 的最终生效配置：
+To audit the effective config for a run:
 
 ```bash
 python3 agentrd_cli.py trace --run-id <RUN_ID> --format json
 ```
 
-Trace 输出中的 `run.config_snapshot.step_overrides` 为最终生效配置，`requested_step_overrides` 为本次请求覆盖。
+The `run.config_snapshot.step_overrides` field shows the final merged config; `requested_step_overrides` shows what was requested.
 
-## 验收测试
+## REST API
 
-- Task-17 验收矩阵：
+When running the FastAPI control plane:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/runs` | Create and start a new run |
+| `GET` | `/runs/{run_id}` | Get run summary |
+| `POST` | `/runs/{run_id}/pause` | Pause a running experiment |
+| `POST` | `/runs/{run_id}/resume` | Resume a paused experiment |
+| `POST` | `/runs/{run_id}/stop` | Stop a running experiment |
+| `GET` | `/runs/{run_id}/events` | List trace events (paginated) |
+| `GET` | `/runs/{run_id}/artifacts` | List run artifacts |
+| `GET` | `/runs/{run_id}/branches` | List experiment branches |
+| `GET` | `/scenarios` | List available scenario plugins |
+| `GET` | `/health` | System health check |
+
+## Testing
 
 ```bash
+# Full regression suite (564 tests)
+python3 -m pytest tests -q
+
+# Acceptance tests
 ./scripts/run_task17_acceptance.sh
 ```
 
-- 全量测试：
+## Project Structure
 
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+```
+├── app/                    # Runtime assembly, config, API, control plane
+├── core/
+│   ├── loop/               # Loop engine, step executor, resume manager
+│   ├── reasoning/          # Scientific reasoning pipeline, virtual evaluator
+│   ├── execution/          # Workspace manager, sandbox backends
+│   └── storage/            # SQLite store, branch trace store, checkpoints
+├── exploration_manager/    # MCTS scheduler, branch pruning, trace merging
+├── llm/                    # LLM adapter, structured output schemas
+├── memory_service/         # Historical context and knowledge retrieval
+├── evaluation_service/     # Code and result evaluation
+├── planner/                # Plan generation for each iteration
+├── plugins/                # Plugin registry and scenario contracts
+├── scenarios/
+│   ├── data_science/       # Data science scenario plugin
+│   └── synthetic_research/ # Synthetic research scenario plugin
+├── ui/                     # Streamlit trace viewer
+├── tests/                  # Test suite covering all layers
+└── dev_doc/                # Architecture docs, gap analysis, ADRs
 ```
 
-## 交付文档
+## Documentation
 
-- 运行手册：`dev_doc/runbook_mvp.md`
-- 最小部署：`dev_doc/deploy_minimal_mvp.md`
-- Task-17 测试矩阵：`dev_doc/task_17_test_matrix.md`
-- Task-18 契约：`dev_doc/task_18_v1_contracts.md`
-- Task-19 场景说明：`dev_doc/task_19_synthetic_research.md`
-- Task-20 per-step 配置：`dev_doc/task_20_per_step_config.md`
-- Task-21 控制面：`dev_doc/task_21_control_plane.md`
-- Task-22 branch-aware UI：`dev_doc/task_22_branch_aware_ui.md`
-- Task-23 V1 验收：`dev_doc/task_23_v1_acceptance.md`
-- V1 服务 runbook：`dev_doc/runbook_v1_service.md`
+| Document | Description |
+|----------|-------------|
+| [`dev_doc/architecture.md`](dev_doc/architecture.md) | Full system architecture with Mermaid diagrams |
+| [`dev_doc/paper_gap_analysis.md`](dev_doc/paper_gap_analysis.md) | Detailed comparison with the R&D-Agent paper |
+| [`dev_doc/configuration.md`](dev_doc/configuration.md) | Complete environment variable reference |
+| [`dev_doc/runbook.md`](dev_doc/runbook.md) | Operations runbook |
+| [`dev_doc/deployment.md`](dev_doc/deployment.md) | Minimal deployment guide |
+| [`dev_doc/api_reference.md`](dev_doc/api_reference.md) | REST API reference and contracts |
+| [`dev_doc/product_requirements.md`](dev_doc/product_requirements.md) | Core product requirements |
+| [`dev_doc/system_specifications.md`](dev_doc/system_specifications.md) | Detailed system specifications |
+
+## Acknowledgments
+
+This project is an independent implementation inspired by the [R&D-Agent paper](https://arxiv.org/abs/2404.11276) by Xu Yang, Xiao Yang, Shikai Fang et al. from Microsoft Research.
+
+## License
+
+This project is for research and educational purposes.

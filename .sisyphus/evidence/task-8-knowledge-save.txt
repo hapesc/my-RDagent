@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.19, pytest-8.4.2, pluggy-1.6.0 -- /Users/michael-liang/miniforge3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_costeer.py::CoSTEEREvolverTests::test_knowledge_saved_on_success PASSED [100%]
+
+============================== 1 passed in 4.19s ===============================

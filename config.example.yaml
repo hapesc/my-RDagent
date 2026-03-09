@@ -1,0 +1,28 @@
+env: dev
+default_scenario: data_science
+artifact_root: /tmp/rd_agent_artifacts
+workspace_root: /tmp/rd_agent_workspace
+trace_storage_path: /tmp/rd_agent_trace/events.jsonl
+sqlite_path: /tmp/rd_agent.sqlite3
+sandbox_timeout_sec: 300
+allow_local_execution: false
+log_level: INFO
+
+llm_provider: mock
+llm_api_key: null
+llm_model: gpt-4o-mini
+llm_base_url: null
+costeer_max_rounds: 1
+
+mcts_exploration_weight: 1.41
+mcts_c_puct: 1.41
+mcts_reward_mode: score_based
+layer0_n_candidates: 5
+layer0_k_forward: 2
+prune_threshold: 0.5
+
+debug_mode: false
+debug_sample_fraction: 0.1
+debug_max_epochs: 5
+enable_hypothesis_storage: false
+use_llm_planning: false

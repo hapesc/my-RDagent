@@ -1,0 +1,35 @@
+# ==========================================
+# DEPRECATED: Use pyproject.toml instead
+# ==========================================
+#
+# This file is kept for backward compatibility.
+# Please use pyproject.toml with uv for dependency management:
+#
+#   uv pip install -e "."
+#   uv pip install -e ".[all]"
+#
+# Or use the Makefile:
+#
+#   make install      # Install core dependencies
+#   make install-all  # Install all dependencies
+#
+# ==========================================
+
+# Core dependencies (always required)
+PyYAML>=6.0,<7.0
+
+# Optional dependencies (choose what you need):
+#
+# LLM Support:
+#   litellm>=1.0.0
+#
+# REST API:
+#   fastapi>=0.104.0
+#   uvicorn[standard]>=0.24.0
+#
+# Streamlit UI:
+#   streamlit>=1.28.0
+#
+# Testing:
+#   pytest>=7.4.0
+#   pytest-cov>=4.1.0

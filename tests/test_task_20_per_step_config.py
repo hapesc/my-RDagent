@@ -73,6 +73,7 @@ class Task20PerStepConfigTests(unittest.TestCase):
 
         run_summary = load_run_summary(os.environ["AGENTRD_SQLITE_PATH"], run_id)
         self.assertIsNotNone(run_summary)
+        assert run_summary is not None
         self.assertEqual(run_summary.config_snapshot["step_overrides"]["proposal"]["model"], "ds-proposal-default")
 
     def test_overrides_are_consumed_by_llm_steps_and_running_timeout(self) -> None:
@@ -85,7 +86,7 @@ class Task20PerStepConfigTests(unittest.TestCase):
                 json.dumps(
                     {
                         "task_summary": "task-20 overrides",
-                        "command": 'python3 -c "import time; time.sleep(2)"',
+                        "command": "python3 pipeline.py",
                         "max_loops": 1,
                         "step_overrides": {
                             "proposal": {"model": "proposal-override"},

@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import json
+import argparse
 
 from .config import load_config
 
 
-def main() -> int:
-    config = load_config()
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Print effective app configuration")
+    parser.add_argument("--config", help="Path to YAML config file", default=None)
+    args = parser.parse_args(argv if argv is not None else [])
+    config = load_config(config_path=args.config)
     print(json.dumps(config.to_dict(), sort_keys=True))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    import sys
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,0 +1,20 @@
+Command: python -m pytest tests/ -q -k "api_main or startup or run_supervisor or query_services or fastapi_compat"
+Status: PASS
+
+Output:
+......                                                                   [100%]
+=============================== warnings summary ===============================
+app/fastapi_compat.py:125
+  /Users/michael-liang/Code/my-RDagent/app/fastapi_compat.py:125: PytestCollectionWarning: cannot collect test class 'TestClient' because it has a __init__ constructor (from: tests/test_task_21_control_plane.py)
+    class TestClient:
+
+app/fastapi_compat.py:125
+  /Users/michael-liang/Code/my-RDagent/app/fastapi_compat.py:125: PytestCollectionWarning: cannot collect test class 'TestClient' because it has a __init__ constructor (from: tests/test_task_22_branch_aware_ui.py)
+    class TestClient:
+
+app/fastapi_compat.py:125
+  /Users/michael-liang/Code/my-RDagent/app/fastapi_compat.py:125: PytestCollectionWarning: cannot collect test class 'TestClient' because it has a __init__ constructor (from: tests/test_task_23_v1_hardening.py)
+    class TestClient:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+6 passed, 558 deselected, 3 warnings in 2.89s

@@ -64,7 +64,7 @@ class ResumeManager:
     def restore_checkpoint(self, run_id: str, checkpoint_id: str) -> Optional[str]:
         parsed = self._parse_checkpoint_id(checkpoint_id)
         workspace_id = "resume-latest" if parsed is None else f"resume-{parsed[0]:04d}"
-        workspace_path = self._workspace_manager.create_workspace(run_id, workspace_id)
+        workspace_path = self._workspace_manager.workspace_path(run_id, workspace_id)
         self._workspace_manager.restore_checkpoint(run_id, checkpoint_id, workspace_path)
         return workspace_path
 
@@ -133,11 +133,18 @@ class RunService:
         restored_workspace: Optional[str] = None
         restore_checkpoint_id = run_session.entry_input.pop("fork_checkpoint_id", None)
         fork_start_iteration = run_session.entry_input.pop("fork_start_iteration", None)
-        if restore_checkpoint_id is not None:
-            start_iteration = int(fork_start_iteration or 0)
-            restored_workspace = self._resume_manager.restore_checkpoint(run_id, str(restore_checkpoint_id))
-        elif start_iteration > 0:
-            restored_workspace = self._resume_manager.restore_latest(run_id)
+        try:
+            if restore_checkpoint_id is not None:
+                start_iteration = int(fork_start_iteration or 0)
+                restored_workspace = self._resume_manager.restore_checkpoint(run_id, str(restore_checkpoint_id))
+            elif start_iteration > 0:
+                restored_workspace = self._resume_manager.restore_latest(run_id)
+        except Exception as exc:
+            message = f"checkpoint restore failed for run {run_id}: {exc}"
+            run_session.entry_input["last_error"] = message
+            run_session.update_status(RunStatus.FAILED)
+            self._run_store.create_run(run_session)
+            raise RuntimeError(message) from exc
 
         context = self._loop_engine.run(
             run_session=run_session,

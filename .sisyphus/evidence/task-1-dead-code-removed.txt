@@ -1,0 +1,29 @@
+=== TASK 1: DEAD CODE REMOVAL - EVIDENCE ===
+Date: 2026-03-07
+Status: ✓ COMPLETE
+
+FILES/DIRECTORIES DELETED:
+1. main.py (old entry point using OrchestratorRDLoopEngine)
+2. demo_planner_loop.py (System B demo)
+3. demo_task_intake_loop.py (System B demo)
+4. orchestrator_rd_loop_engine/ (duplicate loop engine directory)
+
+VERIFICATION:
+- All 4 items successfully deleted
+- No "No such file or directory" errors confirmed their removal
+
+REMAINING REFERENCES TO ORCHESTRATOR_RD_LOOP_ENGINE:
+- tests/test_task_01_core_models.py (imports + file reference)
+  → EXPECTED: Will be fixed in Task 3
+  → These are the ONLY remaining references in non-test code
+
+IMPORTS VERIFIED:
+- app.runtime.build_runtime imports successfully ✓
+  → No broken dependencies in app/ or core/ directories
+  → System A entry point remains intact
+
+NOTES:
+- demo_planner_loop.py and demo_task_intake_loop.py both imported
+  from orchestrator_rd_loop_engine (now deleted, expected)
+- No references to main.py found in any active code
+- All System B service modules preserved (memory_service/, planner/, etc.)

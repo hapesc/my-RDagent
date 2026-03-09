@@ -13,8 +13,10 @@ from unittest.mock import patch
 
 from agentrd_cli import ExitCode, main
 from app.runtime import build_run_service, build_runtime
-from data_models import StopConditions
+from data_models import ExecutionResult, StopConditions
 from plugins import build_default_registry
+from plugins.contracts import CommonUsefulnessGate, ScenarioContext
+from scenarios.synthetic_research.plugin import build_synthetic_research_bundle
 
 
 class SyntheticResearchScenarioTests(unittest.TestCase):
@@ -45,6 +47,25 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
             code = main(argv)
         return code, out.getvalue(), err.getvalue()
 
+    def _synthetic_usefulness_result(self, payload: dict) -> tuple:
+        bundle = build_synthetic_research_bundle()
+        artifact = Path(self._tmpdir.name) / "validator-summary.json"
+        artifact.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        result = ExecutionResult(
+            run_id="run-task-19-usefulness",
+            exit_code=0,
+            logs_ref="synthetic research complete",
+            artifacts_ref=json.dumps([str(artifact)]),
+        )
+        scenario = ScenarioContext(
+            run_id="run-task-19-usefulness",
+            scenario_name="synthetic_research",
+            input_payload={"task_summary": payload.get("task_summary", "")},
+            task_summary=str(payload.get("task_summary", "")),
+        )
+        gate = CommonUsefulnessGate()
+        return gate.evaluate(result, scenario, scene_validator=bundle.scene_usefulness_validator)
+
     def test_default_registry_exposes_formal_synthetic_research_scenario(self) -> None:
         registry = build_default_registry()
 
@@ -57,6 +78,7 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
 
         self.assertEqual(bundle.scenario_name, "synthetic_research")
         self.assertIsNotNone(manifest)
+        assert manifest is not None
         self.assertEqual(manifest.scenario_name, "synthetic_research")
 
     def test_synthetic_research_runs_through_shared_loop_engine(self) -> None:
@@ -75,6 +97,8 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
             loops_per_call=1,
         )
 
+        assert context is not None
+        assert context.run_session is not None
         self.assertEqual(context.run_session.scenario, "synthetic_research")
         self.assertEqual(context.run_session.status.value, "COMPLETED")
         events = runtime.sqlite_store.query_events(run_id=run.run_id)
@@ -118,6 +142,67 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         self.assertIn("synthetic_research", payload["details"]["registered_scenarios"])
         self.assertTrue(any(item["scenario_name"] == "synthetic_research" for item in manifests))
         self.assertFalse(any(item["scenario_name"] == "data_science_minimal" for item in manifests))
+
+    def test_usefulness_rejects_template_only_synthesized_summary(self) -> None:
+        outcome, signal = self._synthetic_usefulness_result(
+            {
+                "task_summary": "compare retrieval strategies for coding agents",
+                "artifact_id": "artifact-1",
+                "topic_count": 1,
+                "topics": ["retrieval"],
+                "synthesized_summary": "Synthesized summary",
+                "synthesized_findings": ["Compared retrieval depth because latency rises."],
+            }
+        )
+
+        self.assertFalse(outcome.usefulness_eligible)
+        self.assertEqual(signal.stage, "utility")
+        self.assertEqual(
+            signal.reason,
+            "scene validator rejected: generic synthesized summary",
+        )
+
+    def test_usefulness_rejects_prompt_echo_findings(self) -> None:
+        task_summary = "benchmark retrieval depth for synthetic research"
+        outcome, signal = self._synthetic_usefulness_result(
+            {
+                "task_summary": task_summary,
+                "artifact_id": "artifact-2",
+                "topic_count": 1,
+                "topics": ["retrieval depth"],
+                "synthesized_summary": "Compared retrieval depth because latency rises.",
+                "synthesized_findings": [
+                    f"Task: {task_summary}",
+                    f"Research task: {task_summary}",
+                ],
+            }
+        )
+
+        self.assertFalse(outcome.usefulness_eligible)
+        self.assertEqual(signal.stage, "utility")
+        self.assertEqual(
+            signal.reason,
+            "scene validator rejected: prompt-echo synthesized findings",
+        )
+
+    def test_usefulness_accepts_task_specific_synthesized_findings(self) -> None:
+        outcome, signal = self._synthetic_usefulness_result(
+            {
+                "task_summary": "evaluate retrieval depth and rerank quality",
+                "artifact_id": "artifact-3",
+                "topic_count": 2,
+                "topics": ["retrieval depth", "rerank quality"],
+                "synthesized_summary": "Compared retrieval depth against rerank quality because latency and precision move in opposite directions.",
+                "synthesized_findings": [
+                    "Compared retrieval depth options, precision gains plateau after top-20 context while latency keeps increasing.",
+                    "However, rerank quality improves evidence relevance, so a depth-10 plus rerank trade-off reduces risk under tight budgets.",
+                ],
+            }
+        )
+
+        self.assertTrue(outcome.usefulness_eligible)
+        self.assertEqual(signal.stage, "utility")
+        self.assertEqual(signal.reason, "eligible")
 
 
 if __name__ == "__main__":

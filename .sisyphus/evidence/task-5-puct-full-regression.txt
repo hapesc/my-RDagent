@@ -1,0 +1,23 @@
+Wave 2 - Task 5: MCTSScheduler PUCT rewrite - Full test evidence
+
+18 tests pass in test_scheduler_mcts.py:
+- test_empty_graph_returns_none PASSED
+- test_single_active_node_returns_that_node PASSED
+- test_unvisited_nodes_prioritized_over_visited PASSED
+- test_unvisited_node_with_no_score_preferred_first PASSED
+- test_pruned_nodes_skipped PASSED
+- test_merged_nodes_skipped PASSED
+- test_all_pruned_returns_none PASSED
+- test_puct_balances_exploration_and_exploitation_high_cpuct_prefers_less_visited PASSED
+- test_pure_exploitation_cpuct_zero_picks_highest_avg_value PASSED
+- test_backpropagation_updates_leaf_parent_and_grandparent PASSED
+- test_backpropagation_with_single_root_node PASSED
+- test_observe_feedback_uses_reward_calculator_and_triggers_backpropagation PASSED
+- test_observe_feedback_with_decision_based_reward_mode PASSED
+- test_get_all_scores_returns_puct_scores_for_active_nodes PASSED
+- test_get_all_scores_unvisited_active_nodes_are_inf PASSED
+- test_prior_probability_affects_selection_with_same_q_and_visits PASSED
+- test_softmax_numerical_stability_with_large_potentials PASSED
+- test_select_node_uses_node_visits_not_graph_visit_counts PASSED
+
+Full regression: 498 passed, 0 failures, 3 warnings

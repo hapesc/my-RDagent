@@ -1,0 +1,169 @@
+services:
+  # ==========================================
+  # Base Configuration
+  # ==========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: rdagent:latest
+    container_name: rdagent-app
+    environment:
+      - AGENTRD_ENV=production
+      - AGENTRD_ARTIFACT_ROOT=/data/artifacts
+      - AGENTRD_WORKSPACE_ROOT=/data/workspace
+      - AGENTRD_TRACE_STORAGE_PATH=/data/trace/events.jsonl
+      - AGENTRD_SQLITE_PATH=/data/rd_agent.sqlite3
+      - AGENTRD_ALLOW_LOCAL_EXECUTION=false
+      - AGENTRD_LOG_LEVEL=INFO
+      # LLM Configuration (set via .env file)
+      - RD_AGENT_LLM_PROVIDER=${RD_AGENT_LLM_PROVIDER:-mock}
+      - RD_AGENT_LLM_API_KEY=${RD_AGENT_LLM_API_KEY:-}
+      - RD_AGENT_LLM_MODEL=${RD_AGENT_LLM_MODEL:-gpt-4o-mini}
+      - RD_AGENT_LLM_BASE_URL=${RD_AGENT_LLM_BASE_URL:-}
+    volumes:
+      - app-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rdagent-network
+    restart: unless-stopped
+
+  # ==========================================
+  # API Server
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    image: rdagent:api
+    container_name: rdagent-api
+    ports:
+      - "8000:8000"
+    environment:
+      - AGENTRD_ENV=production
+      - AGENTRD_ARTIFACT_ROOT=/data/artifacts
+      - AGENTRD_WORKSPACE_ROOT=/data/workspace
+      - AGENTRD_TRACE_STORAGE_PATH=/data/trace/events.jsonl
+      - AGENTRD_SQLITE_PATH=/data/rd_agent.sqlite3
+      - AGENTRD_ALLOW_LOCAL_EXECUTION=false
+      - AGENTRD_LOG_LEVEL=INFO
+      - RD_AGENT_LLM_PROVIDER=${RD_AGENT_LLM_PROVIDER:-mock}
+      - RD_AGENT_LLM_API_KEY=${RD_AGENT_LLM_API_KEY:-}
+      - RD_AGENT_LLM_MODEL=${RD_AGENT_LLM_MODEL:-gpt-4o-mini}
+      - RD_AGENT_LLM_BASE_URL=${RD_AGENT_LLM_BASE_URL:-}
+    volumes:
+      - app-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rdagent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ==========================================
+  # Streamlit UI
+  # ==========================================
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ui
+    image: rdagent:ui
+    container_name: rdagent-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - AGENTRD_ENV=production
+      - AGENTRD_SQLITE_PATH=/data/rd_agent.sqlite3
+      - AGENTRD_WORKSPACE_ROOT=/data/workspace
+      - AGENTRD_ARTIFACT_ROOT=/data/artifacts
+      - AGENTRD_LOG_LEVEL=INFO
+    volumes:
+      - app-data:/data
+    networks:
+      - rdagent-network
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # ==========================================
+  # Development Environment
+  # ==========================================
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: rdagent:dev
+    container_name: rdagent-dev
+    volumes:
+      - .:/app
+      - dev-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - uv-cache:/root/.cache/uv
+    environment:
+      - AGENTRD_ENV=development
+      - AGENTRD_ARTIFACT_ROOT=/data/artifacts
+      - AGENTRD_WORKSPACE_ROOT=/data/workspace
+      - AGENTRD_TRACE_STORAGE_PATH=/data/trace/events.jsonl
+      - AGENTRD_SQLITE_PATH=/data/rd_agent.sqlite3
+      - AGENTRD_ALLOW_LOCAL_EXECUTION=true
+      - AGENTRD_LOG_LEVEL=DEBUG
+      - RD_AGENT_LLM_PROVIDER=${RD_AGENT_LLM_PROVIDER:-mock}
+      - RD_AGENT_LLM_API_KEY=${RD_AGENT_LLM_API_KEY:-}
+      - RD_AGENT_LLM_MODEL=${RD_AGENT_LLM_MODEL:-gpt-4o-mini}
+      - RD_AGENT_LLM_BASE_URL=${RD_AGENT_LLM_BASE_URL:-}
+    working_dir: /app
+    command: bash
+    stdin_open: true
+    tty: true
+    networks:
+      - rdagent-network
+
+  # ==========================================
+  # Test Runner
+  # ==========================================
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: rdagent:dev
+    container_name: rdagent-test
+    volumes:
+      - .:/app
+      - test-data:/tmp
+    environment:
+      - AGENTRD_ENV=test
+      - AGENTRD_ALLOW_LOCAL_EXECUTION=true
+      - AGENTRD_LOG_LEVEL=WARNING
+    working_dir: /app
+    command: pytest tests/ -v
+    networks:
+      - rdagent-network
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  app-data:
+    driver: local
+  dev-data:
+    driver: local
+  test-data:
+    driver: local
+  uv-cache:
+    driver: local
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  rdagent-network:
+    driver: bridge

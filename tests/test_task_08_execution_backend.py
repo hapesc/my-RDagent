@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from core.execution import DockerExecutionBackend, DockerExecutionBackendConfig, ExecutionStatus
+from data_models import ArtifactVerificationStatus, ProcessExecutionStatus, UsefulnessEligibilityStatus
 from trace_store import TraceStore, TraceStoreConfig
 
 
@@ -46,10 +47,78 @@ class ExecutionBackendTests(unittest.TestCase):
             self.assertEqual(result.status, ExecutionStatus.SUCCESS)
             self.assertEqual(result.exit_code, 0)
             self.assertTrue(any(path.endswith("out.txt") for path in result.artifact_paths))
+            if result.outcome is None:
+                self.fail("expected canonical outcome contract")
+            self.assertEqual(result.outcome.process_status, ProcessExecutionStatus.SUCCESS)
+            self.assertEqual(result.outcome.artifact_status, ArtifactVerificationStatus.VERIFIED)
+            self.assertEqual(result.outcome.usefulness_status, UsefulnessEligibilityStatus.ELIGIBLE)
+            self.assertIn("paths", result.artifact_manifest)
+            self.assertTrue(any(path.endswith("out.txt") for path in result.artifact_manifest["paths"]))
 
             events = TraceStore(TraceStoreConfig(storage_path=trace_path)).query_events(run_id="run-1")
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0].payload["status"], "SUCCESS")
+            self.assertEqual(events[0].payload["usefulness_status"], "ELIGIBLE")
+            self.assertIn("artifact_manifest", events[0].payload)
+
+    def test_exit_zero_without_artifacts_is_semantically_ineligible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "workspace"
+            workspace.mkdir(parents=True, exist_ok=True)
+            trace_path = str(Path(tmpdir) / "events.jsonl")
+
+            backend = self._backend(trace_path)
+            result = backend.execute(
+                run_id="run-1b",
+                branch_id="main",
+                loop_index=0,
+                workspace_path=str(workspace),
+                command="python3 -c \"print('ok-no-artifacts')\"",
+            )
+
+            self.assertEqual(result.status, ExecutionStatus.SUCCESS)
+            self.assertEqual(result.exit_code, 0)
+            if result.outcome is None:
+                self.fail("expected canonical outcome contract")
+            self.assertEqual(result.outcome.process_status, ProcessExecutionStatus.SUCCESS)
+            self.assertEqual(result.outcome.artifact_status, ArtifactVerificationStatus.MISSING_REQUIRED)
+            self.assertEqual(result.outcome.usefulness_status, UsefulnessEligibilityStatus.INELIGIBLE)
+
+            events = TraceStore(TraceStoreConfig(storage_path=trace_path)).query_events(run_id="run-1b")
+            self.assertEqual(events[0].payload["status"], "SUCCESS")
+            self.assertEqual(events[0].payload["usefulness_status"], "INELIGIBLE")
+
+    def test_malformed_artifact_paths_fail_semantic_verification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "workspace"
+            workspace.mkdir(parents=True, exist_ok=True)
+            trace_path = str(Path(tmpdir) / "events.jsonl")
+
+            backend = self._backend(trace_path)
+            with patch.object(
+                backend,
+                "_collect_artifacts",
+                return_value=[""],
+            ):
+                result = backend.execute(
+                    run_id="run-1c",
+                    branch_id="main",
+                    loop_index=0,
+                    workspace_path=str(workspace),
+                    command="python3 -c \"print('ok')\"",
+                )
+
+            if result.outcome is None:
+                self.fail("expected canonical outcome contract")
+            self.assertEqual(result.status, ExecutionStatus.SUCCESS)
+            self.assertEqual(result.outcome.process_status, ProcessExecutionStatus.SUCCESS)
+            self.assertEqual(result.outcome.artifact_status, ArtifactVerificationStatus.MALFORMED_REQUIRED)
+            self.assertEqual(result.outcome.usefulness_status, UsefulnessEligibilityStatus.INELIGIBLE)
+            self.assertEqual(result.malformed_artifact_paths, [""])
+
+            events = TraceStore(TraceStoreConfig(storage_path=trace_path)).query_events(run_id="run-1c")
+            self.assertEqual(events[0].payload["artifact_status"], "MALFORMED_REQUIRED")
+            self.assertEqual(events[0].payload["usefulness_status"], "INELIGIBLE")
 
     def test_failure_writes_failure_event(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

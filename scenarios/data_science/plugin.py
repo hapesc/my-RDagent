@@ -41,6 +41,7 @@ from plugins.contracts import (
     Runner,
     ScenarioContext,
     ScenarioPlugin,
+    UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
 
@@ -266,11 +267,13 @@ class DataScienceCoder(Coder):
             "import os\n"
             f"data_source = {data_source!r}\n"
             "row_count = 0\n"
+            "column_count = 0\n"
             "if data_source and os.path.exists(data_source):\n"
             "    with open(data_source, newline='', encoding='utf-8') as handle:\n"
             "        reader = csv.DictReader(handle)\n"
+            "        column_count = len(reader.fieldnames or [])\n"
             "        row_count = sum(1 for _ in reader)\n"
-            "metrics = {'row_count': row_count, 'status': 'ok'}\n"
+            "metrics = {'row_count': row_count, 'column_count': column_count, 'status': 'ok'}\n"
             "with open('metrics.json', 'w', encoding='utf-8') as handle:\n"
             "    json.dump(metrics, handle)\n"
             "print(json.dumps(metrics))\n"
@@ -299,6 +302,10 @@ class DataScienceRunner(Runner):
             exit_code=backend_result.exit_code,
             logs_ref=logs,
             artifacts_ref=json.dumps(backend_result.artifact_paths),
+            duration_sec=backend_result.duration_sec,
+            timed_out=backend_result.timed_out,
+            artifact_manifest=backend_result.artifact_manifest,
+            outcome=backend_result.outcome,
         )
 
 
@@ -336,14 +343,95 @@ class DataScienceFeedbackAnalyzer(FeedbackAnalyzer):
             FeedbackDraft,
             model_config=feedback_config,
         )
+        usefulness_eligible = result.resolve_outcome().usefulness_eligible
         return FeedbackRecord(
             feedback_id=f"fb-{experiment.node_id}",
-            decision=draft.decision and result.exit_code == 0,
-            acceptable=draft.acceptable and result.exit_code == 0,
+            decision=draft.decision and usefulness_eligible,
+            acceptable=draft.acceptable and usefulness_eligible,
             reason=draft.reason,
             observations=draft.observations,
             code_change_summary=draft.code_change_summary,
         )
+
+
+def _validate_data_science_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]:
+    payload = gate_input.structured_payload
+    if not isinstance(payload, dict):
+        return "missing structured payload"
+    if "status" not in payload:
+        return "missing key field: status"
+    if "row_count" not in payload:
+        return "missing key field: row_count"
+    status_value = str(payload.get("status", "")).strip().lower()
+    if status_value in {"", "todo", "tbd", "placeholder"}:
+        return "template-only status"
+    row_count = payload.get("row_count")
+    if not isinstance(row_count, int):
+        return "row_count must be integer"
+    if row_count < 0:
+        return "row_count cannot be negative"
+    if _is_row_count_only_payload(payload):
+        return "row-count-only payload"
+    if not _has_informative_metrics(payload):
+        return "missing informative metrics"
+    return None
+
+
+_DS_NON_INFORMATIVE_KEYS = {
+    "status",
+    "row_count",
+    "result",
+    "outcome",
+    "message",
+    "ok",
+    "success",
+    "state",
+    "detail",
+}
+
+_DS_PLACEHOLDER_VALUES = {
+    "",
+    "todo",
+    "tbd",
+    "placeholder",
+    "template",
+    "n/a",
+    "na",
+    "unknown",
+    "null",
+}
+
+
+def _is_row_count_only_payload(payload: Dict[str, Any]) -> bool:
+    keys = {str(key).strip().lower() for key in payload}
+    return bool(keys) and keys.issubset({"status", "row_count"})
+
+
+def _has_informative_metrics(payload: Dict[str, Any]) -> bool:
+    for key, value in payload.items():
+        normalized_key = str(key).strip().lower()
+        if normalized_key in _DS_NON_INFORMATIVE_KEYS:
+            continue
+        if _is_informative_value(value):
+            return True
+    return False
+
+
+def _is_informative_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return True
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        return bool(normalized) and normalized not in _DS_PLACEHOLDER_VALUES
+    if isinstance(value, dict):
+        return any(_is_informative_value(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_is_informative_value(item) for item in value)
+    return False
 
 
 def build_data_science_v1_bundle(
@@ -378,5 +466,6 @@ def build_data_science_v1_bundle(
         coder=DataScienceCoder(adapter),
         runner=DataScienceRunner(backend),
         feedback_analyzer=DataScienceFeedbackAnalyzer(adapter),
+        scene_usefulness_validator=_validate_data_science_usefulness,
         default_step_overrides=plugin_config.default_step_overrides,
     )

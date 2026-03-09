@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -111,6 +112,7 @@ class ResumeAwareRunner:
         workspace = Path(artifact.location)
         loop_index = int(scenario.input_payload["loop_index"])
         seed_path = workspace / "seed.txt"
+        artifact_path = workspace / "artifact.txt"
         if loop_index > 0 and not seed_path.exists():
             return ExecutionResult(
                 run_id=scenario.run_id,
@@ -122,7 +124,7 @@ class ResumeAwareRunner:
             run_id=scenario.run_id,
             exit_code=0,
             logs_ref="seed ok",
-            artifacts_ref="[]",
+            artifacts_ref=json.dumps([str(artifact_path)]),
         )
 
 
@@ -206,7 +208,10 @@ class RunServiceTests(unittest.TestCase):
 
             context1 = run_service.start_run(run.run_id, task_summary="resume test", loops_per_call=1)
             self.assertEqual(context1.loop_state.iteration, 1)
-            self.assertEqual(sqlite_store.get_run(run.run_id).status, RunStatus.RUNNING)
+            persisted_running = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(persisted_running)
+            assert persisted_running is not None
+            self.assertEqual(persisted_running.status, RunStatus.RUNNING)
             self.assertGreaterEqual(len(checkpoint_store.list_checkpoints(run.run_id)), 6)
 
             paused = run_service.pause_run(run.run_id)
@@ -215,7 +220,10 @@ class RunServiceTests(unittest.TestCase):
             restarted_service, restarted_store, _checkpoint_store, _branch_store = self._build_runtime(tmpdir)
             context2 = restarted_service.resume_run(run.run_id, task_summary="resume test", loops_per_call=1)
             self.assertEqual(context2.loop_state.iteration, 2)
-            self.assertEqual(restarted_store.get_run(run.run_id).status, RunStatus.COMPLETED)
+            persisted_completed = restarted_store.get_run(run.run_id)
+            self.assertIsNotNone(persisted_completed)
+            assert persisted_completed is not None
+            self.assertEqual(persisted_completed.status, RunStatus.COMPLETED)
 
             stopped = restarted_service.stop_run(run.run_id)
             self.assertEqual(stopped.status, RunStatus.STOPPED)
@@ -253,7 +261,10 @@ class RunServiceTests(unittest.TestCase):
             context2 = run_service.resume_run(run.run_id, task_summary="fork test", loops_per_call=1)
             self.assertEqual(context2.loop_state.iteration, 2)
             self.assertGreaterEqual(len(checkpoint_store.list_checkpoints(run.run_id)), 12)
-            self.assertEqual(sqlite_store.get_run(run.run_id).status, RunStatus.COMPLETED)
+            persisted_fork = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(persisted_fork)
+            assert persisted_fork is not None
+            self.assertEqual(persisted_fork.status, RunStatus.COMPLETED)
 
             heads = branch_store.get_branch_heads(run.run_id)
             self.assertEqual(heads["main"], main_head)
@@ -284,7 +295,10 @@ class RunServiceTests(unittest.TestCase):
 
             context2 = run_service.resume_run(run.run_id, task_summary="resume workspace test", loops_per_call=1)
             self.assertEqual(context2.loop_state.iteration, 2)
-            self.assertEqual(sqlite_store.get_run(run.run_id).status, RunStatus.COMPLETED)
+            persisted_resume = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(persisted_resume)
+            assert persisted_resume is not None
+            self.assertEqual(persisted_resume.status, RunStatus.COMPLETED)
 
             resumed_seed = Path(tmpdir) / "workspaces" / run.run_id / "loop-0001" / "seed.txt"
             self.assertTrue(resumed_seed.exists())
@@ -325,6 +339,70 @@ class RunServiceTests(unittest.TestCase):
             self.assertEqual(fork_nodes[0].loop_index, 1)
             self.assertEqual(fork_nodes[0].parent_node_id, main_nodes_before[0].node_id)
             self.assertNotIn(fork_nodes[0].node_id, main_node_ids_before)
+
+    def test_resume_with_corrupt_checkpoint_fails_deterministically_and_idempotently(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_service, sqlite_store, checkpoint_store, _branch_store = self._build_runtime(
+                tmpdir,
+                bundle=self._build_resume_aware_bundle(),
+            )
+            run = run_service.create_run(
+                task_summary="corrupt resume",
+                stop_conditions=StopConditions(max_loops=2, max_duration_sec=120),
+                run_id="run-task-10-corrupt-resume",
+            )
+
+            context1 = run_service.start_run(run.run_id, task_summary="corrupt resume", loops_per_call=1)
+            self.assertEqual(context1.loop_state.iteration, 1)
+            paused = run_service.pause_run(run.run_id)
+            self.assertEqual(paused.status, RunStatus.PAUSED)
+
+            checkpoint_store.save_checkpoint(run.run_id, "loop-0000-record", b"broken-archive")
+
+            with self.assertRaisesRegex(RuntimeError, "checkpoint restore failed"):
+                run_service.resume_run(run.run_id, task_summary="corrupt resume", loops_per_call=1)
+
+            failed_run = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(failed_run)
+            assert failed_run is not None
+            self.assertEqual(failed_run.status, RunStatus.FAILED)
+            self.assertIn("checkpoint restore failed", str(failed_run.entry_input.get("last_error", "")))
+
+            with self.assertRaisesRegex(RuntimeError, "checkpoint restore failed"):
+                run_service.resume_run(run.run_id, task_summary="corrupt resume", loops_per_call=1)
+
+            failed_run_again = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(failed_run_again)
+            assert failed_run_again is not None
+            self.assertEqual(failed_run_again.status, RunStatus.FAILED)
+            self.assertIn("checkpoint restore failed", str(failed_run_again.entry_input.get("last_error", "")))
+
+    def test_resume_from_corrupted_checkpoint_surfaces_restore_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_service, sqlite_store, checkpoint_store, branch_store = self._build_runtime(tmpdir)
+            run = run_service.create_run(
+                task_summary="resume corruption test",
+                stop_conditions=StopConditions(max_loops=2, max_duration_sec=120),
+                run_id="run-task-10-corrupt",
+            )
+
+            context1 = run_service.start_run(run.run_id, task_summary="resume corruption test", loops_per_call=1)
+            self.assertEqual(context1.loop_state.iteration, 1)
+
+            paused = run_service.pause_run(run.run_id)
+            self.assertEqual(paused.status, RunStatus.PAUSED)
+
+            checkpoint_store.save_checkpoint(run.run_id, "loop-0000-record", b"not-a-zip-payload")
+
+            with self.assertRaisesRegex(RuntimeError, "checkpoint restore failed"):
+                run_service.resume_run(run.run_id, task_summary="resume corruption test", loops_per_call=1)
+
+            self.assertEqual(len(branch_store.query_nodes(run.run_id, branch_id="main")), 1)
+            persisted = sqlite_store.get_run(run.run_id)
+            self.assertIsNotNone(persisted)
+            assert persisted is not None
+            self.assertEqual(persisted.status, RunStatus.FAILED)
+            self.assertIn("checkpoint payload is not a valid zip archive", persisted.entry_input["last_error"])
 
 
 if __name__ == "__main__":

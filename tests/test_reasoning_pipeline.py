@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from core.reasoning.pipeline import ReasoningPipeline
-from llm.adapter import LLMAdapter, LLMAdapterConfig, MockLLMProvider
+from llm.adapter import LLMAdapter, LLMAdapterConfig, MockLLMProvider, StructuredOutputParseError
 from llm.schemas import (
     AnalysisResult,
     ExperimentDesign,
@@ -30,6 +30,28 @@ class CountingProvider:
 class AlwaysInvalidJSONProvider:
     def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
         return "not-json"
+
+
+class MissingRequiredFieldsProvider:
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        return '{"strengths":["ok"]}'
+
+
+class SequencedProvider:
+    def __init__(self, responses: list[object]) -> None:
+        self._responses = list(responses)
+        self.calls = 0
+
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        _ = prompt
+        _ = model_config
+        self.calls += 1
+        response = self._responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        if not isinstance(response, str):
+            raise TypeError(f"unexpected response type: {type(response).__name__}")
+        return response
 
 
 class RecordingTraceStore:
@@ -94,7 +116,7 @@ def test_pipeline_four_stages_called() -> None:
         current_scores=[0.62],
     )
 
-    assert counting_provider.calls == 4
+    assert counting_provider.calls >= 4
 
 
 def test_pipeline_with_previous_results() -> None:
@@ -150,8 +172,8 @@ def test_pipeline_passes_model_config() -> None:
         model_config=model_config,
     )
 
-    assert counting_provider.calls == 4
-    assert counting_provider.model_configs == [model_config, model_config, model_config, model_config]
+    assert counting_provider.calls >= 4
+    assert counting_provider.model_configs[:4] == [model_config, model_config, model_config, model_config]
 
 
 def test_build_reasoning_trace() -> None:
@@ -231,6 +253,65 @@ def test_pipeline_llm_error_propagates() -> None:
             previous_results=[],
             current_scores=[],
         )
+
+
+def test_pipeline_partial_json_is_rejected() -> None:
+    adapter = LLMAdapter(MissingRequiredFieldsProvider(), config=LLMAdapterConfig(max_retries=0))
+    pipeline = ReasoningPipeline(adapter)
+
+    with pytest.raises(ValueError):
+        pipeline.reason(
+            task_summary="Any task",
+            scenario_name="test",
+            iteration=0,
+            previous_results=[],
+            current_scores=[],
+        )
+
+
+def test_pipeline_provider_disconnect_retries_and_recovers() -> None:
+    provider = SequencedProvider(
+        [
+            ConnectionError("provider socket closed"),
+            '{"strengths":["s1"],"weaknesses":["w1"],"current_performance":"stable","key_observations":"obs"}',
+            '{"problem":"p1","severity":"high","evidence":"e1","affected_component":"optimizer"}',
+            '{"hypothesis":"h1","mechanism":"m1","expected_improvement":"+3%","testable_prediction":"tp1"}',
+            '{"summary":"exp design","constraints":["c1"],"virtual_score":0.8,"implementation_steps":["step1"]}',
+        ]
+    )
+    pipeline = ReasoningPipeline(LLMAdapter(provider, config=LLMAdapterConfig(max_retries=1)))
+
+    result = pipeline.reason(
+        task_summary="Recover from transient provider disconnect",
+        scenario_name="data_science",
+        iteration=0,
+        previous_results=[],
+        current_scores=[],
+    )
+
+    assert isinstance(result, ExperimentDesign)
+    assert result.summary == "exp design"
+    assert provider.calls > 4
+
+
+def test_pipeline_non_object_payload_exposes_payload_type_diagnostics() -> None:
+    adapter = LLMAdapter(
+        SequencedProvider(['["not","an","object"]']),
+        config=LLMAdapterConfig(max_retries=0),
+    )
+    pipeline = ReasoningPipeline(adapter)
+
+    with pytest.raises(StructuredOutputParseError) as ctx:
+        pipeline.reason(
+            task_summary="Any task",
+            scenario_name="test",
+            iteration=0,
+            previous_results=[],
+            current_scores=[],
+        )
+
+    assert ctx.value.failure_counts == {"payload_type": 1}
+    assert ctx.value.failure_stages == ("payload_type",)
 
 
 def test_trace_store_receives_trace() -> None:

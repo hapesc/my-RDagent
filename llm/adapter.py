@@ -7,14 +7,16 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional, Protocol, Type, TypeVar, cast
+from collections import Counter
+from typing import Any, Dict, List, Optional, Protocol, Tuple, Type, TypeVar, cast, get_args, get_origin
 
 from service_contracts import ModelSelectorConfig
 
 T = TypeVar("T")
 
-_JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*\n?(.*?)```", re.DOTALL)
-_JSON_BLOCK_UNCLOSED_RE = re.compile(r"```(?:json)?\s*\n?(.*)", re.DOTALL)
+_JSON_BLOCK_RE = re.compile(r"```(?:json)?[ \t]*\n(.*?)```", re.DOTALL)
+_JSON_BLOCK_UNCLOSED_RE = re.compile(r"```(?:json)?[ \t]*\n(.*)", re.DOTALL)
+_CODE_BLOCK_RE = re.compile(r"```([a-zA-Z0-9_-]*)\s*\n?(.*?)```", re.DOTALL)
 _log = logging.getLogger(__name__)
 
 
@@ -222,6 +224,23 @@ class LLMAdapterConfig:
     max_retries: int = 2
 
 
+@dataclass(frozen=True)
+class ParseDiagnostic:
+    attempt: int
+    stage: str
+    retryable: bool
+    error: str
+
+
+class StructuredOutputParseError(ValueError):
+    def __init__(self, message: str, diagnostics: List[ParseDiagnostic]) -> None:
+        super().__init__(message)
+        self.diagnostics = diagnostics
+        self.retry_count = max(0, len(diagnostics) - 1)
+        self.failure_counts = dict(Counter(diagnostic.stage for diagnostic in diagnostics))
+        self.failure_stages = tuple(diagnostic.stage for diagnostic in diagnostics)
+
+
 class LLMAdapter:
     """Adapter that parses structured JSON outputs with retries."""
 
@@ -272,10 +291,160 @@ class LLMAdapter:
         if match:
             return match.group(1).strip()
         # Handle unclosed fence (e.g. output truncated before closing ```)
-        match = _JSON_BLOCK_UNCLOSED_RE.search(raw)
-        if match:
-            return match.group(1).strip()
+        if raw.count("```") == 1:
+            match = _JSON_BLOCK_UNCLOSED_RE.search(raw)
+            if match:
+                return match.group(1).strip()
+        decoder = json.JSONDecoder()
+        for idx, char in enumerate(raw):
+            if char != "{":
+                continue
+            try:
+                payload, end = decoder.raw_decode(raw[idx:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                return raw[idx:idx + end].strip()
         return raw.strip()
+
+    @staticmethod
+    def _extract_code(raw: str) -> str:
+        matches = list(_CODE_BLOCK_RE.finditer(raw))
+        if not matches:
+            return ""
+
+        for match in matches:
+            lang = (match.group(1) or "").strip().lower()
+            if lang != "json":
+                return match.group(2).strip()
+        return matches[-1].group(2).strip()
+
+    @staticmethod
+    def _repair_json(raw: str) -> str:
+        repaired = raw.strip()
+        if not repaired:
+            return repaired
+
+        repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
+        open_braces = repaired.count("{")
+        close_braces = repaired.count("}")
+        if close_braces < open_braces:
+            repaired = repaired + ("}" * (open_braces - close_braces))
+
+        open_brackets = repaired.count("[")
+        close_brackets = repaired.count("]")
+        if close_brackets < open_brackets:
+            repaired = repaired + ("]" * (open_brackets - close_brackets))
+        return repaired
+
+    @staticmethod
+    def _is_optional_field(field_type: Any) -> bool:
+        origin = get_origin(field_type)
+        if origin is None:
+            return False
+        args = get_args(field_type)
+        return type(None) in args
+
+    def _validate_required_fields(self, schema_cls: Type, payload: Dict[str, Any]) -> None:
+        if not dataclasses.is_dataclass(schema_cls):
+            return
+
+        missing: List[str] = []
+        null_fields: List[str] = []
+        for field in dataclasses.fields(schema_cls):
+            if self._is_optional_field(field.type):
+                continue
+            if field.name not in payload:
+                missing.append(field.name)
+                continue
+            if payload[field.name] is None:
+                null_fields.append(field.name)
+
+        if missing or null_fields:
+            parts: List[str] = []
+            if missing:
+                parts.append(f"missing={missing}")
+            if null_fields:
+                parts.append(f"null={null_fields}")
+            raise ValueError("required fields validation failed: " + ", ".join(parts))
+
+    @staticmethod
+    def _is_valid_scalar_type(expected: str, value: Any) -> bool:
+        if expected in ("str", "<class 'str'>"):
+            return isinstance(value, str)
+        if expected in ("float", "<class 'float'>"):
+            return isinstance(value, (int, float)) and not isinstance(value, bool)
+        if expected in ("bool", "<class 'bool'>"):
+            return isinstance(value, bool)
+        return True
+
+    @staticmethod
+    def _is_valid_list_type(expected: str, value: Any) -> bool:
+        if "List[str]" in expected or "list[str]" in expected:
+            return isinstance(value, list) and all(isinstance(item, str) for item in value)
+        if "List[int]" in expected or "list[int]" in expected:
+            return isinstance(value, list) and all(isinstance(item, int) and not isinstance(item, bool) for item in value)
+        if "List[float]" in expected or "list[float]" in expected:
+            return isinstance(value, list) and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value)
+        return True
+
+    def _validate_field_types(self, schema_cls: Type, payload: Dict[str, Any]) -> None:
+        if not dataclasses.is_dataclass(schema_cls):
+            return
+
+        mismatches: List[str] = []
+        for field in dataclasses.fields(schema_cls):
+            if field.name not in payload:
+                continue
+            value = payload[field.name]
+            if value is None:
+                continue
+
+            field_type = str(field.type)
+            if self._is_optional_field(field.type):
+                args = [arg for arg in get_args(field.type) if arg is not type(None)]
+                if len(args) == 1:
+                    field_type = str(args[0])
+
+            scalar_ok = self._is_valid_scalar_type(field_type, value)
+            list_ok = self._is_valid_list_type(field_type, value)
+            if not scalar_ok or not list_ok:
+                mismatches.append(
+                    f"{field.name}: expected {field_type}, got {type(value).__name__}"
+                )
+
+        if mismatches:
+            raise ValueError("field type validation failed: " + "; ".join(mismatches))
+
+    @staticmethod
+    def _classify_parse_error(exc: Exception) -> Tuple[bool, str]:
+        if isinstance(exc, (ConnectionError, TimeoutError)):
+            return True, "provider_disconnect"
+        if isinstance(exc, TypeError) and "schema_cls missing callable from_dict" in str(exc):
+            return False, "schema"
+        if isinstance(exc, json.JSONDecodeError):
+            return True, "json_decode"
+        if isinstance(exc, TypeError) and "payload must be a JSON object" in str(exc):
+            return True, "payload_type"
+        if isinstance(exc, ValueError) and "required fields validation failed" in str(exc):
+            return True, "required_fields"
+        if isinstance(exc, ValueError) and "field type validation failed" in str(exc):
+            return True, "field_types"
+        return True, "parse"
+
+    def _parse_with_schema(self, raw: str, schema_cls: Type[T]) -> T:
+        cleaned = self._extract_json(raw)
+        repaired = self._repair_json(cleaned)
+        payload = json.loads(repaired)
+        if not isinstance(payload, dict):
+            raise TypeError(f"payload must be a JSON object, got {type(payload).__name__}")
+        converter = getattr(schema_cls, "from_dict", None)
+        if not callable(converter):
+            raise TypeError(f"schema_cls missing callable from_dict: {schema_cls}")
+        self._validate_required_fields(schema_cls, payload)
+        self._validate_field_types(schema_cls, payload)
+        parsed = cast(T, converter(payload))
+        return parsed
 
     def generate_structured(
         self,
@@ -284,6 +453,7 @@ class LLMAdapter:
         model_config: Optional[ModelSelectorConfig] = None,
     ) -> T:
         last_error: Optional[Exception] = None
+        diagnostics: List[ParseDiagnostic] = []
         max_retries = self._config.max_retries
         if model_config is not None and model_config.max_retries is not None:
             max_retries = model_config.max_retries
@@ -292,18 +462,77 @@ class LLMAdapter:
         enhanced = self._enhance_prompt(prompt, schema_cls)
 
         for attempt in range(attempts):
-            raw = self._provider.complete(enhanced, model_config=model_config)
+            raw = ""
             try:
-                cleaned = self._extract_json(raw)
-                payload = json.loads(cleaned)
-                converter = getattr(schema_cls, "from_dict", None)
-                if not callable(converter):
-                    raise TypeError(f"schema_cls missing callable from_dict: {schema_cls}")
-                parsed = cast(T, converter(payload))
-                return parsed
+                raw = self._provider.complete(enhanced, model_config=model_config)
+                return self._parse_with_schema(raw, schema_cls)
             except Exception as exc:
+                retryable, stage = self._classify_parse_error(exc)
                 _log.warning("parse attempt %d/%d failed: %s  raw[:200]=%s",
                              attempt + 1, attempts, exc, (raw or "")[:200])
+                diagnostics.append(
+                    ParseDiagnostic(
+                        attempt=attempt + 1,
+                        stage=stage,
+                        retryable=retryable,
+                        error=str(exc),
+                    )
+                )
                 last_error = exc
+                if not retryable:
+                    break
 
-        raise ValueError(f"structured output parse failed after {attempts} attempts: {last_error}")
+        details = "; ".join(
+            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}"
+            for d in diagnostics
+        )
+        raise StructuredOutputParseError(
+            f"structured output parse failed after {len(diagnostics)} attempts: {last_error}; diagnostics=[{details}]",
+            diagnostics,
+        )
+
+    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
+        return self._provider.complete(prompt, model_config=model_config)
+
+    def generate_code(
+        self,
+        prompt: str,
+        metadata_schema_cls: Type[T],
+        model_config: Optional[ModelSelectorConfig] = None,
+    ) -> Tuple[T, str]:
+        max_retries = self._config.max_retries
+        if model_config is not None and model_config.max_retries is not None:
+            max_retries = model_config.max_retries
+        attempts = max_retries + 1
+
+        diagnostics: List[ParseDiagnostic] = []
+        last_error: Optional[Exception] = None
+        for attempt in range(attempts):
+            raw = ""
+            try:
+                raw = self._provider.complete(prompt, model_config=model_config)
+                metadata = self._parse_with_schema(raw, metadata_schema_cls)
+                code = self._extract_code(raw)
+                return metadata, code
+            except Exception as exc:
+                retryable, stage = self._classify_parse_error(exc)
+                diagnostics.append(
+                    ParseDiagnostic(
+                        attempt=attempt + 1,
+                        stage=stage,
+                        retryable=retryable,
+                        error=str(exc),
+                    )
+                )
+                last_error = exc
+                if not retryable:
+                    break
+
+        details = "; ".join(
+            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}"
+            for d in diagnostics
+        )
+        raise StructuredOutputParseError(
+            f"code generation parse failed after {len(diagnostics)} attempts: {last_error}; diagnostics=[{details}]",
+            diagnostics,
+        )

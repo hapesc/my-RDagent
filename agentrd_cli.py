@@ -9,7 +9,8 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, NoReturn, Optional
 
-from app.runtime import build_run_service, build_runtime
+from app.config import REAL_PROVIDER_SAFE_PROFILE
+from app.runtime import build_run_service, build_runtime, resolve_scenario_runtime_profile
 from data_models import model_to_dict
 from service_contracts import (
     ArtifactDescriptor,
@@ -228,22 +229,34 @@ def _require_scenario_manifest(runtime, scenario: str):
 
 
 def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
-    effective_step_config = resolve_step_override_config(
+    profile = resolve_scenario_runtime_profile(
+        runtime.config,
         manifest.default_step_overrides,
         request.step_overrides,
     )
     return {
         "scenario": request.scenario,
         "stop_conditions": model_to_dict(request.stop_conditions),
-        "step_overrides": effective_step_config.to_dict(),
+        "step_overrides": profile.effective_step_config.to_dict(),
         "requested_step_overrides": request.step_overrides.to_dict(),
         "scenario_manifest": manifest.to_dict(),
         "runtime": {
+            "llm_provider": runtime.config.llm_provider,
+            "llm_model": runtime.config.llm_model,
+            "uses_real_llm_provider": runtime.config.uses_real_llm_provider,
             "sandbox_timeout_sec": runtime.config.sandbox_timeout_sec,
             "allow_local_execution": runtime.config.allow_local_execution,
             "default_scenario": runtime.config.default_scenario,
+            "real_provider_safe_profile": dict(REAL_PROVIDER_SAFE_PROFILE),
+            "guardrail_warnings": list(profile.guardrail_warnings),
         },
     }
+
+
+def _emit_guardrail_warnings(config_snapshot: Dict[str, Any]) -> None:
+    runtime_snapshot = config_snapshot.get("runtime", {})
+    for warning in runtime_snapshot.get("guardrail_warnings", []):
+        print(f"WARNING: {warning}", file=sys.stderr)
 
 
 def _artifact_list_response(runtime, run_id: str) -> ArtifactListResponse:
@@ -301,6 +314,7 @@ def _handle_run(args: argparse.Namespace) -> int:
         entry_input=_build_entry_input(payload),
         config_snapshot=_build_config_snapshot(runtime, request, manifest),
     )
+    _emit_guardrail_warnings(run_session.config_snapshot)
     context = run_service.start_run(
         run_id=run_session.run_id,
         task_summary=task_summary,

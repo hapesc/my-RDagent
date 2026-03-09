@@ -28,6 +28,14 @@ class CoSTEEREvolverTests(unittest.TestCase):
         scenario = ScenarioContext(run_id="run-1", scenario_name="test", input_payload={})
         return experiment, proposal, scenario
 
+    def _useful_execution_result(self, *, exit_code: int = 0, logs_ref: str = "") -> ExecutionResult:
+        return ExecutionResult(
+            run_id="run-1",
+            exit_code=exit_code,
+            logs_ref=logs_ref,
+            artifacts_ref='["/tmp/out.txt"]',
+        )
+
     def test_single_round_mode(self) -> None:
         from core.loop.costeer import CoSTEEREvolver
 
@@ -62,7 +70,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
 
         feedback_bad = FeedbackRecord(
@@ -106,7 +114,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
         feedback_bad = FeedbackRecord(
             feedback_id="fb1",
@@ -140,7 +148,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v1 = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
         coder.develop.return_value = artifact_v1
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
         feedback_good = FeedbackRecord(
             feedback_id="fb1",
@@ -175,7 +183,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
         feedback_analyzer.summarize.return_value = FeedbackRecord(
             feedback_id="fb1",
@@ -214,7 +222,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v1 = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
         coder.develop.return_value = artifact_v1
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
 
         feedback_good = FeedbackRecord(
@@ -266,7 +274,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
 
         feedback_bad = FeedbackRecord(
@@ -302,7 +310,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v1 = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
         coder.develop.return_value = artifact_v1
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        execution_result = self._useful_execution_result()
         runner.run.return_value = execution_result
 
         feedback_good = FeedbackRecord(
@@ -328,6 +336,44 @@ class CoSTEEREvolverTests(unittest.TestCase):
         self.assertEqual(coder.develop.call_count, 1)
         self.assertEqual(runner.run.call_count, 1)
 
+    def test_unverified_execution_cannot_short_circuit_with_positive_feedback(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+
+        artifact_v1 = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
+        artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
+        coder.develop.side_effect = [artifact_v1, artifact_v2]
+
+        runner.run.return_value = ExecutionResult(
+            run_id="run-1",
+            exit_code=0,
+            logs_ref="ok",
+            artifacts_ref="[]",
+        )
+        feedback_analyzer.summarize.return_value = FeedbackRecord(
+            feedback_id="fb1",
+            decision=True,
+            acceptable=True,
+            reason="llm says good",
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+
+        result = evolver.evolve(experiment, proposal, scenario)
+
+        self.assertEqual(result, artifact_v2)
+        self.assertEqual(coder.develop.call_count, 2)
+        self.assertEqual(runner.run.call_count, 1)
+
     def test_structured_feedback_generated_on_failure_round(self) -> None:
         from core.loop.costeer import CoSTEEREvolver
         from llm.schemas import StructuredFeedback
@@ -341,7 +387,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        execution_result = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="some logs", artifacts_ref="")
+        execution_result = self._useful_execution_result(logs_ref="some logs")
         runner.run.return_value = execution_result
 
         feedback_bad = FeedbackRecord(feedback_id="fb1", decision=False, acceptable=False, reason="needs work")
@@ -417,7 +463,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
         coder.develop.side_effect = [artifact_v1, artifact_v2]
 
-        runner.run.return_value = ExecutionResult(run_id="run-1", exit_code=0, logs_ref="", artifacts_ref="")
+        runner.run.return_value = self._useful_execution_result()
 
         feedback_bad = FeedbackRecord(feedback_id="fb1", decision=False, acceptable=False, reason="plain text feedback")
         feedback_good = FeedbackRecord(feedback_id="fb2", decision=True, acceptable=True, reason="ok")

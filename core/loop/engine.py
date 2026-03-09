@@ -7,7 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from exploration_manager.scheduler import MCTSScheduler
 from exploration_manager.service import supports_diverse_roots, supports_trace_merge
@@ -25,6 +25,7 @@ from data_models import (
     PlanningContext,
     RunSession,
     RunStatus,
+    StepState,
 )
 
 
@@ -81,14 +82,15 @@ class LoopEngine:
         budget = BudgetLedger(total_time_budget=float(run_session.stop_conditions.max_duration_sec), elapsed_time=0.0)
         loop_context = LoopContext(loop_state=loop_state, budget=budget, run_session=run_session)
         graph = ExplorationGraph()
+        layer0_n_candidates, layer0_k_forward = self._effective_layer0_width(run_session)
         if self._scheduler is not None and not graph.nodes:
             if supports_diverse_roots(self._exploration_manager):
                 graph = self._exploration_manager.generate_diverse_roots(
                     graph,
                     task_summary,
                     run_session.scenario,
-                    n_candidates=self._config.layer0_n_candidates,
-                    k_forward=self._config.layer0_k_forward,
+                    n_candidates=layer0_n_candidates,
+                    k_forward=layer0_k_forward,
                 )
             if not graph.nodes:
                 graph.nodes.append(NodeRecord(node_id="root"))
@@ -97,6 +99,7 @@ class LoopEngine:
         loops_this_call = max_loops if max_loops is not None else total_loop_limit
         target_iteration = min(total_loop_limit, start_iteration + max(0, loops_this_call))
         source_workspace = restored_workspace
+        saw_usefulness_reject = False
 
         while loop_state.iteration < target_iteration:
             iter_start = time.monotonic()
@@ -120,25 +123,24 @@ class LoopEngine:
                         source_workspace=source_workspace,
                     )
                 except Exception as exc:
+                    self._mark_iteration_failed(
+                        run_session=run_session,
+                        loop_state=loop_state,
+                        error_message=str(exc),
+                    )
                     self._archive_exception(run_session.run_id, loop_state.iteration, exc)
-                    run_session.entry_input["last_error"] = str(exc)
-                    run_session.update_status(RunStatus.FAILED)
-                    loop_state.status = RunStatus.FAILED
-                    self._run_store.create_run(run_session)
-                    self._event_store.append_event(
-                        Event(
-                            event_id=f"event-{uuid.uuid4().hex}",
-                            run_id=run_session.run_id,
-                            branch_id=run_session.active_branch_ids[0]
-                            if run_session.active_branch_ids
-                            else "main",
-                            loop_index=loop_state.iteration,
-                            step_name="record",
-                            event_type=EventType.TRACE_RECORDED,
-                            payload={"status": "FAILED", "error": str(exc)},
-                        )
+                    return loop_context
+
+                if self._is_fatal_step_result(step_result):
+                    self._mark_iteration_failed(
+                        run_session=run_session,
+                        loop_state=loop_state,
+                        error_message=step_result.error_message
+                        or self._build_fatal_result_message(step_result),
+                        failed_stage=step_result.failed_stage,
                     )
                     return loop_context
+                saw_usefulness_reject = saw_usefulness_reject or self._is_usefulness_rejected(step_result)
 
                 node = NodeRecord(
                     node_id=step_result.experiment.node_id,
@@ -151,12 +153,16 @@ class LoopEngine:
                     artifact_id=step_result.artifact_id,
                     score_id=step_result.score.score_id,
                 )
+                node.score = self._continuation_score(step_result)
                 graph = self._exploration_manager.register_node(graph, node)
                 pruned_graph = self._exploration_manager.prune_branches(graph)
                 if isinstance(pruned_graph, ExplorationGraph):
                     graph = pruned_graph
             else:
-                for branch_index in range(self._config.branches_per_iteration):
+                branches_per_iteration = self._effective_branches_per_iteration(run_session)
+                successful_branches = 0
+                failed_branches = 0
+                for branch_index in range(branches_per_iteration):
                     selected_node_id = self._scheduler.select_node(graph)
                     if selected_node_id is None:
                         break
@@ -178,27 +184,23 @@ class LoopEngine:
                             source_workspace=branch_source_workspace,
                         )
                     except Exception as exc:
+                        failed_branches += 1
                         self._archive_exception(run_session.run_id, loop_state.iteration, exc)
-                        if self._config.branches_per_iteration <= 1:
-                            run_session.entry_input["last_error"] = str(exc)
-                            run_session.update_status(RunStatus.FAILED)
-                            loop_state.status = RunStatus.FAILED
-                            self._run_store.create_run(run_session)
-                            self._event_store.append_event(
-                                Event(
-                                    event_id=f"event-{uuid.uuid4().hex}",
-                                    run_id=run_session.run_id,
-                                    branch_id=run_session.active_branch_ids[0]
-                                    if run_session.active_branch_ids
-                                    else "main",
-                                    loop_index=loop_state.iteration,
-                                    step_name="record",
-                                    event_type=EventType.TRACE_RECORDED,
-                                    payload={"status": "FAILED", "error": str(exc)},
-                                )
+                        if branches_per_iteration <= 1:
+                            self._mark_iteration_failed(
+                                run_session=run_session,
+                                loop_state=loop_state,
+                                error_message=str(exc),
                             )
                             return loop_context
                         continue
+
+                    if self._is_fatal_step_result(step_result):
+                        failed_branches += 1
+                        continue
+
+                    saw_usefulness_reject = saw_usefulness_reject or self._is_usefulness_rejected(step_result)
+                    successful_branches += 1
 
                     node = NodeRecord(
                         node_id=step_result.experiment.node_id,
@@ -211,7 +213,8 @@ class LoopEngine:
                         artifact_id=step_result.artifact_id,
                         score_id=step_result.score.score_id,
                     )
-                    node.score = step_result.score.value
+                    useful_decision = self._positive_continuation_decision(step_result)
+                    node.score = self._continuation_score(step_result)
                     graph = self._exploration_manager.register_node(graph, node)
                     pruned_graph = self._exploration_manager.prune_branches(graph)
                     if isinstance(pruned_graph, ExplorationGraph):
@@ -219,9 +222,17 @@ class LoopEngine:
                     self._exploration_manager.observe_feedback(
                         graph,
                         node.node_id,
-                        score=step_result.score.value,
-                        decision=step_result.feedback.decision,
+                        score=self._continuation_score(step_result),
+                        decision=useful_decision,
                     )
+
+                if failed_branches > 0 and successful_branches == 0:
+                    self._mark_iteration_failed(
+                        run_session=run_session,
+                        loop_state=loop_state,
+                        error_message="all branches failed in iteration",
+                    )
+                    return loop_context
 
             source_workspace = None
             iter_elapsed = time.monotonic() - iter_start
@@ -242,14 +253,144 @@ class LoopEngine:
             if merged is not None:
                 loop_context.merged_result = merged
 
-        if loop_state.iteration >= total_loop_limit:
+        fail_on_usefulness_reject = self._is_real_provider_run(run_session)
+        if loop_state.iteration >= total_loop_limit and not (fail_on_usefulness_reject and saw_usefulness_reject):
             run_session.update_status(RunStatus.COMPLETED)
             loop_state.status = RunStatus.COMPLETED
+        elif loop_state.iteration >= total_loop_limit and fail_on_usefulness_reject and saw_usefulness_reject:
+            run_session.update_status(RunStatus.FAILED)
+            loop_state.status = RunStatus.FAILED
+            run_session.entry_input["last_error"] = "run completed loops but usefulness gate rejected output"
         else:
             run_session.update_status(RunStatus.RUNNING)
             loop_state.status = RunStatus.RUNNING
         self._run_store.create_run(run_session)
         return loop_context
+
+    def _is_fatal_step_result(self, step_result) -> bool:
+        step_state = getattr(step_result, "step_state", None)
+        if step_state == StepState.FAILED:
+            return True
+        outcome = getattr(step_result, "outcome", None)
+        if outcome is not None:
+            process_succeeded = getattr(outcome, "process_succeeded", None)
+            if process_succeeded is False:
+                return True
+            if process_succeeded is True:
+                artifacts_verified = getattr(outcome, "artifacts_verified", None)
+                if artifacts_verified is False:
+                    return True
+        return False
+
+    def _is_usefulness_rejected(self, step_result) -> bool:
+        outcome = getattr(step_result, "outcome", None)
+        if outcome is None:
+            return False
+        usefulness_eligible = getattr(outcome, "usefulness_eligible", None)
+        return usefulness_eligible is False
+
+    def _runtime_snapshot(self, run_session: RunSession) -> Dict[str, Any]:
+        runtime_snapshot = run_session.config_snapshot.get("runtime")
+        if isinstance(runtime_snapshot, dict):
+            return runtime_snapshot
+        return {}
+
+    def _is_real_provider_run(self, run_session: RunSession) -> bool:
+        return bool(self._runtime_snapshot(run_session).get("uses_real_llm_provider"))
+
+    def _has_guardrail_warning(self, run_session: RunSession, field_name: str) -> bool:
+        warnings = self._runtime_snapshot(run_session).get("guardrail_warnings")
+        if not isinstance(warnings, list):
+            return False
+        token = f"{field_name}="
+        return any(isinstance(item, str) and token in item for item in warnings)
+
+    def _safe_profile_value(self, run_session: RunSession, field_name: str, fallback: int) -> int:
+        safe_profile = self._runtime_snapshot(run_session).get("real_provider_safe_profile")
+        if not isinstance(safe_profile, dict):
+            return fallback
+        value = safe_profile.get(field_name)
+        if isinstance(value, int) and value > 0:
+            return value
+        return fallback
+
+    def _effective_layer0_width(self, run_session: RunSession) -> tuple[int, int]:
+        n_candidates = max(1, int(self._config.layer0_n_candidates))
+        k_forward = max(1, int(self._config.layer0_k_forward))
+        if not self._is_real_provider_run(run_session):
+            return n_candidates, min(k_forward, n_candidates)
+
+        if not self._has_guardrail_warning(run_session, "layer0_n_candidates"):
+            n_candidates = min(
+                n_candidates,
+                self._safe_profile_value(run_session, "layer0_n_candidates", fallback=1),
+            )
+        if not self._has_guardrail_warning(run_session, "layer0_k_forward"):
+            k_forward = min(
+                k_forward,
+                self._safe_profile_value(run_session, "layer0_k_forward", fallback=1),
+            )
+        return n_candidates, min(k_forward, n_candidates)
+
+    def _effective_branches_per_iteration(self, run_session: RunSession) -> int:
+        branches = max(1, int(self._config.branches_per_iteration))
+        if self._is_real_provider_run(run_session):
+            return 1
+        return branches
+
+    def _positive_continuation_decision(self, step_result) -> bool:
+        outcome = getattr(step_result, "outcome", None)
+        if outcome is not None:
+            return bool(getattr(outcome, "usefulness_eligible", False))
+        feedback = getattr(step_result, "feedback", None)
+        if feedback is None:
+            return False
+        return bool(getattr(feedback, "decision", False))
+
+    def _continuation_score(self, step_result) -> Optional[float]:
+        if not self._positive_continuation_decision(step_result):
+            return None
+        score = getattr(step_result, "score", None)
+        if score is None:
+            return None
+        value = getattr(score, "value", None)
+        if isinstance(value, (float, int)):
+            return float(value)
+        return None
+
+    def _build_fatal_result_message(self, step_result) -> str:
+        outcome = getattr(step_result, "outcome", None)
+        if outcome is None:
+            return "iteration failed"
+        return (
+            "fatal step result: "
+            f"process_status={outcome.process_status.value}, "
+            f"artifact_status={outcome.artifact_status.value}, "
+            f"usefulness_status={outcome.usefulness_status.value}"
+        )
+
+    def _mark_iteration_failed(
+        self,
+        run_session: RunSession,
+        loop_state: LoopState,
+        error_message: str,
+        failed_stage: Optional[str] = None,
+    ) -> None:
+        run_session.entry_input["last_error"] = error_message
+        run_session.update_status(RunStatus.FAILED)
+        loop_state.status = RunStatus.FAILED
+        self._run_store.create_run(run_session)
+        self._event_store.append_event(
+            Event(
+                event_id=f"event-{uuid.uuid4().hex}",
+                run_id=run_session.run_id,
+                branch_id=run_session.active_branch_ids[0] if run_session.active_branch_ids else "main",
+                loop_index=loop_state.iteration,
+                step_name="record",
+                event_type=EventType.TRACE_RECORDED,
+                payload={"status": "FAILED", "error": error_message, "failed_stage": failed_stage},
+            )
+        )
 
     def _archive_exception(self, run_id: str, loop_index: int, exc: Exception) -> None:
         archive_dir = Path(self._config.exception_archive_root) / run_id / "exceptions"

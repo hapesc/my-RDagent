@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -11,6 +12,7 @@ from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
 from core.storage.interfaces import EventMetadataStore
 from data_models import (
+    ExecutionOutcomeContract,
     Event,
     EventType,
     ExperimentNode,
@@ -23,7 +25,7 @@ from data_models import (
     StepState,
 )
 from evaluation_service import EvaluationService
-from plugins.contracts import PluginBundle
+from plugins.contracts import CommonUsefulnessGate, PluginBundle
 from service_contracts import StepOverrideConfig, resolve_step_override_config
 
 from .costeer import CoSTEEREvolver
@@ -38,11 +40,24 @@ class StepExecutionResult:
     artifact_id: str
     score: Score
     feedback: FeedbackRecord
+    outcome: Optional[ExecutionOutcomeContract] = None
+    step_state: StepState = StepState.RECORDED
+    failed_stage: Optional[str] = None
+    error_message: Optional[str] = None
     checkpoint_ids: List[str] = field(default_factory=list)
 
 
 class StepExecutor:
     """Executes propose->experiment->coding->running->feedback->record phases."""
+
+    _NEGATIVE_FEEDBACK_MARKERS = (
+        "synthetic",
+        "placeholder",
+        "template-only",
+        "preventing real assessment",
+        "not useful",
+        "insufficient",
+    )
 
     def __init__(
         self,
@@ -63,6 +78,7 @@ class StepExecutor:
         self._costeer_max_rounds = costeer_max_rounds
         self._llm_adapter = llm_adapter
         self._memory_service = memory_service
+        self._usefulness_gate = CommonUsefulnessGate()
 
     def execute_iteration(
         self,
@@ -89,6 +105,9 @@ class StepExecutor:
         )
         checkpoint_ids: List[str] = []
 
+        def elapsed_ms(started_at: float) -> int:
+            return int((time.perf_counter() - started_at) * 1000)
+
         def checkpoint(step_name: str) -> None:
             checkpoint_id = f"loop-{loop_state.iteration:04d}-{step_name}"
             self._workspace_manager.create_checkpoint(run_session.run_id, workspace_path, checkpoint_id)
@@ -104,6 +123,7 @@ class StepExecutor:
             },
         )
 
+        proposal_started_at = time.perf_counter()
         proposal = self._plugin_bundle.proposal_engine.propose(
             task_summary=task_summary,
             context=context_pack,
@@ -111,6 +131,7 @@ class StepExecutor:
             plan=plan,
             scenario=scenario_context,
         )
+        proposal_latency_ms = elapsed_ms(proposal_started_at)
         self._workspace_manager.inject_files(
             workspace_path,
             {f"trace/proposal_{loop_state.iteration}.txt": proposal.summary},
@@ -126,15 +147,18 @@ class StepExecutor:
                 "proposal_id": proposal.proposal_id,
                 "constraints": proposal.constraints,
                 "model_config": effective_step_config.proposal.to_dict(),
+                "step_latency_ms": proposal_latency_ms,
             },
         )
 
+        experiment_started_at = time.perf_counter()
         experiment = self._plugin_bundle.experiment_generator.generate(
             proposal=proposal,
             run_session=run_session,
             loop_state=loop_state,
             parent_ids=resolved_parent_ids,
         )
+        experiment_latency_ms = elapsed_ms(experiment_started_at)
         experiment.branch_id = branch_id
         experiment.parent_node_id = resolved_parent_ids[0] if resolved_parent_ids else None
         experiment.workspace_ref = workspace_path
@@ -149,9 +173,14 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="experiment",
             event_type=EventType.EXPERIMENT_GENERATED,
-            payload={"node_id": experiment.node_id, "workspace_ref": experiment.workspace_ref},
+            payload={
+                "node_id": experiment.node_id,
+                "workspace_ref": experiment.workspace_ref,
+                "step_latency_ms": experiment_latency_ms,
+            },
         )
 
+        coding_started_at = time.perf_counter()
         if self._costeer_max_rounds > 1:
             evolver = CoSTEEREvolver(
                 coder=self._plugin_bundle.coder,
@@ -168,6 +197,7 @@ class StepExecutor:
                 proposal=proposal,
                 scenario=scenario_context,
             )
+        coding_latency_ms = elapsed_ms(coding_started_at)
         self._workspace_manager.inject_files(
             workspace_path,
             {
@@ -188,10 +218,18 @@ class StepExecutor:
                 "artifact_id": artifact.artifact_id,
                 "description": artifact.description,
                 "model_config": effective_step_config.coding.to_dict(),
+                "step_latency_ms": coding_latency_ms,
             },
         )
 
+        running_started_at = time.perf_counter()
         execution_result = self._plugin_bundle.runner.run(artifact, scenario_context)
+        execution_outcome, gate_signal = self._usefulness_gate.evaluate(
+            execution_result,
+            scenario_context,
+            scene_validator=self._plugin_bundle.scene_usefulness_validator,
+        )
+        running_latency_ms = elapsed_ms(running_started_at)
         self._workspace_manager.inject_files(
             workspace_path,
             {f"trace/execution_{loop_state.iteration}.txt": execution_result.logs_ref},
@@ -206,17 +244,30 @@ class StepExecutor:
             payload={
                 "exit_code": execution_result.exit_code,
                 "timeout_sec": effective_step_config.running.timeout_sec,
+                "process_status": execution_outcome.process_status.value,
+                "artifact_status": execution_outcome.artifact_status.value,
+                "usefulness_status": execution_outcome.usefulness_status.value,
+                "usefulness_gate_stage": gate_signal.stage,
+                "usefulness_gate_reason": gate_signal.reason,
+                "step_latency_ms": running_latency_ms,
             },
         )
 
         eval_result = self._evaluation_service.evaluate_run(execution_result)
         if isinstance(experiment.hypothesis, dict):
             experiment.hypothesis["_feedback_model_config"] = effective_step_config.feedback.to_dict()
+        feedback_started_at = time.perf_counter()
         feedback = self._plugin_bundle.feedback_analyzer.summarize(
             experiment=experiment,
             result=execution_result,
             score=eval_result.score,
         )
+        feedback.decision = feedback.decision and execution_outcome.usefulness_eligible
+        feedback.acceptable = feedback.acceptable and execution_outcome.usefulness_eligible
+        reason_lower = (feedback.reason or "").lower()
+        if any(marker in reason_lower for marker in self._NEGATIVE_FEEDBACK_MARKERS):
+            feedback.acceptable = False
+        feedback_latency_ms = elapsed_ms(feedback_started_at)
         self._workspace_manager.inject_files(
             workspace_path,
             {f"trace/feedback_{loop_state.iteration}.txt": feedback.reason},
@@ -231,13 +282,22 @@ class StepExecutor:
             payload={
                 "feedback_id": feedback.feedback_id,
                 "acceptable": feedback.acceptable,
+                "decision": feedback.decision,
                 "reason": feedback.reason,
                 "model_config": effective_step_config.feedback.to_dict(),
+                "usefulness_status": execution_outcome.usefulness_status.value,
+                "usefulness_gate_stage": gate_signal.stage,
+                "usefulness_gate_reason": gate_signal.reason,
+                "step_latency_ms": feedback_latency_ms,
             },
         )
 
         checkpoint("record")
-        experiment.step_state = StepState.RECORDED
+        terminal_step_state = (
+            StepState.RECORDED if execution_outcome.process_succeeded else StepState.FAILED
+        )
+        failed_stage = None if terminal_step_state == StepState.RECORDED else "running"
+        experiment.step_state = terminal_step_state
         experiment.result_ref = execution_result.artifacts_ref
         experiment.feedback_ref = feedback.feedback_id
         if self._branch_store is not None:
@@ -248,7 +308,12 @@ class StepExecutor:
             loop_index=loop_state.iteration,
             step_name="record",
             event_type=EventType.TRACE_RECORDED,
-            payload={"proposal_id": proposal.proposal_id, "score_id": eval_result.score.score_id},
+            payload={
+                "proposal_id": proposal.proposal_id,
+                "score_id": eval_result.score.score_id,
+                "status": terminal_step_state.value,
+                "failed_stage": failed_stage,
+            },
         )
 
         return StepExecutionResult(
@@ -257,6 +322,9 @@ class StepExecutor:
             artifact_id=artifact.artifact_id,
             score=eval_result.score,
             feedback=feedback,
+            outcome=execution_outcome,
+            step_state=terminal_step_state,
+            failed_stage=failed_stage,
             checkpoint_ids=checkpoint_ids,
         )
 

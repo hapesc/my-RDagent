@@ -69,6 +69,72 @@ class WorkspaceManagerTests(unittest.TestCase):
             manager.restore_checkpoint(run_id=run_id, checkpoint_id="cp-1", workspace_path=workspace_path)
             self.assertEqual((Path(workspace_path) / "state.txt").read_text(encoding="utf-8"), "stable")
 
+    def test_recovery_failure_bubbles_when_checkpoint_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_root = Path(tmpdir) / "checkpoints"
+            workspace_root = Path(tmpdir) / "workspaces"
+            manager = WorkspaceManager(
+                WorkspaceManagerConfig(root_dir=str(workspace_root)),
+                checkpoint_store=FileCheckpointStore(CheckpointStoreConfig(root_dir=str(checkpoint_root))),
+            )
+
+            workspace_path = manager.create_workspace(run_id="run-3", workspace_id="ws-1")
+            manager.inject_files(workspace_path, {"state.txt": "baseline"})
+
+            def failing_operation(path: Path) -> None:
+                (path / "state.txt").write_text("corrupted", encoding="utf-8")
+                raise RuntimeError("trigger restore")
+
+            with self.assertRaises(FileNotFoundError):
+                manager.execute_with_recovery(
+                    run_id="run-3",
+                    checkpoint_id="missing-checkpoint",
+                    workspace_path=workspace_path,
+                    operation=failing_operation,
+                )
+
+    def test_restore_missing_checkpoint_keeps_workspace_intact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_root = Path(tmpdir) / "checkpoints"
+            workspace_root = Path(tmpdir) / "workspaces"
+            manager = WorkspaceManager(
+                WorkspaceManagerConfig(root_dir=str(workspace_root)),
+                checkpoint_store=FileCheckpointStore(CheckpointStoreConfig(root_dir=str(checkpoint_root))),
+            )
+
+            workspace_path = manager.create_workspace(run_id="run-safe-missing", workspace_id="ws-1")
+            manager.inject_files(workspace_path, {"state.txt": "stable"})
+
+            with self.assertRaises(FileNotFoundError):
+                manager.restore_checkpoint(
+                    run_id="run-safe-missing",
+                    checkpoint_id="cp-missing",
+                    workspace_path=workspace_path,
+                )
+            self.assertEqual((Path(workspace_path) / "state.txt").read_text(encoding="utf-8"), "stable")
+
+    def test_restore_corrupt_checkpoint_is_safe_and_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_root = Path(tmpdir) / "checkpoints"
+            workspace_root = Path(tmpdir) / "workspaces"
+            checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(checkpoint_root)))
+            manager = WorkspaceManager(
+                WorkspaceManagerConfig(root_dir=str(workspace_root)),
+                checkpoint_store=checkpoint_store,
+            )
+
+            workspace_path = manager.create_workspace(run_id="run-safe-corrupt", workspace_id="ws-1")
+            manager.inject_files(workspace_path, {"state.txt": "stable"})
+            checkpoint_store.save_checkpoint("run-safe-corrupt", "cp-corrupt", b"not-a-zip")
+
+            with self.assertRaises(ValueError):
+                manager.restore_checkpoint("run-safe-corrupt", "cp-corrupt", workspace_path)
+            self.assertEqual((Path(workspace_path) / "state.txt").read_text(encoding="utf-8"), "stable")
+
+            with self.assertRaises(ValueError):
+                manager.restore_checkpoint("run-safe-corrupt", "cp-corrupt", workspace_path)
+            self.assertEqual((Path(workspace_path) / "state.txt").read_text(encoding="utf-8"), "stable")
+
     def test_inject_rejects_path_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = WorkspaceManager(

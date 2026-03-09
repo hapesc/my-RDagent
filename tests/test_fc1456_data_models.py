@@ -2,7 +2,14 @@
 
 import pytest
 
-from data_models import BudgetLedger, ContextPack, ExecutionResult
+from data_models import (
+    ArtifactVerificationStatus,
+    BudgetLedger,
+    ContextPack,
+    ExecutionResult,
+    ProcessExecutionStatus,
+    UsefulnessEligibilityStatus,
+)
 
 
 class TestBudgetLedger:
@@ -76,3 +83,39 @@ class TestExecutionResult:
         )
         assert result.duration_sec == 12.5
         assert result.timed_out is True
+
+    def test_execution_result_contract_rejects_false_success(self):
+        result = ExecutionResult(
+            run_id="r-false-success",
+            exit_code=0,
+            logs_ref="ok",
+            artifacts_ref="[]",
+        )
+        outcome = result.resolve_outcome()
+        assert outcome.process_status == ProcessExecutionStatus.SUCCESS
+        assert outcome.artifact_status == ArtifactVerificationStatus.MISSING_REQUIRED
+        assert outcome.usefulness_status == UsefulnessEligibilityStatus.INELIGIBLE
+
+    def test_execution_result_contract_accepts_real_success(self):
+        result = ExecutionResult(
+            run_id="r-real-success",
+            exit_code=0,
+            logs_ref="ok",
+            artifacts_ref='["metrics.json"]',
+        )
+        outcome = result.resolve_outcome()
+        assert outcome.process_status == ProcessExecutionStatus.SUCCESS
+        assert outcome.artifact_status == ArtifactVerificationStatus.VERIFIED
+        assert outcome.usefulness_status == UsefulnessEligibilityStatus.ELIGIBLE
+
+    def test_execution_result_contract_rejects_malformed_manifest(self):
+        result = ExecutionResult(
+            run_id="r-malformed",
+            exit_code=0,
+            logs_ref="ok",
+            artifacts_ref="not-json",
+        )
+        outcome = result.resolve_outcome()
+        assert outcome.process_status == ProcessExecutionStatus.SUCCESS
+        assert outcome.artifact_status == ArtifactVerificationStatus.MALFORMED_REQUIRED
+        assert outcome.usefulness_status == UsefulnessEligibilityStatus.INELIGIBLE

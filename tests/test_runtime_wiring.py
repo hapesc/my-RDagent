@@ -8,11 +8,18 @@ import sys
 from unittest.mock import MagicMock, patch
 
 from app.config import AppConfig, load_config
-from app.runtime import RuntimeContext, build_run_service, build_runtime
+from app.runtime import (
+    RuntimeContext,
+    build_real_provider_smoke_step_overrides,
+    build_run_service,
+    build_runtime,
+    resolve_scenario_runtime_profile,
+)
 from core.reasoning.virtual_eval import VirtualEvaluator
 from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
 from llm import LLMAdapter
+from service_contracts import StepOverrideConfig
 
 
 class TestConfigDefaults(unittest.TestCase):
@@ -37,6 +44,21 @@ class TestConfigDefaults(unittest.TestCase):
         """Test layer0_k_forward has default value of 2."""
         config = load_config({})
         self.assertEqual(config.layer0_k_forward, 2)
+
+    def test_real_provider_defaults_switch_to_conservative_profile(self):
+        config = load_config(
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            }
+        )
+
+        self.assertTrue(config.uses_real_llm_provider)
+        self.assertEqual(config.layer0_n_candidates, 1)
+        self.assertEqual(config.layer0_k_forward, 1)
+        self.assertEqual(config.costeer_max_rounds, 1)
+        self.assertEqual(config.sandbox_timeout_sec, 120)
+        self.assertEqual(config.real_provider_warnings, ())
 
     def test_config_mcts_exploration_weight_still_exists(self):
         """Test backward compat: mcts_exploration_weight field still exists."""
@@ -80,6 +102,86 @@ class TestConfigEnvVars(unittest.TestCase):
         self.assertEqual(config.mcts_reward_mode, "decision_based")
         self.assertEqual(config.layer0_n_candidates, 7)
         self.assertEqual(config.layer0_k_forward, 4)
+
+    def test_real_provider_hard_limit_rejects_unsafe_layer0_override(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "real provider guardrail violation: layer0_n_candidates=4 exceeds hard limit 2",
+        ):
+            load_config(
+                {
+                    "RD_AGENT_LLM_PROVIDER": "litellm",
+                    "RD_AGENT_LLM_API_KEY": "test-key",
+                    "RD_AGENT_LAYER0_N_CANDIDATES": "4",
+                }
+            )
+
+    def test_real_provider_warns_on_non_conservative_but_allowed_settings(self):
+        config = load_config(
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
+                "AGENTRD_SANDBOX_TIMEOUT_SEC": "240",
+            }
+        )
+
+        self.assertEqual(
+            config.real_provider_warnings,
+            (
+                "real provider warning: costeer_max_rounds=2 exceeds conservative profile 1",
+                "real provider warning: sandbox_timeout_sec=240 exceeds conservative profile 120",
+            ),
+        )
+
+    def test_resolve_scenario_runtime_profile_warns_for_allowed_step_timeout_override(self):
+        config = load_config(
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            }
+        )
+        manifest = build_runtime().plugin_registry.get_manifest("data_science")
+        assert manifest is not None
+        defaults = build_real_provider_smoke_step_overrides(
+            config,
+            manifest.default_step_overrides,
+        )
+
+        profile = resolve_scenario_runtime_profile(
+            config,
+            defaults,
+            StepOverrideConfig.from_dict({"running": {"timeout_sec": 240}}),
+        )
+
+        self.assertIn(
+            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            profile.guardrail_warnings,
+        )
+
+    def test_resolve_scenario_runtime_profile_rejects_dangerous_step_retry_override(self):
+        config = load_config(
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            }
+        )
+        manifest = build_runtime().plugin_registry.get_manifest("data_science")
+        assert manifest is not None
+        defaults = build_real_provider_smoke_step_overrides(
+            config,
+            manifest.default_step_overrides,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "real provider guardrail violation: proposal.max_retries=2 exceeds hard limit 1",
+        ):
+            resolve_scenario_runtime_profile(
+                config,
+                defaults,
+                StepOverrideConfig.from_dict({"proposal": {"max_retries": 2}}),
+            )
 
 
 class TestRuntimeWiring(unittest.TestCase):
@@ -351,6 +453,31 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertIs(getattr(synthetic_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
             self.assertIs(getattr(synthetic_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
 
+    def test_build_runtime_uses_real_provider_safe_step_defaults(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-real-safe",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-real-safe",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-real-safe/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-real-safe/meta.db",
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            manifest = runtime.plugin_registry.get_manifest("data_science")
+
+            assert manifest is not None
+            self.assertEqual(runtime.config.sandbox_timeout_sec, 120)
+            self.assertEqual(manifest.default_step_overrides.proposal.provider, "litellm")
+            self.assertEqual(manifest.default_step_overrides.proposal.model, runtime.config.llm_model)
+            self.assertEqual(manifest.default_step_overrides.proposal.max_retries, 1)
+            self.assertEqual(manifest.default_step_overrides.coding.max_retries, 1)
+            self.assertEqual(manifest.default_step_overrides.feedback.max_retries, 1)
+            self.assertEqual(manifest.default_step_overrides.running.timeout_sec, 120)
+
     def test_build_runtime_injects_virtual_evaluator_into_exploration_manager(self):
         with patch.dict(
             "os.environ",
@@ -367,6 +494,35 @@ class TestRuntimeWiring(unittest.TestCase):
             runtime = build_runtime()
 
             self.assertIs(runtime.exploration_manager._virtual_evaluator, runtime.virtual_evaluator)
+
+    def test_build_real_provider_smoke_step_overrides_enforces_conservative_preset(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-smoke-profile",
+                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-smoke-profile",
+                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-smoke-profile/events.jsonl",
+                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-smoke-profile/meta.db",
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
+                "AGENTRD_SANDBOX_TIMEOUT_SEC": "240",
+            },
+            clear=False,
+        ):
+            runtime = build_runtime()
+            manifest = runtime.plugin_registry.get_manifest("synthetic_research")
+
+            assert manifest is not None
+            smoke_overrides = build_real_provider_smoke_step_overrides(
+                runtime.config,
+                manifest.default_step_overrides,
+            )
+
+            self.assertEqual(smoke_overrides.proposal.max_retries, 1)
+            self.assertEqual(smoke_overrides.coding.max_retries, 1)
+            self.assertEqual(smoke_overrides.feedback.max_retries, 1)
+            self.assertEqual(smoke_overrides.running.timeout_sec, 120)
 
     def test_import_smoke_for_runtime_cycle_breaks(self):
         result = subprocess.run(

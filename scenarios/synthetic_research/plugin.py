@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -40,6 +41,7 @@ from plugins.contracts import (
     Runner,
     ScenarioContext,
     ScenarioPlugin,
+    UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
 
@@ -280,12 +282,27 @@ class SyntheticResearchRunner(Runner):
         topics = scenario.input_payload.get("reference_topics", [])
         if not isinstance(topics, list):
             topics = []
+        normalized_task = str(scenario.task_summary or "synthetic research task").strip()
+        primary_topic = str(topics[0]).strip() if topics else "core objective"
+        secondary_topic = str(topics[1]).strip() if len(topics) > 1 else "baseline behavior"
+        synthesized_findings = [
+            (
+                f"Compared to {secondary_topic}, {primary_topic} appears most relevant to {normalized_task} "
+                "because it aligns with the requested scope and constraints."
+            ),
+            (
+                f"A practical trade-off is to prioritize {primary_topic} evidence first, then expand to "
+                f"{secondary_topic} to reduce coverage risk while keeping iteration cost bounded."
+            ),
+        ]
         payload = {
             "scenario": scenario.scenario_name,
             "task_summary": scenario.task_summary,
             "topic_count": len(topics),
             "topics": topics,
             "artifact_id": artifact.artifact_id,
+            "synthesized_summary": synthesized_findings[0],
+            "synthesized_findings": synthesized_findings,
         }
         summary_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
         return ExecutionResult(
@@ -350,6 +367,144 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
         )
 
 
+def _validate_synthetic_research_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]:
+    payload = gate_input.structured_payload
+    if not isinstance(payload, dict):
+        return "missing structured payload"
+    required_fields = ("task_summary", "artifact_id", "topic_count")
+    for field in required_fields:
+        if field not in payload:
+            return f"missing key field: {field}"
+    task_summary = str(payload.get("task_summary", "")).strip().lower()
+    if task_summary in {"", "todo", "tbd", "placeholder"}:
+        return "template-only task_summary"
+    topic_count = payload.get("topic_count")
+    if not isinstance(topic_count, int):
+        return "topic_count must be integer"
+    if topic_count < 0:
+        return "topic_count cannot be negative"
+    synthesized_summary = str(payload.get("synthesized_summary", "")).strip()
+    if not synthesized_summary:
+        return "missing synthesized summary"
+    lowered_summary = synthesized_summary.lower()
+    if _is_generic_synthetic_text(lowered_summary):
+        return "generic synthesized summary"
+    if _is_prompt_echo(lowered_summary, task_summary):
+        return "prompt-echo synthesized summary"
+
+    findings = payload.get("synthesized_findings")
+    if not isinstance(findings, list):
+        return "missing synthesized findings"
+    normalized_findings = [str(item).strip().lower() for item in findings if str(item).strip()]
+    if not normalized_findings:
+        return "empty synthesized findings"
+    if all(_is_generic_synthetic_text(item) for item in normalized_findings):
+        return "template-only synthesized findings"
+    if all(_is_prompt_echo(item, task_summary) for item in normalized_findings):
+        return "prompt-echo synthesized findings"
+    if not _has_task_specific_synthesis(task_summary, payload, normalized_findings):
+        return "missing task-specific synthesis"
+    return None
+
+
+_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "this",
+    "to",
+    "we",
+    "with",
+}
+
+_GENERIC_SNIPPETS = {
+    "no findings",
+    "no meaningful findings",
+    "placeholder",
+    "template",
+    "todo",
+    "tbd",
+    "n/a",
+}
+
+_SYNTHESIS_MARKERS = (
+    "because",
+    "therefore",
+    "however",
+    "trade-off",
+    "tradeoff",
+    "compared",
+    "evidence",
+    "risk",
+    "impact",
+    "suggests",
+    "indicates",
+)
+
+
+def _is_generic_synthetic_text(text: str) -> bool:
+    if not text.strip():
+        return True
+    compact = " ".join(text.split())
+    if compact in {"summary", "synthesized summary", "findings", "research findings"}:
+        return True
+    return any(token in compact for token in _GENERIC_SNIPPETS)
+
+
+def _is_prompt_echo(candidate: str, normalized_task_summary: str) -> bool:
+    cleaned = " ".join(candidate.split())
+    if not cleaned:
+        return True
+    if cleaned == normalized_task_summary:
+        return True
+    if normalized_task_summary and cleaned in {
+        f"task: {normalized_task_summary}",
+        f"task summary: {normalized_task_summary}",
+        f"research task: {normalized_task_summary}",
+    }:
+        return True
+    return False
+
+
+def _tokenize_significant(text: str) -> set[str]:
+    tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
+    return {token for token in tokens if len(token) >= 4 and token not in _STOPWORDS}
+
+
+def _has_task_specific_synthesis(
+    normalized_task_summary: str,
+    payload: Dict[str, Any],
+    normalized_findings: List[str],
+) -> bool:
+    topic_tokens: set[str] = set()
+    topics = payload.get("topics")
+    if isinstance(topics, list):
+        for topic in topics:
+            topic_tokens.update(_tokenize_significant(str(topic)))
+    task_tokens = _tokenize_significant(normalized_task_summary)
+    target_tokens = task_tokens.union(topic_tokens)
+    findings_text = " ".join(normalized_findings)
+    finding_tokens = _tokenize_significant(findings_text)
+    if target_tokens and not (target_tokens & finding_tokens):
+        return False
+    return any(marker in findings_text for marker in _SYNTHESIS_MARKERS)
+
+
 def build_synthetic_research_bundle(
     config: Optional[SyntheticResearchConfig] = None,
     llm_adapter: Optional[LLMAdapter] = None,
@@ -372,5 +527,6 @@ def build_synthetic_research_bundle(
         coder=SyntheticResearchCoder(llm_adapter=adapter),
         runner=SyntheticResearchRunner(),
         feedback_analyzer=SyntheticResearchFeedbackAnalyzer(llm_adapter=adapter),
+        scene_usefulness_validator=_validate_synthetic_research_usefulness,
         default_step_overrides=plugin_config.default_step_overrides,
     )

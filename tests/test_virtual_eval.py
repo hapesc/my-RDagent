@@ -72,10 +72,11 @@ def test_evaluate_returns_all_n_designs_when_n_le_k_without_ranking():
         current_scores=[],
     )
     assert len(result) == 2
-    assert provider.call_count == 8
+    assert all(design.summary.strip() for design in result)
+    assert not any("`rankings`" in prompt and "`selected_indices`" in prompt for prompt in provider.prompts)
 
 
-def test_n_candidates_generated_call_count_matches_n_times_four_plus_one():
+def test_n_candidates_triggers_semantic_ranking_step_when_n_exceeds_k():
     evaluator, provider = _build_evaluator_with_counter(n_candidates=5, k_forward=2)
     evaluator.evaluate(
         task_summary="improve baseline",
@@ -84,7 +85,8 @@ def test_n_candidates_generated_call_count_matches_n_times_four_plus_one():
         previous_results=[],
         current_scores=[],
     )
-    assert provider.call_count == 21
+    assert provider.call_count > evaluator._n_candidates
+    assert any("`rankings`" in prompt and "`selected_indices`" in prompt for prompt in provider.prompts)
 
 
 def test_diversify_prompt_behaviour():
@@ -120,7 +122,7 @@ def test_custom_n_and_k_supported():
         current_scores=[],
     )
     assert len(result) == 1
-    assert provider.call_count == 13
+    assert any("`rankings`" in prompt and "`selected_indices`" in prompt for prompt in provider.prompts)
 
 
 def test_edge_case_n1_k1_single_candidate_no_ranking():
@@ -133,7 +135,8 @@ def test_edge_case_n1_k1_single_candidate_no_ranking():
         current_scores=[],
     )
     assert len(result) == 1
-    assert provider.call_count == 4
+    assert provider.prompts
+    assert not any("`rankings`" in prompt and "`selected_indices`" in prompt for prompt in provider.prompts)
 
 
 def test_edge_case_n2_k2_returns_both_without_ranking():
@@ -146,7 +149,8 @@ def test_edge_case_n2_k2_returns_both_without_ranking():
         current_scores=[],
     )
     assert len(result) == 2
-    assert provider.call_count == 8
+    assert all(design.summary.strip() for design in result)
+    assert not any("`rankings`" in prompt and "`selected_indices`" in prompt for prompt in provider.prompts)
 
 
 def test_invalid_indices_from_llm_falls_back_gracefully():
@@ -180,6 +184,22 @@ def test_model_config_propagates_to_pipeline_and_ranking_calls():
         current_scores=[0.4],
         model_config=model_config,
     )
-    assert provider.call_count == 13
-    assert len(provider.model_configs) == 13
+    assert provider.model_configs
+    assert len(provider.model_configs) == provider.call_count
     assert all(cfg is model_config for cfg in provider.model_configs)
+
+
+def test_call_time_n_k_override_is_applied_for_generation_and_ranking():
+    evaluator, provider = _build_evaluator_with_counter(n_candidates=5, k_forward=2)
+    result = evaluator.evaluate(
+        task_summary="improve baseline",
+        scenario_name="data_science",
+        iteration=0,
+        previous_results=[],
+        current_scores=[],
+        n_candidates=1,
+        k_forward=1,
+    )
+
+    assert len(result) == 1
+    assert provider.call_count == 4

@@ -53,6 +53,8 @@ class VirtualEvaluatorLike(Protocol):
         current_scores: List[float],
         evaluation_criteria: str = "feasibility, novelty, expected performance gain",
         model_config: Optional[Any] = None,
+        n_candidates: Optional[int] = None,
+        k_forward: Optional[int] = None,
     ) -> List[Any]: ...
 
 
@@ -206,6 +208,8 @@ class ExplorationManager:
             iteration=0,
             previous_results=[],
             current_scores=[],
+            n_candidates=n_candidates,
+            k_forward=k_forward,
         )
         if not designs:
             return self.register_node(graph, NodeRecord(node_id="root"))

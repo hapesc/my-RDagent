@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -444,6 +445,123 @@ class ExecutionResult:
     artifacts_ref: str
     duration_sec: float = 0.0
     timed_out: bool = False
+    artifact_manifest: Optional[Dict[str, Any]] = None
+    outcome: Optional["ExecutionOutcomeContract"] = None
+
+    def resolve_outcome(self) -> "ExecutionOutcomeContract":
+        if self.outcome is not None:
+            return self.outcome
+
+        process_status = ProcessExecutionStatus.SUCCESS
+        if self.timed_out:
+            process_status = ProcessExecutionStatus.TIMEOUT
+        elif self.exit_code != 0:
+            process_status = ProcessExecutionStatus.FAILED
+
+        manifest_paths, malformed_manifest = _resolve_artifact_manifest(
+            self.artifact_manifest,
+            self.artifacts_ref,
+        )
+        self.artifact_manifest = {"paths": manifest_paths}
+        artifact_status = ArtifactVerificationStatus.MALFORMED_REQUIRED
+        if not malformed_manifest:
+            artifact_status = (
+                ArtifactVerificationStatus.VERIFIED
+                if len(manifest_paths) > 0
+                else ArtifactVerificationStatus.MISSING_REQUIRED
+            )
+        usefulness_status = (
+            UsefulnessEligibilityStatus.ELIGIBLE
+            if process_status == ProcessExecutionStatus.SUCCESS
+            and artifact_status == ArtifactVerificationStatus.VERIFIED
+            else UsefulnessEligibilityStatus.INELIGIBLE
+        )
+
+        self.outcome = ExecutionOutcomeContract(
+            process_status=process_status,
+            artifact_status=artifact_status,
+            usefulness_status=usefulness_status,
+        )
+        return self.outcome
+
+
+class ProcessExecutionStatus(ValueEnum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    ERROR = "ERROR"
+
+
+class ArtifactVerificationStatus(ValueEnum):
+    VERIFIED = "VERIFIED"
+    MISSING_REQUIRED = "MISSING_REQUIRED"
+    MALFORMED_REQUIRED = "MALFORMED_REQUIRED"
+
+
+class UsefulnessEligibilityStatus(ValueEnum):
+    ELIGIBLE = "ELIGIBLE"
+    INELIGIBLE = "INELIGIBLE"
+
+
+@dataclass
+class ExecutionOutcomeContract:
+    process_status: ProcessExecutionStatus
+    artifact_status: ArtifactVerificationStatus
+    usefulness_status: UsefulnessEligibilityStatus
+
+    @property
+    def process_succeeded(self) -> bool:
+        return self.process_status == ProcessExecutionStatus.SUCCESS
+
+    @property
+    def artifacts_verified(self) -> bool:
+        return self.artifact_status == ArtifactVerificationStatus.VERIFIED
+
+    @property
+    def usefulness_eligible(self) -> bool:
+        return self.usefulness_status == UsefulnessEligibilityStatus.ELIGIBLE
+
+
+def _resolve_artifact_manifest(
+    manifest: Optional[Dict[str, Any]],
+    artifacts_ref: str,
+) -> Tuple[List[str], bool]:
+    if manifest is not None:
+        return _normalize_artifact_manifest(manifest)
+
+    value = (artifacts_ref or "").strip()
+    if not value:
+        return ([], False)
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return ([], True)
+
+    return _normalize_artifact_manifest(decoded)
+
+
+def _normalize_artifact_manifest(raw_manifest: Any) -> Tuple[List[str], bool]:
+    if isinstance(raw_manifest, dict):
+        if "paths" not in raw_manifest:
+            return ([], True)
+        raw_paths = raw_manifest.get("paths")
+    else:
+        raw_paths = raw_manifest
+
+    if raw_paths is None:
+        return ([], False)
+    if not isinstance(raw_paths, list):
+        return ([], True)
+
+    normalized_paths: List[str] = []
+    for item in raw_paths:
+        if not isinstance(item, str):
+            return ([], True)
+        path_value = item.strip()
+        if not path_value:
+            return ([], True)
+        normalized_paths.append(path_value)
+    return (normalized_paths, False)
 
 
 @dataclass
@@ -452,5 +570,3 @@ class EvalResult:
 
     score: Score
     report_ref: str
-
-

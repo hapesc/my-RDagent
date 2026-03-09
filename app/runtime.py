@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, ResumeManager, RunService, RunServiceConfig, StepExecutor
@@ -37,8 +37,14 @@ from scenarios import (
     default_data_science_step_overrides,
     default_synthetic_research_step_overrides,
 )
+from service_contracts import (
+    ModelSelectorConfig,
+    RunningStepConfig,
+    StepOverrideConfig,
+    resolve_step_override_config,
+)
 
-from .config import AppConfig, load_config
+from .config import REAL_PROVIDER_SAFE_PROFILE, AppConfig, load_config, validate_runtime_guardrails
 
 
 @dataclass
@@ -59,6 +65,12 @@ class RuntimeContext:
     scheduler: MCTSScheduler
     reasoning_pipeline: Optional[ReasoningPipeline] = None
     virtual_evaluator: Optional[VirtualEvaluator] = None
+
+
+@dataclass(frozen=True)
+class ScenarioRuntimeProfile:
+    effective_step_config: StepOverrideConfig
+    guardrail_warnings: Tuple[str, ...] = ()
 
 
 class _ReasoningTraceStore:
@@ -102,8 +114,98 @@ def _create_memory_service(config: AppConfig, llm_adapter: LLMAdapter) -> Memory
     return MemoryService(mem_config)
 
 
+def _effective_step_overrides(defaults: StepOverrideConfig, config: AppConfig) -> StepOverrideConfig:
+    if not config.uses_real_llm_provider:
+        return defaults
+    return StepOverrideConfig(
+        proposal=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.proposal.temperature,
+            max_tokens=defaults.proposal.max_tokens,
+            max_retries=1,
+        ),
+        coding=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.coding.temperature,
+            max_tokens=defaults.coding.max_tokens,
+            max_retries=1,
+        ),
+        running=RunningStepConfig(timeout_sec=config.sandbox_timeout_sec),
+        feedback=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.feedback.temperature,
+            max_tokens=defaults.feedback.max_tokens,
+            max_retries=1,
+        ),
+    )
+
+
+def build_real_provider_smoke_step_overrides(
+    config: AppConfig,
+    defaults: StepOverrideConfig,
+) -> StepOverrideConfig:
+    if not config.uses_real_llm_provider:
+        return defaults
+    return StepOverrideConfig(
+        proposal=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.proposal.temperature,
+            max_tokens=defaults.proposal.max_tokens,
+            max_retries=REAL_PROVIDER_SAFE_PROFILE["max_retries"],
+        ),
+        coding=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.coding.temperature,
+            max_tokens=defaults.coding.max_tokens,
+            max_retries=REAL_PROVIDER_SAFE_PROFILE["max_retries"],
+        ),
+        running=RunningStepConfig(timeout_sec=REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]),
+        feedback=ModelSelectorConfig(
+            provider=config.llm_provider,
+            model=config.llm_model,
+            temperature=defaults.feedback.temperature,
+            max_tokens=defaults.feedback.max_tokens,
+            max_retries=REAL_PROVIDER_SAFE_PROFILE["max_retries"],
+        ),
+    )
+
+
+def resolve_scenario_runtime_profile(
+    config: AppConfig,
+    defaults: StepOverrideConfig,
+    requested_step_overrides: Optional[StepOverrideConfig] = None,
+) -> ScenarioRuntimeProfile:
+    effective_step_config = resolve_step_override_config(defaults, requested_step_overrides)
+    warnings = validate_runtime_guardrails(
+        config,
+        step_max_retries=[
+            ("proposal", effective_step_config.proposal.max_retries),
+            ("coding", effective_step_config.coding.max_retries),
+            ("feedback", effective_step_config.feedback.max_retries),
+        ],
+        running_timeout_sec=effective_step_config.running.timeout_sec,
+    )
+    return ScenarioRuntimeProfile(
+        effective_step_config=effective_step_config,
+        guardrail_warnings=tuple(config.real_provider_warnings + warnings),
+    )
+
+
 def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
     config = load_config(config_path=config_path)
+    data_science_defaults = _effective_step_overrides(
+        default_data_science_step_overrides(config.sandbox_timeout_sec),
+        config,
+    )
+    synthetic_research_defaults = _effective_step_overrides(
+        default_synthetic_research_step_overrides(config.sandbox_timeout_sec),
+        config,
+    )
     llm_provider = _create_llm_provider(config)
     llm_adapter = LLMAdapter(llm_provider)
     scheduler = MCTSScheduler(
@@ -157,13 +259,11 @@ def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
                 workspace_root=config.workspace_root,
                 trace_storage_path=config.trace_storage_path,
                 allow_local_execution=config.allow_local_execution,
-                default_step_overrides=default_data_science_step_overrides(config.sandbox_timeout_sec),
+                default_step_overrides=data_science_defaults,
             ),
             SyntheticResearchConfig(
                 workspace_root=config.workspace_root,
-                default_step_overrides=default_synthetic_research_step_overrides(
-                    config.sandbox_timeout_sec
-                ),
+                default_step_overrides=synthetic_research_defaults,
             ),
             llm_adapter=llm_adapter,
             reasoning_pipeline=reasoning_pipeline,

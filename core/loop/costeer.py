@@ -70,6 +70,11 @@ class CoSTEEREvolver:
                     metric_name="costeer",
                 ),
             )
+            outcome = execution_result.resolve_outcome()
+            is_useful_round = outcome.process_succeeded and outcome.artifacts_verified and outcome.usefulness_eligible
+            feedback.acceptable = feedback.acceptable and is_useful_round
+            feedback.decision = feedback.decision and is_useful_round
+
             if feedback.acceptable:
                 self._save_knowledge(experiment, feedback, round_idx, scenario)
                 break

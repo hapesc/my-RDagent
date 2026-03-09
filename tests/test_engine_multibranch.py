@@ -5,14 +5,19 @@ from unittest.mock import Mock
 
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutionResult
 from data_models import (
+    ExecutionOutcomeContract,
     ExperimentNode,
     FeedbackRecord,
     Plan,
+    ProcessExecutionStatus,
     Proposal,
     RunSession,
     RunStatus,
     Score,
     StopConditions,
+    StepState,
+    UsefulnessEligibilityStatus,
+    ArtifactVerificationStatus,
 )
 
 
@@ -33,6 +38,33 @@ def _make_step_result(node_id: str, parent_node_id: Optional[str] = None) -> Ste
             acceptable=True,
             reason="ok",
         ),
+    )
+
+
+def _make_fatal_step_result(node_id: str) -> StepExecutionResult:
+    return StepExecutionResult(
+        proposal=Proposal(proposal_id=f"proposal-{node_id}", summary="summary"),
+        experiment=ExperimentNode(
+            node_id=node_id,
+            run_id="run-multi",
+            branch_id="main",
+        ),
+        artifact_id=f"artifact-{node_id}",
+        score=Score(score_id=f"score-{node_id}", value=0.0, metric_name="acc"),
+        feedback=FeedbackRecord(
+            feedback_id=f"feedback-{node_id}",
+            decision=False,
+            acceptable=False,
+            reason="fatal",
+        ),
+        outcome=ExecutionOutcomeContract(
+            process_status=ProcessExecutionStatus.FAILED,
+            artifact_status=ArtifactVerificationStatus.MISSING_REQUIRED,
+            usefulness_status=UsefulnessEligibilityStatus.INELIGIBLE,
+        ),
+        step_state=StepState.FAILED,
+        failed_stage="running",
+        error_message="fatal process failure",
     )
 
 
@@ -115,6 +147,21 @@ def _make_run(max_loops: int = 1) -> RunSession:
     )
 
 
+def _make_real_provider_run(max_loops: int = 1) -> RunSession:
+    run = _make_run(max_loops=max_loops)
+    run.config_snapshot = {
+        "runtime": {
+            "uses_real_llm_provider": True,
+            "guardrail_warnings": [],
+            "real_provider_safe_profile": {
+                "layer0_n_candidates": 1,
+                "layer0_k_forward": 1,
+            },
+        }
+    }
+    return run
+
+
 def test_config_default_branches_per_iteration_is_one() -> None:
     assert LoopEngineConfig().branches_per_iteration == 1
 
@@ -184,6 +231,23 @@ def test_branch_error_does_not_stop_other_branches_when_scheduler_enabled() -> N
     assert exploration_manager.register_node.call_count == 1
 
 
+def test_scheduler_marks_run_failed_when_all_branches_fatal() -> None:
+    scheduler = Mock()
+    scheduler.select_node.side_effect = ["root-a", "root-b"]
+
+    engine, _planner, exploration_manager, step_executor, _run_store, _event_store = _build_engine(
+        branches_per_iteration=2,
+        scheduler=scheduler,
+        step_side_effect=[_make_fatal_step_result("n1"), _make_fatal_step_result("n2")],
+    )
+
+    context = engine.run(run_session=_make_run(max_loops=1), task_summary="all-fatal", max_loops=1)
+
+    assert context.loop_state.status == RunStatus.FAILED
+    assert step_executor.execute_iteration.call_count == 2
+    assert exploration_manager.register_node.call_count == 0
+
+
 def test_scheduler_with_single_branch_per_iteration_executes_once() -> None:
     scheduler = Mock()
     scheduler.select_node.return_value = "root-a"
@@ -195,6 +259,22 @@ def test_scheduler_with_single_branch_per_iteration_executes_once() -> None:
     )
 
     engine.run(run_session=_make_run(max_loops=1), task_summary="single", max_loops=1)
+
+    assert step_executor.execute_iteration.call_count == 1
+    assert scheduler.select_node.call_count == 1
+
+
+def test_real_provider_run_clamps_scheduler_branches_to_one() -> None:
+    scheduler = Mock()
+    scheduler.select_node.side_effect = ["root-a", "root-b", "root-c"]
+
+    engine, _planner, _exploration_manager, step_executor, _run_store, _event_store = _build_engine(
+        branches_per_iteration=3,
+        scheduler=scheduler,
+        step_side_effect=[_make_step_result("n1")],
+    )
+
+    engine.run(run_session=_make_real_provider_run(max_loops=1), task_summary="real-provider", max_loops=1)
 
     assert step_executor.execute_iteration.call_count == 1
     assert scheduler.select_node.call_count == 1

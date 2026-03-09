@@ -186,6 +186,7 @@ def test_build_data_science_bundle_accepts_fc3_components() -> None:
     )
 
     assert proposal.proposal_id == "proposal-ds-fc3"
+    assert bundle.scene_usefulness_validator is not None
 
 
 def test_build_synthetic_bundle_accepts_fc3_components() -> None:
@@ -209,6 +210,7 @@ def test_build_synthetic_bundle_accepts_fc3_components() -> None:
     )
 
     assert proposal.proposal_id == "proposal-synthetic-fc3"
+    assert bundle.scene_usefulness_validator is not None
 
 
 def test_fc3_proposals_have_non_empty_summary_and_constraints() -> None:

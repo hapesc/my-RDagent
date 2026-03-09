@@ -51,6 +51,20 @@ def test_litellm_provider_with_minimal_config(monkeypatch):
     assert provider._base_url is None
 
 
+def test_real_provider_minimal_config_uses_conservative_runtime_defaults(monkeypatch):
+    monkeypatch.setenv("RD_AGENT_LLM_PROVIDER", "litellm")
+    monkeypatch.setenv("RD_AGENT_LLM_API_KEY", "test-key")
+
+    config = load_config()
+
+    assert config.uses_real_llm_provider is True
+    assert config.layer0_n_candidates == 1
+    assert config.layer0_k_forward == 1
+    assert config.costeer_max_rounds == 1
+    assert config.sandbox_timeout_sec == 120
+    assert config.real_provider_warnings == ()
+
+
 def test_unknown_provider_falls_back_to_mock(monkeypatch):
     """Unknown provider should fall back to MockLLMProvider."""
     monkeypatch.setenv("RD_AGENT_LLM_PROVIDER", "openai")

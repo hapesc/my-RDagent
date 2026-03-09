@@ -132,7 +132,7 @@ class TestFC3E2E(unittest.TestCase):
             run_id="run-fc3",
             exit_code=0,
             logs_ref="all good",
-            artifacts_ref="",
+            artifacts_ref='["/tmp/success.txt"]',
         )
         success_feedback.summarize.return_value = FeedbackRecord(
             feedback_id="fb-ok",
@@ -163,7 +163,7 @@ class TestFC3E2E(unittest.TestCase):
             run_id="run-fc3",
             exit_code=1,
             logs_ref="failed",
-            artifacts_ref="",
+            artifacts_ref='["/tmp/failed.txt"]',
         )
         fail_feedback.summarize.return_value = FeedbackRecord(
             feedback_id="fb-fail",

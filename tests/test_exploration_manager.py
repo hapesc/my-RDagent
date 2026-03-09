@@ -192,13 +192,16 @@ class TestGenerateDiverseRoots(unittest.TestCase):
         graph = ExplorationGraph()
         graph = manager.generate_diverse_roots(graph, "classify images", "data_science", n_candidates=3, k_forward=2)
         self.assertEqual(len(graph.nodes), 2)
+        eval_call = mock_evaluator.evaluate.call_args
+        self.assertEqual(eval_call.kwargs["n_candidates"], 3)
+        self.assertEqual(eval_call.kwargs["k_forward"], 2)
         for node in graph.nodes:
             self.assertEqual(node.parent_ids, [])
             self.assertTrue(node.node_id.startswith("root-"))
             assert node.proposal_id is not None
             self.assertTrue(node.proposal_id.startswith("layer0-"))
 
-    def test_diverse_roots_uses_injected_evaluator_configuration(self) -> None:
+    def test_diverse_roots_uses_call_time_n_k_configuration(self) -> None:
         from llm.adapter import LLMAdapter, MockLLMProvider
 
         adapter = LLMAdapter(MockLLMProvider())
@@ -215,7 +218,7 @@ class TestGenerateDiverseRoots(unittest.TestCase):
             n_candidates=4,
             k_forward=3,
         )
-        self.assertEqual(len(graph.nodes), 1)
+        self.assertEqual(len(graph.nodes), 3)
 
     def test_fallback_single_root_when_no_evaluator(self) -> None:
         config = ExplorationManagerConfig()

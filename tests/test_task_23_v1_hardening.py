@@ -53,7 +53,9 @@ class Task23V1HardeningTests(unittest.TestCase):
             {
                 "scenario": "data_science",
                 "task_summary": "task-23 remote control",
-                "entry_input": {"command": 'python3 -c "import time; time.sleep(0.2)"'},
+                "entry_input": {
+                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
+                },
                 "stop_conditions": {"max_loops": 4, "max_duration_sec": 60},
             }
         )
@@ -143,6 +145,8 @@ class Task23V1HardeningTests(unittest.TestCase):
         self.assertLess(ui_elapsed, 5.0)
         self.assertIn(run.run_id, run_ids)
         self.assertEqual(summary.status, "COMPLETED")
+        self.assertIsNotNone(ui_summary)
+        assert ui_summary is not None
         self.assertEqual(ui_summary.status, "COMPLETED")
         self.assertEqual(branches.items[0].branch_id, "main")
         self.assertEqual(ui_branches.items[0].branch_id, "main")

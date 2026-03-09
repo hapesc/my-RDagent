@@ -35,10 +35,17 @@ class VirtualEvaluator:
         current_scores: List[float],
         evaluation_criteria: str = "feasibility, novelty, expected performance gain",
         model_config: Optional[ModelSelectorConfig] = None,
+        n_candidates: Optional[int] = None,
+        k_forward: Optional[int] = None,
     ) -> List[ExperimentDesign]:
+        effective_n_candidates = n_candidates if n_candidates is not None else self._n_candidates
+        effective_k_forward = k_forward if k_forward is not None else self._k_forward
+        effective_n_candidates = max(1, int(effective_n_candidates))
+        effective_k_forward = max(1, min(int(effective_k_forward), effective_n_candidates))
+
         candidates: List[ExperimentDesign] = []
-        for i in range(self._n_candidates):
-            diversified_task = self._diversify_prompt(task_summary, i, self._n_candidates)
+        for i in range(effective_n_candidates):
+            diversified_task = self._diversify_prompt(task_summary, i, effective_n_candidates)
             design = self._pipeline.reason(
                 task_summary=diversified_task,
                 scenario_name=scenario_name,
@@ -51,12 +58,16 @@ class VirtualEvaluator:
             _log.debug(
                 "Generated candidate %d/%d: %s",
                 i + 1,
-                self._n_candidates,
+                effective_n_candidates,
                 design.summary[:50],
             )
 
-        if self._n_candidates <= self._k_forward:
-            _log.debug("N=%d <= K=%d, returning all candidates", self._n_candidates, self._k_forward)
+        if effective_n_candidates <= effective_k_forward:
+            _log.debug(
+                "N=%d <= K=%d, returning all candidates",
+                effective_n_candidates,
+                effective_k_forward,
+            )
             return candidates
 
         candidate_dicts = [
@@ -80,15 +91,15 @@ class VirtualEvaluator:
             eval_result.selected_indices,
         )
 
-        selected_indices = eval_result.selected_indices[: self._k_forward]
+        selected_indices = eval_result.selected_indices[:effective_k_forward]
         valid_indices = [i for i in selected_indices if 0 <= i < len(candidates)]
 
-        if len(valid_indices) < self._k_forward and eval_result.rankings:
+        if len(valid_indices) < effective_k_forward and eval_result.rankings:
             valid_from_rankings = [i for i in eval_result.rankings if 0 <= i < len(candidates)]
-            valid_indices = valid_from_rankings[: self._k_forward]
+            valid_indices = valid_from_rankings[:effective_k_forward]
 
         if not valid_indices:
-            valid_indices = list(range(min(self._k_forward, len(candidates))))
+            valid_indices = list(range(min(effective_k_forward, len(candidates))))
 
         return [candidates[i] for i in valid_indices]
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 import yaml
 
@@ -38,9 +38,117 @@ class AppConfig:
     debug_max_epochs: int = 5
     enable_hypothesis_storage: bool = False
     use_llm_planning: bool = False
+    uses_real_llm_provider: bool = False
+    real_provider_warnings: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
+
+
+REAL_PROVIDER_SAFE_PROFILE: Dict[str, int] = {
+    "layer0_n_candidates": 1,
+    "layer0_k_forward": 1,
+    "costeer_max_rounds": 1,
+    "sandbox_timeout_sec": 120,
+    "max_retries": 1,
+}
+
+_REAL_PROVIDER_WARNING_LIMITS: Dict[str, int] = {
+    "layer0_n_candidates": 2,
+    "layer0_k_forward": 2,
+    "costeer_max_rounds": 2,
+    "sandbox_timeout_sec": 300,
+    "max_retries": 1,
+}
+
+
+def uses_real_llm_provider(provider: str) -> bool:
+    return provider.strip().lower() not in {"", "mock"}
+
+
+def _validate_positive_config_fields(values: Mapping[str, int]) -> None:
+    for field_name, value in values.items():
+        if value <= 0:
+            raise ValueError(f"{field_name} must be > 0")
+
+
+def _apply_real_provider_defaults(merged: Dict[str, Any], sources: Mapping[str, str]) -> None:
+    if not uses_real_llm_provider(str(merged["llm_provider"])):
+        return
+    for field_name, safe_value in REAL_PROVIDER_SAFE_PROFILE.items():
+        if field_name == "max_retries":
+            continue
+        if sources.get(field_name, "default") == "default":
+            merged[field_name] = safe_value
+
+
+def _validate_real_provider_guardrails(
+    config: AppConfig,
+    *,
+    step_max_retries: Optional[Sequence[Tuple[str, Optional[int]]]] = None,
+    running_timeout_sec: Optional[int] = None,
+) -> Tuple[str, ...]:
+    if not config.uses_real_llm_provider:
+        return ()
+
+    warnings = []
+    for field_name in (
+        "layer0_n_candidates",
+        "layer0_k_forward",
+        "costeer_max_rounds",
+        "sandbox_timeout_sec",
+    ):
+        value = int(getattr(config, field_name))
+        safe_limit = REAL_PROVIDER_SAFE_PROFILE[field_name]
+        warning_limit = _REAL_PROVIDER_WARNING_LIMITS[field_name]
+        if value > warning_limit:
+            raise ValueError(
+                f"real provider guardrail violation: {field_name}={value} exceeds hard limit {warning_limit}"
+            )
+        if value > safe_limit:
+            warnings.append(
+                f"real provider warning: {field_name}={value} exceeds conservative profile {safe_limit}"
+            )
+
+    if config.layer0_k_forward > config.layer0_n_candidates:
+        raise ValueError(
+            "real provider guardrail violation: layer0_k_forward must be <= layer0_n_candidates"
+        )
+
+    for step_name, retries in step_max_retries or ():
+        if retries is None:
+            continue
+        if retries > _REAL_PROVIDER_WARNING_LIMITS["max_retries"]:
+            raise ValueError(
+                f"real provider guardrail violation: {step_name}.max_retries={retries} exceeds hard limit 1"
+            )
+
+    if running_timeout_sec is not None:
+        if running_timeout_sec > _REAL_PROVIDER_WARNING_LIMITS["sandbox_timeout_sec"]:
+            raise ValueError(
+                "real provider guardrail violation: running.timeout_sec"
+                f"={running_timeout_sec} exceeds hard limit 300"
+            )
+        if running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
+            warnings.append(
+                "real provider warning: running.timeout_sec="
+                f"{running_timeout_sec} exceeds conservative profile 120"
+            )
+
+    return tuple(warnings)
+
+
+def validate_runtime_guardrails(
+    config: AppConfig,
+    *,
+    step_max_retries: Optional[Sequence[Tuple[str, Optional[int]]]] = None,
+    running_timeout_sec: Optional[int] = None,
+) -> Tuple[str, ...]:
+    return _validate_real_provider_guardrails(
+        config,
+        step_max_retries=step_max_retries,
+        running_timeout_sec=running_timeout_sec,
+    )
 
 
 def _get_int(environ: Mapping[str, str], key: str, default: int) -> int:
@@ -215,19 +323,22 @@ _ENV_BINDINGS: Dict[str, Tuple[str, Callable[[Mapping[str, str], str, Any], Any]
 }
 
 
-def _merge_yaml(merged: Dict[str, Any], yaml_values: Mapping[str, Any]) -> None:
+def _merge_yaml(merged: Dict[str, Any], yaml_values: Mapping[str, Any], sources: Dict[str, str]) -> None:
     unknown = [key for key in yaml_values.keys() if key not in _YAML_CASTERS]
     if unknown:
         raise ValueError(f"unknown config keys in yaml: {', '.join(sorted(unknown))}")
     for key, raw in yaml_values.items():
         caster = _YAML_CASTERS[key]
         merged[key] = caster(raw)
+        sources[key] = "yaml"
 
 
-def _apply_env_overrides(merged: Dict[str, Any], env_map: Mapping[str, str]) -> None:
+def _apply_env_overrides(merged: Dict[str, Any], env_map: Mapping[str, str], sources: Dict[str, str]) -> None:
     for field_name, (env_name, reader) in _ENV_BINDINGS.items():
         if env_name in env_map:
             merged[field_name] = reader(env_map, env_name, merged[field_name])
+            if env_map.get(env_name) not in (None, ""):
+                sources[field_name] = "env"
 
 
 def load_config(
@@ -241,15 +352,27 @@ def load_config(
         env_map = os.environ
 
     merged: Dict[str, Any] = dict(_DEFAULTS)
+    sources: Dict[str, str] = {key: "default" for key in _DEFAULTS}
 
     resolved_path = Path(config_path) if config_path is not None else _default_config_path()
     if config_path is not None and not resolved_path.exists():
         raise FileNotFoundError(f"config file not found: {resolved_path}")
 
-    _merge_yaml(merged, _load_yaml_values(resolved_path))
-    _apply_env_overrides(merged, env_map)
+    _merge_yaml(merged, _load_yaml_values(resolved_path), sources)
+    _apply_env_overrides(merged, env_map, sources)
+    _apply_real_provider_defaults(merged, sources)
 
-    return AppConfig(
+    _validate_positive_config_fields(
+        {
+            "sandbox_timeout_sec": int(merged["sandbox_timeout_sec"]),
+            "costeer_max_rounds": int(merged["costeer_max_rounds"]),
+            "layer0_n_candidates": int(merged["layer0_n_candidates"]),
+            "layer0_k_forward": int(merged["layer0_k_forward"]),
+        }
+    )
+
+    uses_real_provider = uses_real_llm_provider(str(merged["llm_provider"]))
+    base_config = AppConfig(
         env=merged["env"],
         default_scenario=merged["default_scenario"],
         artifact_root=merged["artifact_root"],
@@ -275,4 +398,7 @@ def load_config(
         debug_max_epochs=merged["debug_max_epochs"],
         enable_hypothesis_storage=merged["enable_hypothesis_storage"],
         use_llm_planning=merged["use_llm_planning"],
+        uses_real_llm_provider=uses_real_provider,
     )
+    warnings = _validate_real_provider_guardrails(base_config)
+    return AppConfig(**{**base_config.to_dict(), "real_provider_warnings": warnings})

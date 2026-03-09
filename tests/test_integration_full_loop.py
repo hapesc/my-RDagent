@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from unittest.mock import Mock, patch
 
+from agentrd_cli import ExitCode, main as cli_main
 from app.runtime import build_run_service, build_runtime
 from core.loop.costeer import CoSTEEREvolver
 from data_models import CodeArtifact, EventType, ExecutionResult, ExperimentNode, FeedbackRecord, Proposal, StopConditions
@@ -68,6 +72,10 @@ class FullLoopIntegrationTests(unittest.TestCase):
                 EventType.TRACE_RECORDED,
             }.issubset(event_types)
         )
+        execution_event = next(event for event in events if event.event_type == EventType.EXECUTION_FINISHED)
+        self.assertEqual(execution_event.payload.get("usefulness_status"), "ELIGIBLE")
+        self.assertEqual(execution_event.payload.get("usefulness_gate_stage"), "utility")
+        self.assertEqual(execution_event.payload.get("usefulness_gate_reason"), "eligible")
 
     def test_costeer_multi_round_with_kb_write(self) -> None:
         experiment = ExperimentNode(
@@ -157,6 +165,111 @@ class FullLoopIntegrationTests(unittest.TestCase):
             runtime_litellm = build_runtime()
 
         self.assertIsInstance(runtime_litellm.llm_adapter._provider, LiteLLMProvider)
+
+    def test_cli_snapshot_exposes_real_provider_safe_profile(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            },
+            clear=False,
+        ):
+            out = StringIO()
+            err = StringIO()
+            with patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()), redirect_stdout(out), redirect_stderr(err):
+                code = cli_main(
+                    [
+                        "run",
+                        "--scenario",
+                        "data_science",
+                        "--input",
+                        '{"task_summary":"real-provider-smoke","max_loops":1}',
+                    ]
+                )
+
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertEqual(err.getvalue(), "")
+        payload = json.loads(out.getvalue())
+        runtime_snapshot = payload["run"]["config_snapshot"]["runtime"]
+        step_config = payload["run"]["config_snapshot"]["step_overrides"]
+        self.assertTrue(runtime_snapshot["uses_real_llm_provider"])
+        self.assertEqual(runtime_snapshot["real_provider_safe_profile"]["layer0_n_candidates"], 1)
+        self.assertEqual(runtime_snapshot["real_provider_safe_profile"]["sandbox_timeout_sec"], 120)
+        self.assertEqual(runtime_snapshot["guardrail_warnings"], [])
+        self.assertEqual(step_config["proposal"]["max_retries"], 1)
+        self.assertEqual(step_config["coding"]["max_retries"], 1)
+        self.assertEqual(step_config["feedback"]["max_retries"], 1)
+        self.assertEqual(step_config["running"]["timeout_sec"], 120)
+
+    def test_cli_rejects_dangerous_real_provider_retry_override(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            },
+            clear=False,
+        ):
+            out = StringIO()
+            err = StringIO()
+            with redirect_stdout(out), redirect_stderr(err):
+                code = cli_main(
+                    [
+                        "run",
+                        "--scenario",
+                        "data_science",
+                        "--input",
+                        (
+                            '{"task_summary":"dangerous-real-provider","max_loops":1,'
+                            '"step_overrides":{"proposal":{"max_retries":2}}}'
+                        ),
+                    ]
+                )
+
+        self.assertEqual(code, int(ExitCode.INVALID_ARGS))
+        payload = json.loads(err.getvalue())
+        self.assertEqual(payload["error"]["code"], "invalid_request")
+        self.assertIn(
+            "real provider guardrail violation: proposal.max_retries=2 exceeds hard limit 1",
+            payload["error"]["message"],
+        )
+
+    def test_cli_warns_for_allowed_real_provider_timeout_override(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+            },
+            clear=False,
+        ):
+            out = StringIO()
+            err = StringIO()
+            with patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()), redirect_stdout(out), redirect_stderr(err):
+                code = cli_main(
+                    [
+                        "run",
+                        "--scenario",
+                        "data_science",
+                        "--input",
+                        (
+                            '{"task_summary":"warn-real-provider","max_loops":1,'
+                            '"step_overrides":{"running":{"timeout_sec":240}}}'
+                        ),
+                    ]
+                )
+
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertIn(
+            "WARNING: real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            err.getvalue(),
+        )
+        payload = json.loads(out.getvalue())
+        self.assertIn(
+            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            payload["run"]["config_snapshot"]["runtime"]["guardrail_warnings"],
+        )
 
 
 if __name__ == "__main__":

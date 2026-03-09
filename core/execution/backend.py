@@ -9,9 +9,16 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol
 
-from data_models import Event, EventType
+from data_models import (
+    ArtifactVerificationStatus,
+    Event,
+    EventType,
+    ExecutionOutcomeContract,
+    ProcessExecutionStatus,
+    UsefulnessEligibilityStatus,
+)
 from trace_store import TraceStore, TraceStoreConfig
 
 
@@ -36,6 +43,9 @@ class BackendResult:
     duration_sec: float
     timed_out: bool
     artifact_paths: List[str] = field(default_factory=list)
+    artifact_manifest: Dict[str, Any] = field(default_factory=dict)
+    malformed_artifact_paths: List[str] = field(default_factory=list)
+    outcome: Optional[ExecutionOutcomeContract] = None
 
 
 @dataclass
@@ -112,6 +122,13 @@ class DockerExecutionBackend:
                 duration_sec=0.0,
                 timed_out=False,
                 artifact_paths=[],
+                artifact_manifest={"paths": []},
+                malformed_artifact_paths=[],
+                outcome=ExecutionOutcomeContract(
+                    process_status=ProcessExecutionStatus.ERROR,
+                    artifact_status=ArtifactVerificationStatus.MISSING_REQUIRED,
+                    usefulness_status=UsefulnessEligibilityStatus.INELIGIBLE,
+                ),
             )
             self._record_execution_event(
                 run_id=run_id,
@@ -127,40 +144,46 @@ class DockerExecutionBackend:
         cmd = self._build_docker_command(workspace, command) if use_docker else self._build_local_command(command)
 
         started = time.monotonic()
-        timed_out = False
-        status = ExecutionStatus.ERROR
-        exit_code = -1
-        stdout = ""
-        stderr = ""
+        status, exit_code, stdout, stderr, timed_out = self._run_command(
+            cmd,
+            cwd=None if use_docker else str(workspace),
+            timeout=timeout,
+        )
 
-        try:
-            process = subprocess.Popen(
-                cmd,
-                cwd=None if use_docker else str(workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+        if self._should_fallback_to_local(
+            used_docker=use_docker,
+            status=status,
+            exit_code=exit_code,
+            stderr=stderr,
+        ):
+            engine = "local"
+            status, exit_code, stdout, stderr, timed_out = self._run_command(
+                self._build_local_command(command),
+                cwd=str(workspace),
+                timeout=timeout,
             )
-            try:
-                stdout, stderr = process.communicate(timeout=timeout)
-                exit_code = int(process.returncode)
-                if exit_code == 0:
-                    status = ExecutionStatus.SUCCESS
-                else:
-                    status = ExecutionStatus.FAILED
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                process.kill()
-                stdout, stderr = process.communicate()
-                exit_code = -1
-                status = ExecutionStatus.TIMEOUT
-        except Exception as exc:
-            stderr = str(exc)
-            status = ExecutionStatus.ERROR
-            exit_code = -1
 
         duration = time.monotonic() - started
         artifact_paths = self._collect_artifacts(workspace)
+        malformed_artifact_paths = self._collect_malformed_artifact_paths(artifact_paths)
+        process_status = self._to_process_status(status)
+        if len(malformed_artifact_paths) > 0:
+            artifact_status = ArtifactVerificationStatus.MALFORMED_REQUIRED
+        elif len(artifact_paths) > 0:
+            artifact_status = ArtifactVerificationStatus.VERIFIED
+        else:
+            artifact_status = ArtifactVerificationStatus.MISSING_REQUIRED
+        usefulness_status = (
+            UsefulnessEligibilityStatus.ELIGIBLE
+            if process_status == ProcessExecutionStatus.SUCCESS
+            and artifact_status == ArtifactVerificationStatus.VERIFIED
+            else UsefulnessEligibilityStatus.INELIGIBLE
+        )
+        artifact_manifest = {
+            "paths": artifact_paths,
+            "required_globs": list(self._config.artifact_globs),
+            "malformed_paths": malformed_artifact_paths,
+        }
         result = BackendResult(
             engine=engine,
             status=status,
@@ -170,6 +193,13 @@ class DockerExecutionBackend:
             duration_sec=duration,
             timed_out=timed_out,
             artifact_paths=artifact_paths,
+            artifact_manifest=artifact_manifest,
+            malformed_artifact_paths=malformed_artifact_paths,
+            outcome=ExecutionOutcomeContract(
+                process_status=process_status,
+                artifact_status=artifact_status,
+                usefulness_status=usefulness_status,
+            ),
         )
         self._record_execution_event(
             run_id=run_id,
@@ -204,6 +234,67 @@ class DockerExecutionBackend:
     def _build_local_command(self, command: str) -> List[str]:
         return [self._config.command_shell, "-lc", command]
 
+    def _run_command(
+        self,
+        cmd: List[str],
+        *,
+        cwd: Optional[str],
+        timeout: int,
+    ) -> tuple[ExecutionStatus, int, str, str, bool]:
+        timed_out = False
+        status = ExecutionStatus.ERROR
+        exit_code = -1
+        stdout = ""
+        stderr = ""
+        try:
+            process = subprocess.Popen(
+                cmd,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+                exit_code = int(process.returncode)
+                status = ExecutionStatus.SUCCESS if exit_code == 0 else ExecutionStatus.FAILED
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                process.kill()
+                stdout, stderr = process.communicate()
+                exit_code = -1
+                status = ExecutionStatus.TIMEOUT
+        except Exception as exc:
+            stderr = str(exc)
+            status = ExecutionStatus.ERROR
+            exit_code = -1
+        return status, exit_code, stdout, stderr, timed_out
+
+    def _should_fallback_to_local(
+        self,
+        *,
+        used_docker: bool,
+        status: ExecutionStatus,
+        exit_code: int,
+        stderr: str,
+    ) -> bool:
+        if not used_docker or not self._config.allow_local_execution:
+            return False
+        if status not in {ExecutionStatus.FAILED, ExecutionStatus.ERROR}:
+            return False
+
+        stderr_lower = (stderr or "").lower()
+        daemon_unavailable = any(
+            marker in stderr_lower
+            for marker in (
+                "cannot connect to the docker daemon",
+                "is the docker daemon running",
+                "error during connect",
+                "docker daemon",
+            )
+        )
+        return daemon_unavailable or exit_code in {-1, 125}
+
     def _collect_artifacts(self, workspace: Path) -> List[str]:
         paths = set()
         for pattern in self._config.artifact_globs:
@@ -211,6 +302,22 @@ class DockerExecutionBackend:
                 if path.is_file():
                     paths.add(str(path))
         return sorted(paths)
+
+    def _collect_malformed_artifact_paths(self, artifact_paths: List[str]) -> List[str]:
+        malformed_paths: List[str] = []
+        for path_str in artifact_paths:
+            normalized = path_str.strip()
+            if not normalized:
+                malformed_paths.append(path_str)
+                continue
+            try:
+                path_obj = Path(normalized)
+            except Exception:
+                malformed_paths.append(path_str)
+                continue
+            if not path_obj.exists() or not path_obj.is_file():
+                malformed_paths.append(path_str)
+        return malformed_paths
 
     def _record_execution_event(
         self,
@@ -237,9 +344,23 @@ class DockerExecutionBackend:
                     "timed_out": result.timed_out,
                     "timeout_sec": timeout_sec,
                     "artifact_count": len(result.artifact_paths),
+                    "artifact_manifest": result.artifact_manifest,
+                    "malformed_artifact_paths": list(result.malformed_artifact_paths),
                     "docker_available": docker_available,
                     "allow_local_execution": self._config.allow_local_execution,
                     "stderr": result.stderr,
+                    "process_status": result.outcome.process_status.value if result.outcome else None,
+                    "artifact_status": result.outcome.artifact_status.value if result.outcome else None,
+                    "usefulness_status": result.outcome.usefulness_status.value if result.outcome else None,
                 },
             )
         )
+
+    def _to_process_status(self, status: ExecutionStatus) -> ProcessExecutionStatus:
+        if status == ExecutionStatus.SUCCESS:
+            return ProcessExecutionStatus.SUCCESS
+        if status == ExecutionStatus.FAILED:
+            return ProcessExecutionStatus.FAILED
+        if status == ExecutionStatus.TIMEOUT:
+            return ProcessExecutionStatus.TIMEOUT
+        return ProcessExecutionStatus.ERROR

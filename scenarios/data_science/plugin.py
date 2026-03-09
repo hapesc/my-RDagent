@@ -26,7 +26,6 @@ from llm import (
     FeedbackDraft,
     LLMAdapter,
     LLMAdapterConfig,
-    MockLLMProvider,
     ProposalDraft,
     coding_prompt,
     feedback_prompt,
@@ -443,7 +442,13 @@ def build_data_science_v1_bundle(
     """Build Data Science plugin v1 bundle."""
 
     plugin_config = config or DataScienceV1Config()
-    adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=2))
+    if llm_adapter is None:
+        raise RuntimeError(
+            "llm_adapter is required for build_data_science_v1_bundle(). "
+            "Configure a real LLM provider, e.g.: "
+            "LLMAdapter(provider=LiteLLMProvider(api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'), config=LLMAdapterConfig(max_retries=2))"
+        )
+    adapter = llm_adapter
     backend = DockerExecutionBackend(
         DockerExecutionBackendConfig(
             docker_image=plugin_config.docker_image,

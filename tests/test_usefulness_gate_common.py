@@ -7,6 +7,8 @@ from data_models import ExecutionResult
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.data_science.plugin import build_data_science_v1_bundle
 
+from tests._llm_test_utils import make_mock_llm_adapter
+
 
 def _scenario_context() -> ScenarioContext:
     return ScenarioContext(
@@ -81,7 +83,7 @@ def test_scene_validator_layers_on_common_gate(tmp_path: Path) -> None:
         artifacts_ref=json.dumps([str(artifact)]),
     )
 
-    bundle = build_data_science_v1_bundle()
+    bundle = build_data_science_v1_bundle(llm_adapter=make_mock_llm_adapter())
     gate = CommonUsefulnessGate()
     outcome, signal = gate.evaluate(
         result,
@@ -104,7 +106,7 @@ def test_scene_validator_rejects_row_count_only_payload(tmp_path: Path) -> None:
         artifacts_ref=json.dumps([str(artifact)]),
     )
 
-    bundle = build_data_science_v1_bundle()
+    bundle = build_data_science_v1_bundle(llm_adapter=make_mock_llm_adapter())
     gate = CommonUsefulnessGate()
     outcome, signal = gate.evaluate(
         result,
@@ -130,7 +132,7 @@ def test_scene_validator_rejects_template_only_metric_value(tmp_path: Path) -> N
         artifacts_ref=json.dumps([str(artifact)]),
     )
 
-    bundle = build_data_science_v1_bundle()
+    bundle = build_data_science_v1_bundle(llm_adapter=make_mock_llm_adapter())
     gate = CommonUsefulnessGate()
     outcome, signal = gate.evaluate(
         result,

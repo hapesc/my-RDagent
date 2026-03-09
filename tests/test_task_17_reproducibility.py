@@ -11,6 +11,8 @@ from data_models import ContextPack, Plan, RunSession, RunStatus, StopConditions
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
 from task_intake_data_splitter import TaskIntakeConfig, TaskIntakeDataSplitter
 
+from tests._llm_test_utils import make_mock_llm_adapter
+
 
 class ReproducibilityAcceptanceTests(unittest.TestCase):
     def _write_csv(self, path: Path) -> None:
@@ -53,7 +55,8 @@ class ReproducibilityAcceptanceTests(unittest.TestCase):
                     trace_storage_path=str(Path(tmpdir) / "trace.jsonl"),
                     prefer_docker=False,
                     allow_local_execution=True,
-                )
+                ),
+                llm_adapter=make_mock_llm_adapter(),
             )
             run_session = RunSession(
                 run_id="run-repro",

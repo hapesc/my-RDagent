@@ -18,6 +18,8 @@ from data_models import RunSession, RunStatus, StopConditions
 from service_contracts import RunCreateRequest, ServiceContractError
 from ui.trace_ui import load_scenario_manifests
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class Task18V1ContractTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -35,8 +37,11 @@ class Task18V1ContractTests(unittest.TestCase):
             clear=False,
         )
         self._env_patch.start()
+        self._llm_patch = patch_runtime_llm_provider()
+        self._llm_patch.start()
 
     def tearDown(self) -> None:
+        self._llm_patch.stop()
         self._env_patch.stop()
         self._tmpdir.cleanup()
 
@@ -143,6 +148,7 @@ class Task18V1ContractTests(unittest.TestCase):
         restored = store.get_run(run.run_id)
 
         self.assertIsNotNone(restored)
+        assert restored is not None
         self.assertEqual(restored.config_snapshot["runtime"]["sandbox_timeout_sec"], 300)
         self.assertEqual(restored.config_snapshot["step_overrides"]["running"]["timeout_sec"], 10)
 
@@ -174,6 +180,7 @@ class Task18V1ContractTests(unittest.TestCase):
         restored = runtime.sqlite_store.get_run(run_id)
 
         self.assertIsNotNone(restored)
+        assert restored is not None
         self.assertEqual(restored.config_snapshot["step_overrides"]["running"]["timeout_sec"], 12)
         self.assertEqual(restored.config_snapshot["scenario_manifest"]["scenario_name"], "data_science")
         self.assertEqual(restored.entry_input["data_source"], "/tmp/input.csv")

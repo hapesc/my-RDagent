@@ -20,6 +20,8 @@ from planner import Planner, PlannerConfig
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
 
+from tests._llm_test_utils import make_mock_llm_adapter
+
 
 class DataSciencePluginV1Tests(unittest.TestCase):
     def _scenario_context(self) -> ScenarioContext:
@@ -65,7 +67,8 @@ class DataSciencePluginV1Tests(unittest.TestCase):
                     trace_storage_path=str(tmp_path / "trace.jsonl"),
                     prefer_docker=False,
                     allow_local_execution=True,
-                )
+                ),
+                llm_adapter=make_mock_llm_adapter(),
             )
             step_executor = StepExecutor(plugin_bundle, evaluation_service, workspace_manager, sqlite_store)
             loop_engine = LoopEngine(
@@ -117,7 +120,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             )
 
             gate = CommonUsefulnessGate()
-            bundle = build_data_science_v1_bundle()
+            bundle = build_data_science_v1_bundle(llm_adapter=make_mock_llm_adapter())
             outcome, signal = gate.evaluate(
                 result,
                 self._scenario_context(),
@@ -143,7 +146,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             )
 
             gate = CommonUsefulnessGate()
-            bundle = build_data_science_v1_bundle()
+            bundle = build_data_science_v1_bundle(llm_adapter=make_mock_llm_adapter())
             outcome, signal = gate.evaluate(
                 result,
                 self._scenario_context(),
@@ -162,7 +165,8 @@ class DataSciencePluginV1Tests(unittest.TestCase):
                     trace_storage_path=str(Path(tmpdir) / "trace.jsonl"),
                     prefer_docker=False,
                     allow_local_execution=True,
-                )
+                ),
+                llm_adapter=make_mock_llm_adapter(),
             )
             proposal = Proposal(proposal_id="proposal-1", summary="branch uniqueness")
             loop_state = LoopState(loop_id="loop-1", iteration=1, status=RunStatus.RUNNING)

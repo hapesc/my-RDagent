@@ -14,6 +14,8 @@ from unittest.mock import patch
 from agentrd_cli import ExitCode, main
 from app.runtime import build_runtime
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class CLIIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -31,8 +33,11 @@ class CLIIntegrationTests(unittest.TestCase):
             clear=False,
         )
         self._env_patch.start()
+        self._llm_patch = patch_runtime_llm_provider()
+        self._llm_patch.start()
 
     def tearDown(self) -> None:
+        self._llm_patch.stop()
         self._env_patch.stop()
         self._tmpdir.cleanup()
 

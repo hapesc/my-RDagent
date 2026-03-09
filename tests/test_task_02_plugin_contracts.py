@@ -19,10 +19,12 @@ from plugins import (
 from plugins.examples import build_minimal_data_science_bundle
 from plugins.registry import PluginRegistry
 
+from tests._llm_test_utils import make_mock_llm_adapter
+
 
 class PluginContractTests(unittest.TestCase):
     def test_builtin_registry_loads_data_science_bundle(self) -> None:
-        registry = build_default_registry()
+        registry = build_default_registry(llm_adapter=make_mock_llm_adapter())
         self.assertIn("data_science", registry.list_scenarios())
 
         bundle = registry.create_bundle("data_science")

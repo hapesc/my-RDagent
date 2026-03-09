@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from plugins.contracts import PluginBundle
 from scenarios import SyntheticResearchConfig, build_synthetic_research_bundle
 
@@ -14,8 +15,15 @@ class MinimalDataSciencePluginConfig(SyntheticResearchConfig):
     """Deprecated compatibility alias for the formal synthetic research config."""
 
 
-def build_minimal_data_science_bundle(config: Optional[MinimalDataSciencePluginConfig] = None) -> PluginBundle:
+def build_minimal_data_science_bundle(
+    config: Optional[MinimalDataSciencePluginConfig] = None,
+    llm_adapter: Optional[LLMAdapter] = None,
+) -> PluginBundle:
     """Build the legacy example bundle via the formal synthetic research implementation."""
 
     plugin_config = config or MinimalDataSciencePluginConfig()
-    return build_synthetic_research_bundle(SyntheticResearchConfig(workspace_root=plugin_config.workspace_root))
+    adapter = llm_adapter or LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
+    return build_synthetic_research_bundle(
+        SyntheticResearchConfig(workspace_root=plugin_config.workspace_root),
+        llm_adapter=adapter,
+    )

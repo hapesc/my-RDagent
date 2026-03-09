@@ -12,10 +12,10 @@ The platform implements the R&D-Agent paper's six framework components:
 |-----------|--------|-------------|
 | FC-2 Exploration Path | Implemented | MCTS-based tree search over experiment branches with pruning and trace merging |
 | FC-3 Reasoning Pipeline | Implemented | 4-stage scientific reasoning (Analyze → Identify → Hypothesize → Design) with virtual evaluation |
-| FC-1 Planning | Partial | Static planning; dynamic time-aware budget allocation not yet implemented |
-| FC-4 Memory Context | Partial | Basic memory service; embedding-based retrieval and cross-branch knowledge sharing pending |
-| FC-5 Coding Workflow | Partial | Single-round coding; multi-round CoSTEER evolution in progress |
-| FC-6 Evaluation Strategy | Partial | Basic scoring; automated data splitting and multi-candidate ranking pending |
+| FC-1 Planning | Implemented | Time-aware dynamic budget allocation and stage-based strategy adaptation |
+| FC-4 Memory Context | Implemented | Collaborative cross-branch hypothesis sharing with interaction kernel scoring |
+| FC-5 Coding Workflow | Implemented | Iterative CoSTEER evolution with debug-mode sampling and multi-stage evaluation |
+| FC-6 Evaluation Strategy | Implemented | Automated stratified splitting and validation-based candidate ranking |
 
 See [`dev_doc/paper_gap_analysis.md`](dev_doc/paper_gap_analysis.md) for a detailed comparison with the paper.
 

@@ -17,6 +17,11 @@ def _as_list(value: object) -> list[object]:
 def _as_float(value: object, default: float) -> float:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
     return default
 
 

@@ -264,11 +264,11 @@ class LLMAdapter:
                 example[f.name] = 0.0
             elif ann in ("bool", "<class 'bool'>"):
                 example[f.name] = True
-            elif "List[str]" in ann:
+            elif "List[str]" in ann or "list[str]" in ann:
                 example[f.name] = ["string"]
-            elif "List[int]" in ann:
+            elif "List[int]" in ann or "list[int]" in ann:
                 example[f.name] = [0]
-            elif "List[float]" in ann:
+            elif "List[float]" in ann or "list[float]" in ann:
                 example[f.name] = [0.0]
             else:
                 example[f.name] = "value"

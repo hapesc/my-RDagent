@@ -59,9 +59,15 @@ def _synthetic_research_manifest(config: Optional[Any] = None) -> ScenarioManife
     )
 
 
+def _quant_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+    scenarios_module = _load_scenarios_module()
+    return scenarios_module.quant_manifest(config)
+
+
 def build_default_registry(
     data_science_config: Optional[Any] = None,
     synthetic_research_config: Optional[Any] = None,
+    quant_config: Optional[Any] = None,
     llm_adapter: Optional["LLMAdapter"] = None,
     reasoning_pipeline: Optional["ReasoningPipeline"] = None,
     virtual_evaluator: Optional["VirtualEvaluator"] = None,
@@ -90,6 +96,14 @@ def build_default_registry(
             virtual_evaluator=virtual_evaluator,
         ),
         manifest=_synthetic_research_manifest(synthetic_research_config),
+    )
+    registry.register(
+        "quant",
+        lambda: scenarios_module.build_quant_bundle(
+            quant_config,
+            llm_adapter=llm_adapter,
+        ),
+        manifest=_quant_manifest(quant_config),
     )
     return registry
 

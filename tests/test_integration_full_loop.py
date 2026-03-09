@@ -17,6 +17,8 @@ from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
 from plugins.contracts import ScenarioContext
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class FullLoopIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -40,7 +42,8 @@ class FullLoopIntegrationTests(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def test_full_6_stage_single_step(self) -> None:
-        runtime = build_runtime()
+        with patch_runtime_llm_provider():
+            runtime = build_runtime()
         run_service = build_run_service(runtime, "data_science")
         run = run_service.create_run(
             task_summary="integration smoke",
@@ -143,7 +146,8 @@ class FullLoopIntegrationTests(unittest.TestCase):
         self.assertTrue(any("CoSTEER failure" in item for item in context_pack.items))
 
     def test_kb_cross_step_query(self) -> None:
-        runtime = build_runtime()
+        with patch_runtime_llm_provider():
+            runtime = build_runtime()
         runtime.memory_service.write_memory("LLM timeout", {"step": "coding", "error_type": "timeout"})
 
         context_pack = runtime.memory_service.query_context({"error_type": "timeout"})
@@ -151,7 +155,8 @@ class FullLoopIntegrationTests(unittest.TestCase):
         self.assertTrue(any("LLM timeout" in item for item in context_pack.items))
 
     def test_llm_provider_switch(self) -> None:
-        runtime_default = build_runtime()
+        with patch_runtime_llm_provider():
+            runtime_default = build_runtime()
         self.assertIsInstance(runtime_default.llm_adapter._provider, MockLLMProvider)
 
         with patch.dict(

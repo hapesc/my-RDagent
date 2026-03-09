@@ -11,10 +11,12 @@ from unittest.mock import MagicMock, patch
 
 from cli import main
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class TestCli(unittest.TestCase):
     def test_dry_run_logs_config(self):
-        with self.assertLogs("cli", level="INFO") as cm:
+        with patch_runtime_llm_provider(), self.assertLogs("cli", level="INFO") as cm:
             result = main(["--task", "test task", "--dry-run"])
 
         assert result == 0
@@ -24,7 +26,7 @@ class TestCli(unittest.TestCase):
         assert "dry-run: exiting without starting loop" in log_text
 
     def test_scenario_override(self):
-        with self.assertLogs("cli", level="INFO") as cm:
+        with patch_runtime_llm_provider(), self.assertLogs("cli", level="INFO") as cm:
             result = main(["--task", "t", "--scenario", "synthetic_research", "--dry-run"])
 
         assert result == 0

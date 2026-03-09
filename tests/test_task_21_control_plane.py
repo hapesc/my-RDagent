@@ -14,6 +14,8 @@ from app.run_supervisor import RunSupervisor, RunSupervisorConfig
 from app.runtime import build_runtime, build_run_service
 from data_models import RunSession, RunStatus, StopConditions
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class ControlPlaneTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -31,10 +33,13 @@ class ControlPlaneTests(unittest.TestCase):
             clear=False,
         )
         self._env_patch.start()
+        self._llm_patch = patch_runtime_llm_provider()
+        self._llm_patch.start()
         self.supervisor = RunSupervisor(RunSupervisorConfig(loop_poll_interval_sec=0.01))
         self.client = TestClient(build_control_plane_app(self.supervisor))
 
     def tearDown(self) -> None:
+        self._llm_patch.stop()
         self._env_patch.stop()
         self._tmpdir.cleanup()
 

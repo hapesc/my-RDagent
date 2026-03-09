@@ -18,6 +18,8 @@ from plugins import build_default_registry
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.synthetic_research.plugin import build_synthetic_research_bundle
 
+from tests._llm_test_utils import make_mock_llm_adapter, patch_runtime_llm_provider
+
 
 class SyntheticResearchScenarioTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -35,8 +37,11 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
             clear=False,
         )
         self._env_patch.start()
+        self._llm_patch = patch_runtime_llm_provider()
+        self._llm_patch.start()
 
     def tearDown(self) -> None:
+        self._llm_patch.stop()
         self._env_patch.stop()
         self._tmpdir.cleanup()
 
@@ -48,7 +53,7 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         return code, out.getvalue(), err.getvalue()
 
     def _synthetic_usefulness_result(self, payload: dict) -> tuple:
-        bundle = build_synthetic_research_bundle()
+        bundle = build_synthetic_research_bundle(llm_adapter=make_mock_llm_adapter())
         artifact = Path(self._tmpdir.name) / "validator-summary.json"
         artifact.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
         result = ExecutionResult(
@@ -67,7 +72,7 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         return gate.evaluate(result, scenario, scene_validator=bundle.scene_usefulness_validator)
 
     def test_default_registry_exposes_formal_synthetic_research_scenario(self) -> None:
-        registry = build_default_registry()
+        registry = build_default_registry(llm_adapter=make_mock_llm_adapter())
 
         self.assertIn("data_science", registry.list_scenarios())
         self.assertIn("synthetic_research", registry.list_scenarios())

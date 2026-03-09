@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Dict, Optional, Tuple, Type, cast
 
@@ -12,12 +13,13 @@ from litellm.exceptions import Timeout as LiteLLMTimeout
 
 from service_contracts import ModelSelectorConfig
 
+_log = logging.getLogger(__name__)
 
 _THINKING_MODEL_PREFIXES = ("gemini/gemini-2.5-pro", "o1", "o3", "o4")
-_DEFAULT_THINKING_MAX_TOKENS = 8192
+_DEFAULT_THINKING_MAX_TOKENS = 16384
 _DEFAULT_TIMEOUT_SEC = 60
-_DEFAULT_THINKING_TIMEOUT_SEC = 120
-_TRANSIENT_RETRY_DELAYS_SEC = (0.1, 0.3)
+_DEFAULT_THINKING_TIMEOUT_SEC = 180
+_TRANSIENT_RETRY_DELAYS_SEC = (0.5, 1.0, 2.0)
 _RETRYABLE_TRANSIENT_ERRORS: Tuple[Type[Exception], ...] = (
     LiteLLMAPIConnectionError,
     LiteLLMServiceUnavailableError,
@@ -54,10 +56,12 @@ class LiteLLMProvider:
             if model_config.max_tokens is not None:
                 max_tokens = model_config.max_tokens
 
-        if max_tokens is None and self._is_thinking_model(model):
+        is_thinking = self._is_thinking_model(model)
+
+        if max_tokens is None and is_thinking:
             max_tokens = _DEFAULT_THINKING_MAX_TOKENS
 
-        timeout = _DEFAULT_THINKING_TIMEOUT_SEC if self._is_thinking_model(model) else _DEFAULT_TIMEOUT_SEC
+        timeout = _DEFAULT_THINKING_TIMEOUT_SEC if is_thinking else _DEFAULT_TIMEOUT_SEC
 
         kwargs: Dict[str, Any] = {
             "model": model,
@@ -72,6 +76,14 @@ class LiteLLMProvider:
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
         kwargs["timeout"] = timeout
+
+        # Force JSON output mode for structured output prompts.
+        # This makes Gemini Thinking models put results in content (not only reasoning_content).
+        if "json" in prompt.lower() or "JSON" in prompt:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        # Disable streaming for structured output to avoid truncation bugs
+        kwargs["stream"] = False
 
         attempts = len(_TRANSIENT_RETRY_DELAYS_SEC) + 1
         response: Any = None
@@ -90,8 +102,32 @@ class LiteLLMProvider:
                     raise RuntimeError(
                         f"LLM provider unavailable for model '{model}' after {attempts} attempts: {exc}"
                     ) from exc
+                _log.warning("Transient error (attempt %d/%d): %s", attempt_idx + 1, attempts, exc)
                 time.sleep(_TRANSIENT_RETRY_DELAYS_SEC[attempt_idx])
 
         completion_response = cast(Any, response)
-        content = completion_response.choices[0].message.content
-        return content if content is not None else ""
+        message = completion_response.choices[0].message
+        content = message.content
+
+        # For thinking models, content may be empty while reasoning_content has the answer
+        if (content is None or (isinstance(content, str) and not content.strip())):
+            reasoning = getattr(message, "reasoning_content", None)
+            if reasoning and isinstance(reasoning, str) and reasoning.strip():
+                _log.warning(
+                    "Model '%s' returned empty content but has reasoning_content (%d chars). "
+                    "Using reasoning_content as fallback.",
+                    model, len(reasoning),
+                )
+                content = reasoning
+
+        # Final empty check — raise so adapter can retry
+        if content is None or (isinstance(content, str) and not content.strip()):
+            finish_reason = getattr(completion_response.choices[0], "finish_reason", "unknown")
+            raise ConnectionError(
+                f"LLM returned empty content for model '{model}' "
+                f"(finish_reason={finish_reason}). "
+                "This may indicate the model's safety filter blocked the response, "
+                "max_tokens was insufficient, or a thinking model routing issue."
+            )
+
+        return content

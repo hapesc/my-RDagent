@@ -16,6 +16,8 @@ from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
 
+from tests._llm_test_utils import make_mock_llm_adapter
+
 
 class ReliabilityAcceptanceTests(unittest.TestCase):
     def test_multiple_runs_complete_without_failures(self) -> None:
@@ -39,7 +41,8 @@ class ReliabilityAcceptanceTests(unittest.TestCase):
                     trace_storage_path=str(tmp_path / "trace.jsonl"),
                     prefer_docker=False,
                     allow_local_execution=True,
-                )
+                ),
+                llm_adapter=make_mock_llm_adapter(),
             )
             step_executor = StepExecutor(plugin_bundle, evaluation_service, workspace_manager, sqlite_store)
             loop_engine = LoopEngine(

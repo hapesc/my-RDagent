@@ -1,0 +1,48 @@
+{
+  "run_session": {
+    "run_id": "run-example-001",
+    "task_summary": "classify iris dataset",
+    "scenario": "data_science",
+    "status": "completed",
+    "created_at": "2025-01-15T10:30:00Z"
+  },
+  "experiment_node": {
+    "node_id": "node-001",
+    "run_id": "run-example-001",
+    "branch_id": "main",
+    "parent_id": null,
+    "iteration": 1,
+    "step_state": "RECORDED",
+    "proposal": "Use random forest with 100 estimators",
+    "code_snippet": "model = RandomForestClassifier(n_estimators=100)",
+    "score": 0.92,
+    "created_at": "2025-01-15T10:31:00Z"
+  },
+  "workspace_snapshot": {
+    "run_id": "run-example-001",
+    "iteration": 1,
+    "file_manifest": [
+      {"path": "main.py", "size_bytes": 1024, "sha256": "abc123"},
+      {"path": "data/train.csv", "size_bytes": 4096, "sha256": "def456"}
+    ],
+    "created_at": "2025-01-15T10:31:30Z"
+  },
+  "feedback_record": {
+    "run_id": "run-example-001",
+    "iteration": 1,
+    "decision": true,
+    "reason": "metric improved",
+    "observations": "stable runtime",
+    "code_change_summary": "added feature",
+    "metrics": {"accuracy": 0.92, "f1_score": 0.91}
+  },
+  "event": {
+    "event_id": "evt-001",
+    "run_id": "run-example-001",
+    "event_type": "step_completed",
+    "step": "coding",
+    "iteration": 1,
+    "payload": {"code_lines": 42},
+    "timestamp": "2025-01-15T10:31:15Z"
+  }
+}

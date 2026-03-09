@@ -21,6 +21,8 @@ from exploration_manager.scheduler import MCTSScheduler
 from llm import LLMAdapter
 from service_contracts import StepOverrideConfig
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class TestConfigDefaults(unittest.TestCase):
     """Test that new config fields have correct defaults."""
@@ -141,7 +143,8 @@ class TestConfigEnvVars(unittest.TestCase):
                 "RD_AGENT_LLM_API_KEY": "test-key",
             }
         )
-        manifest = build_runtime().plugin_registry.get_manifest("data_science")
+        with patch_runtime_llm_provider():
+            manifest = build_runtime().plugin_registry.get_manifest("data_science")
         assert manifest is not None
         defaults = build_real_provider_smoke_step_overrides(
             config,
@@ -166,7 +169,8 @@ class TestConfigEnvVars(unittest.TestCase):
                 "RD_AGENT_LLM_API_KEY": "test-key",
             }
         )
-        manifest = build_runtime().plugin_registry.get_manifest("data_science")
+        with patch_runtime_llm_provider():
+            manifest = build_runtime().plugin_registry.get_manifest("data_science")
         assert manifest is not None
         defaults = build_real_provider_smoke_step_overrides(
             config,
@@ -398,7 +402,7 @@ class TestRuntimeWiring(unittest.TestCase):
                 "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
             },
             clear=False,
-        ):
+        ), patch_runtime_llm_provider():
             runtime = build_runtime()
             run_service = build_run_service(runtime, "data_science")
             step_executor = run_service._loop_engine._step_executor
@@ -421,7 +425,7 @@ class TestRuntimeWiring(unittest.TestCase):
                 "RD_AGENT_LAYER0_K_FORWARD": "6",
             },
             clear=False,
-        ):
+        ), patch_runtime_llm_provider():
             runtime = build_runtime()
             run_service = build_run_service(runtime, "data_science")
             loop_engine_config = run_service._loop_engine._config
@@ -441,7 +445,7 @@ class TestRuntimeWiring(unittest.TestCase):
                 "RD_AGENT_LLM_PROVIDER": "mock",
             },
             clear=False,
-        ):
+        ), patch_runtime_llm_provider():
             runtime = build_runtime()
             data_science_bundle = runtime.plugin_registry.create_bundle("data_science")
             synthetic_bundle = runtime.plugin_registry.create_bundle("synthetic_research")
@@ -490,7 +494,7 @@ class TestRuntimeWiring(unittest.TestCase):
                 "RD_AGENT_LLM_PROVIDER": "mock",
             },
             clear=False,
-        ):
+        ), patch_runtime_llm_provider():
             runtime = build_runtime()
 
             self.assertIs(runtime.exploration_manager._virtual_evaluator, runtime.virtual_evaluator)

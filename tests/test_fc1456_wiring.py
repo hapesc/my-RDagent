@@ -16,6 +16,8 @@ from data_models import (
     StopConditions,
 )
 
+from tests._llm_test_utils import patch_runtime_llm_provider
+
 
 class TestFC1456Wiring(unittest.TestCase):
     def _make_run_session(self, max_loops: int = 2) -> RunSession:
@@ -107,7 +109,7 @@ class TestFC1456Wiring(unittest.TestCase):
                 "RD_AGENT_LLM_PLANNING": "false",
             },
             clear=False,
-        ):
+        ), patch_runtime_llm_provider():
             runtime = build_runtime()
         self.assertIsNotNone(runtime)
         self.assertFalse(runtime.config.enable_hypothesis_storage)

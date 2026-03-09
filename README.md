@@ -33,10 +33,11 @@ User ──→ CLI / REST API ──→ Run Orchestrator ──→ Scenario Plug
          Trace UI ──→ SQLite + Trace Store + Artifact Store
 ```
 
-The system is plugin-based. The loop engine is generic — scenario-specific logic lives in plugins. Two scenarios ship out of the box:
+The system is plugin-based. The loop engine is generic — scenario-specific logic lives in plugins. Three scenarios ship out of the box:
 
 - **`data_science`** — generates and executes small data science experiments
 - **`synthetic_research`** — generates lightweight research briefs and findings
+- **`quant`** — automated alpha factor mining: LLM proposes factors → backtest evaluates → feedback improves (uses real market data via yfinance)
 
 ## Quick Start
 
@@ -44,7 +45,8 @@ The system is plugin-based. The loop engine is generic — scenario-specific log
 
 - Python 3.9+
 - (Optional) Docker for sandboxed code execution
-- (Optional) An LLM API key for real model calls (runs with a mock provider by default)
+- An LLM API key (e.g. `GEMINI_API_KEY`) — **required for real runs**. There is no mock fallback at runtime; missing LLM config will raise an error.
+- (Optional) `yfinance` for the quant scenario's real market data
 
 ### 1. Verify Configuration
 
@@ -142,7 +144,7 @@ Use `--config <path>` in `app.startup`, `cli.py`, and `agentrd_cli.py` to load a
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `RD_AGENT_LLM_PROVIDER` | string | `mock` | LLM backend (`mock`, `litellm`, `openai`) |
+| `RD_AGENT_LLM_PROVIDER` | string | — | LLM backend (`litellm`, `openai`). **Required** — no mock fallback. |
 | `RD_AGENT_LLM_API_KEY` | string | — | API key for LLM provider |
 | `RD_AGENT_LLM_MODEL` | string | `gpt-4o-mini` | Model identifier |
 | `RD_AGENT_LLM_BASE_URL` | string | — | Custom LLM endpoint URL |
@@ -200,11 +202,26 @@ When running the FastAPI control plane:
 ## Testing
 
 ```bash
-# Full regression suite (564 tests)
+# Full regression suite (739 tests)
 python3 -m pytest tests -q
 
 # Acceptance tests
 ./scripts/run_task17_acceptance.sh
+```
+
+### End-to-End Tests (Real LLM)
+
+These scripts run a full loop-engine cycle with a real LLM backend (Gemini). They require `GEMINI_API_KEY` to be set.
+
+```bash
+# Quant scenario — real yfinance data + LLM factor generation + backtest
+python3 scripts/run_quant_e2e.py
+
+# Data Science scenario — real LLM reasoning + coding + local execution
+python3 scripts/run_data_science_e2e.py
+
+# Synthetic Research scenario — real LLM research brief + findings
+python3 scripts/run_synthetic_research_e2e.py
 ```
 
 ## Project Structure
@@ -224,7 +241,8 @@ python3 -m pytest tests -q
 ├── plugins/                # Plugin registry and scenario contracts
 ├── scenarios/
 │   ├── data_science/       # Data science scenario plugin
-│   └── synthetic_research/ # Synthetic research scenario plugin
+│   ├── synthetic_research/ # Synthetic research scenario plugin
+│   └── quant/              # Quant factor mining scenario (yfinance + backtest)
 ├── ui/                     # Streamlit trace viewer
 ├── tests/                  # Test suite covering all layers
 └── dev_doc/                # Architecture docs, gap analysis, ADRs
@@ -234,6 +252,7 @@ python3 -m pytest tests -q
 
 | Document | Description |
 |----------|-------------|
+| [`dev_doc/quant_scenario.md`](dev_doc/quant_scenario.md) | Quant scenario architecture and usage |
 | [`dev_doc/architecture.md`](dev_doc/architecture.md) | Full system architecture with Mermaid diagrams |
 | [`dev_doc/paper_gap_analysis.md`](dev_doc/paper_gap_analysis.md) | Detailed comparison with the R&D-Agent paper |
 | [`dev_doc/configuration.md`](dev_doc/configuration.md) | Complete environment variable reference |

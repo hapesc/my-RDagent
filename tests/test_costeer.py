@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from data_models import (
     CodeArtifact,
+    DebugConfig,
     ExecutionResult,
     ExperimentNode,
     FeedbackRecord,
@@ -208,6 +209,37 @@ class CoSTEEREvolverTests(unittest.TestCase):
         self.assertEqual(score.score_id, "costeer-round-1")
         self.assertEqual(score.value, 0.0)
         self.assertEqual(score.metric_name, "costeer")
+
+    def test_feedback_is_injected_into_second_round_coder_prompt(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+
+        artifact_v1 = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
+        artifact_v2 = CodeArtifact(artifact_id="v2", description="second", location="/tmp/v2")
+        coder.develop.side_effect = [artifact_v1, artifact_v2]
+        runner.run.return_value = self._useful_execution_result()
+        feedback_analyzer.summarize.side_effect = [
+            FeedbackRecord(feedback_id="fb1", decision=False, acceptable=False, reason="tighten factor neutralization"),
+            FeedbackRecord(feedback_id="fb2", decision=True, acceptable=True, reason="ok"),
+        ]
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=3,
+            llm_adapter=None,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+
+        evolver.evolve(experiment, proposal, scenario)
+
+        second_call = coder.develop.call_args_list[1].kwargs
+        self.assertEqual(second_call["experiment"].hypothesis["_costeer_feedback"], "tighten factor neutralization")
+        self.assertEqual(second_call["experiment"].hypothesis["_costeer_round"], 2)
 
     def test_knowledge_saved_on_success(self) -> None:
         """Test that knowledge is extracted and saved when feedback is acceptable."""
@@ -507,6 +539,101 @@ class CoSTEEREvolverTests(unittest.TestCase):
         self.assertIn("test reason", prompt_arg)
         self.assertIn("print(1)", prompt_arg)
         self.assertEqual(call_args[0][1], StructuredFeedback)
+
+    def test_debug_mode_records_estimated_full_time(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
+        coder.develop.return_value = artifact
+        runner.run.return_value = self._useful_execution_result()
+        feedback_analyzer.summarize.return_value = FeedbackRecord(
+            feedback_id="fb1",
+            decision=True,
+            acceptable=True,
+            reason="good enough",
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+        scenario.config["debug_config"] = DebugConfig(debug_mode=True, sample_fraction=0.25)
+
+        with patch("core.loop.costeer.time.monotonic", side_effect=[10.0, 14.0]):
+            evolver.evolve(experiment, proposal, scenario)
+
+        self.assertEqual(experiment.hypothesis.get("estimated_full_time_sec"), 16.0)
+        self.assertEqual(feedback_analyzer.summarize.call_count, 1)
+
+    def test_debug_mode_invalid_sample_fraction_skips_estimate(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
+        coder.develop.return_value = artifact
+        runner.run.return_value = self._useful_execution_result()
+        feedback_analyzer.summarize.return_value = FeedbackRecord(
+            feedback_id="fb1",
+            decision=True,
+            acceptable=True,
+            reason="good enough",
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+        scenario.config["debug_config"] = DebugConfig(debug_mode=True, sample_fraction=0.0)
+
+        with patch("core.loop.costeer.time.monotonic", side_effect=[20.0, 22.0]):
+            evolver.evolve(experiment, proposal, scenario)
+
+        self.assertNotIn("estimated_full_time_sec", experiment.hypothesis)
+
+    def test_non_debug_mode_keeps_zero_behavior_change(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="first", location="/tmp/v1")
+        coder.develop.return_value = artifact
+        runner.run.return_value = self._useful_execution_result()
+        feedback_analyzer.summarize.return_value = FeedbackRecord(
+            feedback_id="fb1",
+            decision=True,
+            acceptable=True,
+            reason="good enough",
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+        scenario.config["debug_config"] = DebugConfig(debug_mode=False, sample_fraction=0.25)
+
+        with patch("core.loop.costeer.time.monotonic", side_effect=[30.0, 34.0]):
+            evolver.evolve(experiment, proposal, scenario)
+
+        self.assertNotIn("estimated_full_time_sec", experiment.hypothesis)
+        self.assertEqual(feedback_analyzer.summarize.call_count, 1)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ from service_contracts import (
     StructuredError,
 )
 
-from .fastapi_compat import FastAPI, HTTPException, Query, status
+from .fastapi_compat import FASTAPI_AVAILABLE, FastAPI, HTTPException, Query, status
 from .run_supervisor import RunSupervisor
 from .runtime import resolve_scenario_runtime_profile
 
@@ -33,6 +33,33 @@ from .runtime import resolve_scenario_runtime_profile
 def build_control_plane_app(supervisor: RunSupervisor | None = None) -> Any:
     app = FastAPI(title="AgentRD Control Plane")
     app.state.supervisor = supervisor or RunSupervisor()
+
+    # When running with real FastAPI, register custom exception handlers so that
+    # structured error responses match the format expected by ControlPlaneClient
+    # and all tests (i.e. ``{"error": {"code": ..., "message": ..., "field": ...}}``
+    # at the top level, not wrapped inside ``{"detail": ...}``).
+    if FASTAPI_AVAILABLE:
+        from fastapi.exceptions import RequestValidationError
+        from starlette.responses import JSONResponse
+
+        @app.exception_handler(HTTPException)
+        async def _http_exception_handler(_request: Any, exc: HTTPException) -> JSONResponse:
+            return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+        @app.exception_handler(RequestValidationError)
+        async def _validation_exception_handler(_request: Any, exc: RequestValidationError) -> JSONResponse:
+            errors = exc.errors()
+            field_name = str(errors[0]["loc"][-1]) if errors else None
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ErrorResponse(
+                    error=StructuredError(
+                        code=ErrorCode.INVALID_REQUEST,
+                        message=str(exc),
+                        field=field_name,
+                    ),
+                ).to_dict(),
+            )
 
     @app.post("/runs")
     def create_run(payload: dict[str, Any]) -> dict[str, Any]:
@@ -106,7 +133,7 @@ def build_control_plane_app(supervisor: RunSupervisor | None = None) -> Any:
     def list_events(
         run_id: str,
         cursor: str | None = Query(default=None),
-        limit: int = Query(default=50),
+        limit: str = Query(default="50"),
         branch_id: str | None = Query(default=None),
     ) -> dict[str, Any]:
         try:

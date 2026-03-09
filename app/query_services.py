@@ -32,7 +32,7 @@ def load_event_page(
     *,
     branch_id: str | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: int | str = 50,
 ) -> RunEventPageResponse:
     store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     events = store.query_events(run_id=run_id, branch_id=branch_id)

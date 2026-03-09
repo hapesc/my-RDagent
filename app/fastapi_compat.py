@@ -125,15 +125,29 @@ class status:
 
 
 class TestClient:
-    """Very small test client for the compatibility app."""
+    """Very small test client for the compatibility app.
+
+    When real FastAPI is available, delegates to starlette's TestClient so that
+    tests work against the real ASGI stack.  Falls back to the lightweight
+    ``handle_request`` helper when running with the mock FastAPI shim.
+    """
 
     def __init__(self, app: FastAPI) -> None:
+        self._real_client: Any | None = None
+        if FASTAPI_AVAILABLE:
+            from starlette.testclient import TestClient as _StarletteClient
+
+            self._real_client = _StarletteClient(app, raise_server_exceptions=False)
         self._app = app
 
     def get(self, path: str, params: dict[str, Any] | None = None):
+        if self._real_client is not None:
+            return self._real_client.get(path, params=params)
         return _Response(*self._app.handle_request("GET", path, query_params=params))
 
     def post(self, path: str, json: dict[str, Any] | None = None):
+        if self._real_client is not None:
+            return self._real_client.post(path, json=json)
         return _Response(*self._app.handle_request("POST", path, json_body=json))
 
 

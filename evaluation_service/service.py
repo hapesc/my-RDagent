@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from data_models import EvalResult, ExecutionResult, Score
 
@@ -23,7 +24,7 @@ class EvaluationService:
         """Initialize evaluation service with metric settings."""
 
         self._config = config
-        self._leaderboard: Dict[str, Dict[str, float]] = {}
+        self._leaderboard: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     def evaluate_run(self, execution_result: ExecutionResult) -> EvalResult:
         """Evaluate an execution result against standardized metrics.
@@ -38,33 +39,57 @@ class EvaluationService:
             Evaluation Service -> evaluate_run
         """
 
-        stages = {}
-        
+        stages: Dict[str, float] = {}
+
         execution_score = 1.0 if execution_result.exit_code == 0 else 0.0
-        stages["execution"] = str(execution_score)
-        
+        stages["execution"] = execution_score
+
         alignment_score = 1.0 if execution_result.artifacts_ref else 0.0
-        stages["alignment"] = str(alignment_score)
-        
+        stages["alignment"] = alignment_score
+
         if execution_result.timed_out:
             debug_score = 0.0
         else:
             debug_score = 1.0
-        stages["debug_compliance"] = str(debug_score)
-        
+        stages["debug_compliance"] = debug_score
+
         authenticity_score = 1.0 if execution_result.logs_ref else 0.5
-        stages["authenticity"] = str(authenticity_score)
-        
-        total = (0.4 * execution_score + 0.2 * alignment_score + 
-                 0.2 * debug_score + 0.2 * authenticity_score)
-        
+        stages["authenticity"] = authenticity_score
+
+        total = (
+            0.4 * execution_score
+            + 0.2 * alignment_score
+            + 0.2 * debug_score
+            + 0.2 * authenticity_score
+        )
+        task_id = self._resolve_task_id(execution_result)
+        self._leaderboard.setdefault(task_id, {})[execution_result.run_id] = {
+            "score": total,
+            "metrics": {**stages, "total": total, "metric_name": self._config.metric_name},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
         score = Score(
             score_id=f"score-{execution_result.run_id}",
             value=total,
             metric_name=self._config.metric_name,
-            details={"stages": f"execution={execution_score},alignment={alignment_score},debug_compliance={debug_score},authenticity={authenticity_score}"},
+            details={
+                "stages": (
+                    "execution="
+                    f"{execution_score},alignment={alignment_score},"
+                    f"debug_compliance={debug_score},authenticity={authenticity_score}"
+                )
+            },
         )
         return EvalResult(score=score, report_ref=f"report-{execution_result.run_id}")
+
+    def _resolve_task_id(self, execution_result: ExecutionResult) -> str:
+        artifact_manifest = execution_result.artifact_manifest
+        if isinstance(artifact_manifest, dict):
+            task_id = artifact_manifest.get("task_id")
+            if isinstance(task_id, str) and task_id.strip():
+                return task_id.strip()
+        return "default"
 
     def aggregate_branch_scores(self, scores: List[Score]) -> Score:
         """Aggregate scores from multiple branches.
@@ -93,7 +118,7 @@ class EvaluationService:
             metric_name=self._config.metric_name,
         )
 
-    def get_leaderboard(self, task_id: str) -> Dict[str, float]:
+    def get_leaderboard(self, task_id: str) -> Dict[str, Dict[str, Any]]:
         """Return leaderboard entries for a task.
 
         Responsibility:
@@ -106,4 +131,4 @@ class EvaluationService:
             Evaluation Service -> get_leaderboard
         """
 
-        return dict(self._leaderboard.get(task_id, {}))
+        return {key: dict(value) for key, value in self._leaderboard.get(task_id, {}).items()}

@@ -138,6 +138,8 @@ def planning_strategy_prompt(
         f"- `method_selection`: Specific method or technique to apply next.\n"
         f"- `exploration_weight`: Weight for exploration vs exploitation (0.0=pure exploit, 1.0=pure explore).\n"
         f"- `reasoning`: Justification for this strategy choice given current progress and budget.\n"
+        f"- `budget_allocation`: Optional. Allocate the remaining budget across phases as a JSON object. "
+        f'Example: {{"proposal": 120, "coding": 180, "running": 60, "feedback": 60}}\n'
         f"\n"
         f"## Schema\n"
         f"```json\n{schema_hint}\n```"

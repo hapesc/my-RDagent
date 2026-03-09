@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import csv
 import json
-from dataclasses import dataclass, field
+import logging
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -43,6 +45,7 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+from evaluation_service.stratified_splitter import StratifiedSplitter
 
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
@@ -77,13 +80,124 @@ class DataScienceV1Config:
 
 class DataScienceScenarioPlugin(ScenarioPlugin):
     def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
+        split_manifest = _build_data_science_split_manifest(input_payload)
         return ScenarioContext(
             run_id=run_session.run_id,
             scenario_name=run_session.scenario,
             input_payload=dict(input_payload),
+            config={"split_manifest": split_manifest},
             task_summary=str(input_payload.get("task_summary", "")),
             step_config=StepOverrideConfig.from_dict(input_payload.get("step_config")),
         )
+
+
+def _build_data_science_split_manifest(input_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    data_ids = _normalize_id_list(input_payload.get("data_ids"))
+    labels = _normalize_label_list(input_payload.get("labels"))
+
+    if not data_ids:
+        rows = _load_data_rows(str(input_payload.get("data_source", "")).strip())
+        if rows:
+            data_ids, labels = _extract_split_inputs_from_rows(rows, input_payload)
+
+    if not data_ids:
+        return None
+
+    splitter = StratifiedSplitter(
+        train_ratio=_resolve_split_ratio(input_payload.get("train_ratio"), 0.9),
+        test_ratio=_resolve_split_ratio(input_payload.get("test_ratio"), 0.1),
+        seed=_resolve_split_seed(input_payload.get("split_seed", input_payload.get("seed", 42))),
+    )
+    manifest = splitter.split(data_ids, labels=labels)
+    return asdict(manifest)
+
+
+def _load_data_rows(data_source: str) -> List[Dict[str, Any]]:
+    if not data_source:
+        return []
+
+    path = Path(data_source)
+    if not path.exists() or not path.is_file():
+        return []
+
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        with path.open(newline="", encoding="utf-8") as handle:
+            return [dict(row) for row in csv.DictReader(handle)]
+    if suffix in {".jsonl", ".ndjson"}:
+        rows: List[Dict[str, Any]] = []
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if isinstance(record, dict):
+                    rows.append(record)
+        return rows
+    return []
+
+
+def _extract_split_inputs_from_rows(
+    rows: List[Dict[str, Any]], input_payload: Dict[str, Any]
+) -> tuple[List[str], Optional[List[str]]]:
+    id_column = str(input_payload.get("id_column", "")).strip() or _first_matching_key(
+        rows,
+        ["id", "data_id", "row_id", "item_id"],
+    )
+    label_column = str(input_payload.get("label_column", "")).strip() or _first_matching_key(
+        rows,
+        ["label", "target", "y", "class", "category"],
+    )
+
+    data_ids = [
+        str(row.get(id_column) or index)
+        for index, row in enumerate(rows)
+    ]
+    labels: Optional[List[str]] = None
+    if label_column:
+        candidate_labels = [str(row.get(label_column, "")) for row in rows]
+        if any(label.strip() for label in candidate_labels):
+            labels = candidate_labels
+    return data_ids, labels
+
+
+def _first_matching_key(rows: List[Dict[str, Any]], candidates: List[str]) -> str:
+    if not rows:
+        return ""
+    first_row = rows[0]
+    for candidate in candidates:
+        if candidate in first_row:
+            return candidate
+    return ""
+
+
+def _normalize_id_list(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if str(item).strip()]
+
+
+def _normalize_label_list(value: Any) -> Optional[List[str]]:
+    if not isinstance(value, list):
+        return None
+    labels = [str(item) for item in value]
+    return labels if labels else None
+
+
+def _resolve_split_ratio(value: Any, default: float) -> float:
+    try:
+        resolved = float(value)
+    except (TypeError, ValueError):
+        return default
+    return resolved if resolved > 0 else default
+
+
+def _resolve_split_seed(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 42
 
 
 class DataScienceProposalEngine(ProposalEngine):
@@ -105,10 +219,35 @@ class DataScienceProposalEngine(ProposalEngine):
         plan: Plan,
         scenario: ScenarioContext,
     ) -> Proposal:
-        _ = context
-        _ = parent_ids
-        _ = plan
         summary = task_summary or scenario.task_summary or "data science task"
+        highlights = list(getattr(context, "highlights", None) or [])
+        scored_items = list(getattr(context, "scored_items", None) or [])
+        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        for item, score in scored_items[:3]:
+            item_text = str(item).strip()
+            if not item_text:
+                continue
+            try:
+                score_text = f"{float(score):.3f}"
+            except (TypeError, ValueError):
+                score_text = "N/A"
+            context_lines.append(f"- {item_text} (score={score_text})")
+        if not context_lines:
+            context_lines = ["- None"]
+
+        guidance_items = list(getattr(plan, "guidance", None) or []) if plan is not None else []
+        guidance_text = (
+            "\n".join(f"- {str(item).strip()}" for item in guidance_items if str(item).strip())
+            or "No specific guidance"
+        )
+        parent_text = ", ".join(parent_ids) if parent_ids else "None"
+        context_text = "\n".join(context_lines)
+        enriched_summary = (
+            f"{summary}\n\n"
+            f"Prior Context:\n{context_text}\n\n"
+            f"Strategic Guidance:\n{guidance_text}\n\n"
+            f"Parent Branch Continuity:\n{parent_text}"
+        )
         iteration = int(scenario.input_payload.get("loop_index", 0))
 
         if self._virtual_evaluator is not None:
@@ -123,7 +262,7 @@ class DataScienceProposalEngine(ProposalEngine):
                     float(score) for score in scenario.input_payload.get("current_scores", [])
                 ]
                 designs = evaluator.evaluate(
-                    task_summary=summary,
+                    task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
                     iteration=iteration,
                     previous_results=previous_results,
@@ -154,7 +293,7 @@ class DataScienceProposalEngine(ProposalEngine):
                     float(score) for score in scenario.input_payload.get("current_scores", [])
                 ]
                 design = pipeline.reason(
-                    task_summary=summary,
+                    task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
                     iteration=iteration,
                     previous_results=previous_results,
@@ -172,7 +311,7 @@ class DataScienceProposalEngine(ProposalEngine):
                 )
 
         prompt = proposal_prompt(
-            task_summary=summary,
+            task_summary=enriched_summary,
             scenario_name=scenario.scenario_name,
             iteration=iteration,
         )
@@ -236,9 +375,12 @@ class DataScienceCoder(Coder):
         readme_text = proposal.summary
         artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
+        
+        proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
+        
         if self._llm_adapter is not None:
             prompt = coding_prompt(
-                proposal_summary=proposal.summary,
+                proposal_summary=proposal_summary_with_feedback,
                 constraints=proposal.constraints,
                 experiment_node_id=experiment.node_id,
                 workspace_ref=experiment.workspace_ref,
@@ -258,6 +400,15 @@ class DataScienceCoder(Coder):
             description=readme_text,
             location=str(workspace),
         )
+
+    def _enrich_proposal_with_feedback(self, proposal: Proposal, experiment: ExperimentNode) -> str:
+        feedback_text = None
+        if isinstance(experiment.hypothesis, dict):
+            feedback_text = experiment.hypothesis.get("_costeer_feedback")
+        
+        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
+            return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
+        return proposal.summary
 
     def _build_pipeline_script(self, data_source: str) -> str:
         return (
@@ -284,9 +435,47 @@ class DataScienceRunner(Runner):
         self._backend = backend
 
     def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult:
+        logger = logging.getLogger(__name__)
         loop_index = int(scenario.input_payload.get("loop_index", 0))
         branch_id = str(scenario.input_payload.get("branch_id", "main"))
         command = str(scenario.input_payload.get("command", "python3 pipeline.py"))
+        debug_config = scenario.config.get("debug_config")
+        if (
+            debug_config
+            and getattr(debug_config, "debug_mode", False)
+            and getattr(debug_config, "supports_debug_sampling", False)
+        ):
+            sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
+            sample_fraction = max(0.0, min(sample_fraction, 1.0))
+            
+            if sample_fraction == 0.0:
+                logger.warning(
+                    "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 row)"
+                )
+            
+            data_source = str(scenario.input_payload.get("data_source", "")).strip()
+            if data_source:
+                data_path = Path(data_source)
+                pipeline_path = Path(artifact.location) / "pipeline.py"
+                if data_path.exists() and data_path.is_file() and pipeline_path.exists():
+                    sampled_path = data_path.with_name(f"{data_path.stem}.debug_sample{data_path.suffix}")
+                    source_lines = data_path.read_text(encoding="utf-8").splitlines()
+                    if len(source_lines) > 1:
+                        header, rows = source_lines[0], source_lines[1:]
+                        sample_size = max(1, int(len(rows) * sample_fraction))
+                        sampled_content = "\n".join([header, *rows[:sample_size]]) + "\n"
+                        sampled_path.write_text(sampled_content, encoding="utf-8")
+                        pipeline_text = pipeline_path.read_text(encoding="utf-8")
+                        pipeline_text = pipeline_text.replace(
+                            f"data_source = {data_source!r}",
+                            f"data_source = {str(sampled_path)!r}",
+                            1,
+                        )
+                        pipeline_path.write_text(pipeline_text, encoding="utf-8")
+                        logger.info(
+                            "Debug mode active: sampling %.0f%% of data",
+                            sample_fraction * 100,
+                        )
         backend_result = self._backend.execute(
             run_id=scenario.run_id,
             branch_id=branch_id,

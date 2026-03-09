@@ -24,6 +24,7 @@ from exploration_manager.merging import TraceMerger
 from exploration_manager.pruning import BranchPruner
 from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
+from data_models import DebugConfig
 from llm import LLMAdapter
 from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
@@ -282,6 +283,11 @@ def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
 
 def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
     plugin_bundle = runtime.plugin_registry.create_bundle(scenario)
+    debug_config = DebugConfig(
+        debug_mode=runtime.config.debug_mode,
+        sample_fraction=runtime.config.debug_sample_fraction,
+        max_epochs=runtime.config.debug_max_epochs,
+    )
     step_executor = StepExecutor(
         plugin_bundle=plugin_bundle,
         evaluation_service=runtime.evaluation_service,
@@ -291,6 +297,7 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         costeer_max_rounds=runtime.config.costeer_max_rounds,
         llm_adapter=runtime.llm_adapter,
         memory_service=runtime.memory_service,
+        debug_config=debug_config,
     )
     loop_engine = LoopEngine(
         config=LoopEngineConfig(

@@ -33,6 +33,7 @@ class ScenarioContext:
     run_id: str
     scenario_name: str
     input_payload: Dict[str, Any]
+    config: Dict[str, Any] = field(default_factory=dict)
     task_summary: str = ""
     step_config: StepOverrideConfig = field(default_factory=StepOverrideConfig)
 

@@ -144,14 +144,19 @@ class PlanningStrategy:
     method_selection: str = ""
     exploration_weight: float = 0.5
     reasoning: str = ""
+    budget_allocation: Optional[Dict[str, float]] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, object]) -> "PlanningStrategy":
+        budget_alloc = data.get("budget_allocation")
+        if budget_alloc is not None and isinstance(budget_alloc, dict):
+            budget_alloc = {k: float(v) for k, v in budget_alloc.items()}
         return cls(
             strategy_name=str(data.get("strategy_name", "")),
             method_selection=str(data.get("method_selection", "")),
             exploration_weight=float(data.get("exploration_weight", 0.5)),
             reasoning=str(data.get("reasoning", "")),
+            budget_allocation=budget_alloc,
         )
 
 

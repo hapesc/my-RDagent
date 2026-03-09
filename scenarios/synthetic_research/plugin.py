@@ -79,6 +79,7 @@ class SyntheticResearchScenarioPlugin(ScenarioPlugin):
             run_id=run_session.run_id,
             scenario_name=run_session.scenario,
             input_payload=dict(input_payload),
+            config={"split_manifest": None},
             task_summary=str(input_payload.get("task_summary", "")),
             step_config=StepOverrideConfig.from_dict(input_payload.get("step_config")),
         )
@@ -106,6 +107,34 @@ class SyntheticResearchProposalEngine(ProposalEngine):
         scenario: ScenarioContext,
     ) -> Proposal:
         summary = task_summary or scenario.task_summary or "synthetic research task"
+        highlights = list(getattr(context, "highlights", None) or [])
+        scored_items = list(getattr(context, "scored_items", None) or [])
+        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        for item, score in scored_items[:3]:
+            item_text = str(item).strip()
+            if not item_text:
+                continue
+            try:
+                score_text = f"{float(score):.3f}"
+            except (TypeError, ValueError):
+                score_text = "N/A"
+            context_lines.append(f"- {item_text} (score={score_text})")
+        if not context_lines:
+            context_lines = ["- None"]
+
+        guidance_items = list(getattr(plan, "guidance", None) or []) if plan is not None else []
+        guidance_text = (
+            "\n".join(f"- {str(item).strip()}" for item in guidance_items if str(item).strip())
+            or "No specific guidance"
+        )
+        parent_text = ", ".join(parent_ids) if parent_ids else "None"
+        context_text = "\n".join(context_lines)
+        enriched_summary = (
+            f"{summary}\n\n"
+            f"Prior Context:\n{context_text}\n\n"
+            f"Strategic Guidance:\n{guidance_text}\n\n"
+            f"Parent Branch Continuity:\n{parent_text}"
+        )
         iteration = int(scenario.input_payload.get("loop_index", 0))
 
         if self._virtual_evaluator is not None:
@@ -120,7 +149,7 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                     float(score) for score in scenario.input_payload.get("current_scores", [])
                 ]
                 designs = evaluator.evaluate(
-                    task_summary=summary,
+                    task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
                     iteration=iteration,
                     previous_results=previous_results,
@@ -151,7 +180,7 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                     float(score) for score in scenario.input_payload.get("current_scores", [])
                 ]
                 design = pipeline.reason(
-                    task_summary=summary,
+                    task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
                     iteration=iteration,
                     previous_results=previous_results,
@@ -170,7 +199,7 @@ class SyntheticResearchProposalEngine(ProposalEngine):
 
         if self._llm_adapter is not None:
             prompt = proposal_prompt(
-                task_summary=summary,
+                task_summary=enriched_summary,
                 scenario_name=scenario.scenario_name,
                 iteration=iteration,
             )
@@ -185,12 +214,9 @@ class SyntheticResearchProposalEngine(ProposalEngine):
                 constraints=draft.constraints + ["synthetic_research"],
                 virtual_score=draft.virtual_score,
             )
-        _ = context
-        _ = parent_ids
-        _ = plan
         return Proposal(
             proposal_id="proposal-placeholder",
-            summary=summary,
+            summary=enriched_summary,
             constraints=[self._fallback_policy],
             virtual_score=0.0,
         )
@@ -229,6 +255,15 @@ class SyntheticResearchCoder(Coder):
     def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
         self._llm_adapter = llm_adapter
 
+    def _enrich_proposal_with_feedback(self, proposal: Proposal, experiment: ExperimentNode) -> str:
+        feedback_text = None
+        if isinstance(experiment.hypothesis, dict):
+            feedback_text = experiment.hypothesis.get("_costeer_feedback")
+        
+        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
+            return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
+        return proposal.summary
+
     def develop(
         self,
         experiment: ExperimentNode,
@@ -248,9 +283,12 @@ class SyntheticResearchCoder(Coder):
             brief_lines.extend([f"- {topic}" for topic in topics])
         brief_text = "\n".join(brief_lines) + "\n"
         artifact_description = proposal.summary
+        
+        proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
+        
         if self._llm_adapter is not None:
             prompt = coding_prompt(
-                proposal_summary=proposal.summary,
+                proposal_summary=proposal_summary_with_feedback,
                 constraints=proposal.constraints,
                 experiment_node_id=experiment.node_id,
                 workspace_ref=experiment.workspace_ref,
@@ -276,6 +314,8 @@ class SyntheticResearchCoder(Coder):
 
 class SyntheticResearchRunner(Runner):
     def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult:
+        debug_config = scenario.config.get("debug_config")
+        _ = debug_config
         workspace = Path(artifact.location)
         summary_path = workspace / "research_summary.json"
         topics = scenario.input_payload.get("reference_topics", [])

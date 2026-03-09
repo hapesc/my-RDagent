@@ -234,11 +234,14 @@ python3 -m pytest tests -q
 
 | Document | Description |
 |----------|-------------|
-| [`dev_doc/reverse_engineered_architecture.md`](dev_doc/reverse_engineered_architecture.md) | Full system architecture with Mermaid diagrams |
+| [`dev_doc/architecture.md`](dev_doc/architecture.md) | Full system architecture with Mermaid diagrams |
 | [`dev_doc/paper_gap_analysis.md`](dev_doc/paper_gap_analysis.md) | Detailed comparison with the R&D-Agent paper |
-| [`dev_doc/config_env_mapping.md`](dev_doc/config_env_mapping.md) | Complete environment variable reference |
-| [`dev_doc/runbook_mvp.md`](dev_doc/runbook_mvp.md) | Operations runbook |
-| [`dev_doc/deploy_minimal_mvp.md`](dev_doc/deploy_minimal_mvp.md) | Minimal deployment guide |
+| [`dev_doc/configuration.md`](dev_doc/configuration.md) | Complete environment variable reference |
+| [`dev_doc/runbook.md`](dev_doc/runbook.md) | Operations runbook |
+| [`dev_doc/deployment.md`](dev_doc/deployment.md) | Minimal deployment guide |
+| [`dev_doc/api_reference.md`](dev_doc/api_reference.md) | REST API reference and contracts |
+| [`dev_doc/product_requirements.md`](dev_doc/product_requirements.md) | Core product requirements |
+| [`dev_doc/system_specifications.md`](dev_doc/system_specifications.md) | Detailed system specifications |
 
 ## Acknowledgments
 

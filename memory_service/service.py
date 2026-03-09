@@ -6,6 +6,7 @@ import json
 import logging
 import sqlite3
 import time
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -43,7 +44,7 @@ class MemoryService:
         if self._db_path != ":memory:":
             Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         else:
-            self._db_path = f"file:memory_service_{id(self)}?mode=memory&cache=shared"
+            self._db_path = f"file:memory_service_{uuid.uuid4().hex}?mode=memory&cache=shared"
             self._db_uri = True
             self._memory_anchor = sqlite3.connect(self._db_path, uri=True)
             self._memory_anchor.row_factory = sqlite3.Row

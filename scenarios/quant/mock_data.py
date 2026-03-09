@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Optional
 
 
 def generate_ohlcv(
@@ -16,13 +15,13 @@ def generate_ohlcv(
     """Generate synthetic OHLCV data using correlated GBM.
 
     Uses Geometric Brownian Motion with Cholesky decomposition for correlation.
-    
+
     Args:
         n_stocks: Number of stocks to generate (default 50)
         n_days: Number of trading days per stock (default 500)
         start_date: Start date in YYYY-MM-DD format (default "2020-01-01")
         seed: Random seed for reproducibility (default 42)
-    
+
     Returns:
         DataFrame with columns: [date, stock_id, open, high, low, close, volume]
         Shape: (n_stocks * n_days, 7)
@@ -54,9 +53,7 @@ def generate_ohlcv(
     close_prices[0] = s0
 
     for t in range(1, n_days):
-        close_prices[t] = close_prices[t - 1] * np.exp(
-            (mu - 0.5 * sigma**2) + sigma * correlated_z[t]
-        )
+        close_prices[t] = close_prices[t - 1] * np.exp((mu - 0.5 * sigma**2) + sigma * correlated_z[t])
 
     # Derive OHLC from close prices
     open_prices = np.zeros_like(close_prices)
@@ -75,14 +72,10 @@ def generate_ohlcv(
         intraday_range = np.abs(rng.normal(0, sigma / 2, n_stocks))
 
         # High: max(open, close) * (1 + intraday_range)
-        high_prices[t] = np.maximum(open_prices[t], close_prices[t]) * (
-            1 + intraday_range
-        )
+        high_prices[t] = np.maximum(open_prices[t], close_prices[t]) * (1 + intraday_range)
 
         # Low: min(open, close) * (1 - intraday_range)
-        low_prices[t] = np.minimum(open_prices[t], close_prices[t]) * (
-            1 - intraday_range
-        )
+        low_prices[t] = np.minimum(open_prices[t], close_prices[t]) * (1 - intraday_range)
 
     # Enforce OHLC constraints
     for t in range(n_days):

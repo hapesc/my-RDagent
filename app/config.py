@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 import yaml
 
@@ -23,9 +24,9 @@ class AppConfig:
     allow_local_execution: bool
     log_level: str
     llm_provider: str
-    llm_api_key: Optional[str]
+    llm_api_key: str | None
     llm_model: str
-    llm_base_url: Optional[str]
+    llm_base_url: str | None
     costeer_max_rounds: int
     mcts_exploration_weight: float = 1.41
     mcts_c_puct: float = 1.41
@@ -39,13 +40,13 @@ class AppConfig:
     enable_hypothesis_storage: bool = False
     use_llm_planning: bool = False
     uses_real_llm_provider: bool = False
-    real_provider_warnings: Tuple[str, ...] = ()
+    real_provider_warnings: tuple[str, ...] = ()
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
-REAL_PROVIDER_SAFE_PROFILE: Dict[str, int] = {
+REAL_PROVIDER_SAFE_PROFILE: dict[str, int] = {
     "layer0_n_candidates": 1,
     "layer0_k_forward": 1,
     "costeer_max_rounds": 1,
@@ -53,7 +54,7 @@ REAL_PROVIDER_SAFE_PROFILE: Dict[str, int] = {
     "max_retries": 1,
 }
 
-_REAL_PROVIDER_WARNING_LIMITS: Dict[str, int] = {
+_REAL_PROVIDER_WARNING_LIMITS: dict[str, int] = {
     "layer0_n_candidates": 2,
     "layer0_k_forward": 2,
     "costeer_max_rounds": 2,
@@ -72,7 +73,7 @@ def _validate_positive_config_fields(values: Mapping[str, int]) -> None:
             raise ValueError(f"{field_name} must be > 0")
 
 
-def _apply_real_provider_defaults(merged: Dict[str, Any], sources: Mapping[str, str]) -> None:
+def _apply_real_provider_defaults(merged: dict[str, Any], sources: Mapping[str, str]) -> None:
     if not uses_real_llm_provider(str(merged["llm_provider"])):
         return
     for field_name, safe_value in REAL_PROVIDER_SAFE_PROFILE.items():
@@ -85,9 +86,9 @@ def _apply_real_provider_defaults(merged: Dict[str, Any], sources: Mapping[str, 
 def _validate_real_provider_guardrails(
     config: AppConfig,
     *,
-    step_max_retries: Optional[Sequence[Tuple[str, Optional[int]]]] = None,
-    running_timeout_sec: Optional[int] = None,
-) -> Tuple[str, ...]:
+    step_max_retries: Sequence[tuple[str, int | None]] | None = None,
+    running_timeout_sec: int | None = None,
+) -> tuple[str, ...]:
     if not config.uses_real_llm_provider:
         return ()
 
@@ -106,14 +107,10 @@ def _validate_real_provider_guardrails(
                 f"real provider guardrail violation: {field_name}={value} exceeds hard limit {warning_limit}"
             )
         if value > safe_limit:
-            warnings.append(
-                f"real provider warning: {field_name}={value} exceeds conservative profile {safe_limit}"
-            )
+            warnings.append(f"real provider warning: {field_name}={value} exceeds conservative profile {safe_limit}")
 
     if config.layer0_k_forward > config.layer0_n_candidates:
-        raise ValueError(
-            "real provider guardrail violation: layer0_k_forward must be <= layer0_n_candidates"
-        )
+        raise ValueError("real provider guardrail violation: layer0_k_forward must be <= layer0_n_candidates")
 
     for step_name, retries in step_max_retries or ():
         if retries is None:
@@ -126,13 +123,11 @@ def _validate_real_provider_guardrails(
     if running_timeout_sec is not None:
         if running_timeout_sec > _REAL_PROVIDER_WARNING_LIMITS["sandbox_timeout_sec"]:
             raise ValueError(
-                "real provider guardrail violation: running.timeout_sec"
-                f"={running_timeout_sec} exceeds hard limit 300"
+                f"real provider guardrail violation: running.timeout_sec={running_timeout_sec} exceeds hard limit 300"
             )
         if running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
             warnings.append(
-                "real provider warning: running.timeout_sec="
-                f"{running_timeout_sec} exceeds conservative profile 120"
+                f"real provider warning: running.timeout_sec={running_timeout_sec} exceeds conservative profile 120"
             )
 
     return tuple(warnings)
@@ -141,9 +136,9 @@ def _validate_real_provider_guardrails(
 def validate_runtime_guardrails(
     config: AppConfig,
     *,
-    step_max_retries: Optional[Sequence[Tuple[str, Optional[int]]]] = None,
-    running_timeout_sec: Optional[int] = None,
-) -> Tuple[str, ...]:
+    step_max_retries: Sequence[tuple[str, int | None]] | None = None,
+    running_timeout_sec: int | None = None,
+) -> tuple[str, ...]:
     return _validate_real_provider_guardrails(
         config,
         step_max_retries=step_max_retries,
@@ -172,9 +167,7 @@ def _get_string(environ: Mapping[str, str], key: str, default: str) -> str:
     return raw
 
 
-def _get_optional_string(
-    environ: Mapping[str, str], key: str, default: Optional[str]
-) -> Optional[str]:
+def _get_optional_string(environ: Mapping[str, str], key: str, default: str | None) -> str | None:
     raw = environ.get(key)
     if raw is None or raw == "":
         return default
@@ -213,7 +206,7 @@ def _default_config_path() -> Path:
     return _project_root() / "config.yaml"
 
 
-def _load_yaml_values(config_path: Path) -> Dict[str, Any]:
+def _load_yaml_values(config_path: Path) -> dict[str, Any]:
     if not config_path.exists():
         return {}
     with config_path.open("r", encoding="utf-8") as handle:
@@ -231,14 +224,14 @@ def _as_string(raw: Any) -> str:
     return str(raw)
 
 
-def _as_optional_string(raw: Any) -> Optional[str]:
+def _as_optional_string(raw: Any) -> str | None:
     if raw is None:
         return None
     text = str(raw)
     return text if text != "" else None
 
 
-_DEFAULTS: Dict[str, Any] = {
+_DEFAULTS: dict[str, Any] = {
     "env": "dev",
     "default_scenario": "data_science",
     "artifact_root": "/tmp/rd_agent_artifacts",
@@ -266,7 +259,7 @@ _DEFAULTS: Dict[str, Any] = {
     "use_llm_planning": False,
 }
 
-_YAML_CASTERS: Dict[str, Callable[[Any], Any]] = {
+_YAML_CASTERS: dict[str, Callable[[Any], Any]] = {
     "env": _as_string,
     "default_scenario": _as_string,
     "artifact_root": _as_string,
@@ -294,7 +287,7 @@ _YAML_CASTERS: Dict[str, Callable[[Any], Any]] = {
     "use_llm_planning": lambda raw: _parse_bool_value(raw, "use_llm_planning"),
 }
 
-_ENV_BINDINGS: Dict[str, Tuple[str, Callable[[Mapping[str, str], str, Any], Any]]] = {
+_ENV_BINDINGS: dict[str, tuple[str, Callable[[Mapping[str, str], str, Any], Any]]] = {
     "env": ("AGENTRD_ENV", _get_string),
     "default_scenario": ("AGENTRD_DEFAULT_SCENARIO", _get_string),
     "artifact_root": ("AGENTRD_ARTIFACT_ROOT", _get_string),
@@ -323,8 +316,8 @@ _ENV_BINDINGS: Dict[str, Tuple[str, Callable[[Mapping[str, str], str, Any], Any]
 }
 
 
-def _merge_yaml(merged: Dict[str, Any], yaml_values: Mapping[str, Any], sources: Dict[str, str]) -> None:
-    unknown = [key for key in yaml_values.keys() if key not in _YAML_CASTERS]
+def _merge_yaml(merged: dict[str, Any], yaml_values: Mapping[str, Any], sources: dict[str, str]) -> None:
+    unknown = [key for key in yaml_values if key not in _YAML_CASTERS]
     if unknown:
         raise ValueError(f"unknown config keys in yaml: {', '.join(sorted(unknown))}")
     for key, raw in yaml_values.items():
@@ -333,7 +326,7 @@ def _merge_yaml(merged: Dict[str, Any], yaml_values: Mapping[str, Any], sources:
         sources[key] = "yaml"
 
 
-def _apply_env_overrides(merged: Dict[str, Any], env_map: Mapping[str, str], sources: Dict[str, str]) -> None:
+def _apply_env_overrides(merged: dict[str, Any], env_map: Mapping[str, str], sources: dict[str, str]) -> None:
     for field_name, (env_name, reader) in _ENV_BINDINGS.items():
         if env_name in env_map:
             merged[field_name] = reader(env_map, env_name, merged[field_name])
@@ -342,8 +335,8 @@ def _apply_env_overrides(merged: Dict[str, Any], env_map: Mapping[str, str], sou
 
 
 def load_config(
-    environ: Optional[Mapping[str, str]] = None,
-    config_path: Optional[str] = None,
+    environ: Mapping[str, str] | None = None,
+    config_path: str | None = None,
 ) -> AppConfig:
     env_map: Mapping[str, str] = environ or {}
     if environ is None:
@@ -351,8 +344,8 @@ def load_config(
 
         env_map = os.environ
 
-    merged: Dict[str, Any] = dict(_DEFAULTS)
-    sources: Dict[str, str] = {key: "default" for key in _DEFAULTS}
+    merged: dict[str, Any] = dict(_DEFAULTS)
+    sources: dict[str, str] = {key: "default" for key in _DEFAULTS}
 
     resolved_path = Path(config_path) if config_path is not None else _default_config_path()
     if config_path is not None and not resolved_path.exists():

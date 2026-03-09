@@ -1,0 +1,1 @@
+Scenarios [8/10 pass] | Integration [FAIL] | VERDICT FAIL

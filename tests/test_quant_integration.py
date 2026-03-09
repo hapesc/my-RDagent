@@ -1,7 +1,6 @@
 """T12: Integration test — full factor mining loop end-to-end."""
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -17,8 +16,8 @@ from data_models import (
 from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from scenarios.quant.data_provider import MockDataProvider
 from scenarios.quant.plugin import (
-    QuantConfig,
     QuantCoder,
+    QuantConfig,
     QuantExperimentGenerator,
     QuantFeedbackAnalyzer,
     QuantRunner,
@@ -59,9 +58,7 @@ class TestFullFactorMiningLoop:
     def tmp_workspace(self, tmp_path):
         return tmp_path
 
-    def test_full_loop_returns_feedback_record(
-        self, run_session, loop_state, proposal, tmp_workspace
-    ):
+    def test_full_loop_returns_feedback_record(self, run_session, loop_state, proposal, tmp_workspace):
         """Full pipeline: build_context → generate → develop → run → summarize."""
         # 1. Build context
         plugin = QuantScenarioPlugin()
@@ -115,9 +112,7 @@ class TestFullFactorMiningLoop:
             llm_adapter=adapter,
         )
 
-        ctx = bundle.scenario_plugin.build_context(
-            run_session, {"task_summary": "mine momentum factor via bundle"}
-        )
+        ctx = bundle.scenario_plugin.build_context(run_session, {"task_summary": "mine momentum factor via bundle"})
         node = bundle.experiment_generator.generate(proposal, run_session, loop_state, [])
         artifact = bundle.coder.develop(node, proposal, ctx)
         result = bundle.runner.run(artifact, ctx)
@@ -125,9 +120,7 @@ class TestFullFactorMiningLoop:
 
         assert isinstance(feedback, FeedbackRecord)
 
-    def test_feedback_contains_metrics_when_run_succeeds(
-        self, run_session, loop_state, proposal, tmp_workspace
-    ):
+    def test_feedback_contains_metrics_when_run_succeeds(self, run_session, loop_state, proposal, tmp_workspace):
         config = QuantConfig(
             workspace_root=str(tmp_workspace),
             n_stocks=10,
@@ -167,9 +160,7 @@ class TestFullFactorMiningLoop:
         )
         adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))
         bundle = build_quant_bundle(config, llm_adapter=adapter)
-        ctx = bundle.scenario_plugin.build_context(
-            run_session, {"task_summary": "two-iteration test"}
-        )
+        ctx = bundle.scenario_plugin.build_context(run_session, {"task_summary": "two-iteration test"})
 
         prev_feedback = None
         for i in range(2):

@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agentrd_cli import ExitCode, build_parser, main
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import traceback
 import time
+import traceback
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-from exploration_manager.scheduler import MCTSScheduler
-from exploration_manager.service import supports_diverse_roots, supports_trace_merge
+from typing import Any
 
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
 from data_models import (
@@ -27,6 +24,8 @@ from data_models import (
     RunStatus,
     StepState,
 )
+from exploration_manager.scheduler import MCTSScheduler
+from exploration_manager.service import supports_diverse_roots, supports_trace_merge
 
 
 @dataclass
@@ -52,7 +51,7 @@ class LoopEngine:
         step_executor,
         run_store: RunMetadataStore,
         event_store: EventMetadataStore,
-        scheduler: Optional[MCTSScheduler] = None,
+        scheduler: MCTSScheduler | None = None,
     ) -> None:
         self._config = config
         self._planner = planner
@@ -67,9 +66,9 @@ class LoopEngine:
         self,
         run_session: RunSession,
         task_summary: str,
-        max_loops: Optional[int] = None,
+        max_loops: int | None = None,
         start_iteration: int = 0,
-        restored_workspace: Optional[str] = None,
+        restored_workspace: str | None = None,
     ) -> LoopContext:
         run_session.update_status(RunStatus.RUNNING)
         self._run_store.create_run(run_session)
@@ -135,8 +134,7 @@ class LoopEngine:
                     self._mark_iteration_failed(
                         run_session=run_session,
                         loop_state=loop_state,
-                        error_message=step_result.error_message
-                        or self._build_fatal_result_message(step_result),
+                        error_message=step_result.error_message or self._build_fatal_result_message(step_result),
                         failed_stage=step_result.failed_stage,
                     )
                     return loop_context
@@ -289,7 +287,7 @@ class LoopEngine:
         usefulness_eligible = getattr(outcome, "usefulness_eligible", None)
         return usefulness_eligible is False
 
-    def _runtime_snapshot(self, run_session: RunSession) -> Dict[str, Any]:
+    def _runtime_snapshot(self, run_session: RunSession) -> dict[str, Any]:
         runtime_snapshot = run_session.config_snapshot.get("runtime")
         if isinstance(runtime_snapshot, dict):
             return runtime_snapshot
@@ -347,7 +345,7 @@ class LoopEngine:
             return False
         return bool(getattr(feedback, "decision", False))
 
-    def _continuation_score(self, step_result) -> Optional[float]:
+    def _continuation_score(self, step_result) -> float | None:
         if not self._positive_continuation_decision(step_result):
             return None
         score = getattr(step_result, "score", None)
@@ -374,7 +372,7 @@ class LoopEngine:
         run_session: RunSession,
         loop_state: LoopState,
         error_message: str,
-        failed_stage: Optional[str] = None,
+        failed_stage: str | None = None,
     ) -> None:
         run_session.entry_input["last_error"] = error_message
         run_session.update_status(RunStatus.FAILED)

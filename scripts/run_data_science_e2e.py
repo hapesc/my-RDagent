@@ -120,9 +120,7 @@ def main() -> None:
 
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=sqlite_path))
-    checkpoint_store = FileCheckpointStore(
-        CheckpointStoreConfig(root_dir=f"{artifact_root}/checkpoints")
-    )
+    checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=f"{artifact_root}/checkpoints"))
     workspace_manager = WorkspaceManager(
         WorkspaceManagerConfig(root_dir=workspace_root),
         checkpoint_store=checkpoint_store,

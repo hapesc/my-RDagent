@@ -13,7 +13,6 @@ from unittest.mock import patch
 
 from agentrd_cli import ExitCode, main
 from app.runtime import build_runtime
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -91,21 +90,23 @@ class CLIIntegrationTests(unittest.TestCase):
         self.assertIn(json.loads(out_health)["status"], {"ok", "degraded"})
 
     def test_run_fails_closed_without_local_opt_in_when_docker_missing(self) -> None:
-        with patch.dict(os.environ, {"AGENTRD_ALLOW_LOCAL_EXECUTION": "0"}, clear=False):
-            with patch("core.execution.backend.shutil.which", return_value=None):
-                code, _out, err = self._run_cli(
-                    [
-                        "run",
-                        "--scenario",
-                        "data_science",
-                        "--loops-per-call",
-                        "1",
-                        "--max-loops",
-                        "1",
-                        "--input",
-                        '{"task_summary":"blocked run","max_loops":1}',
-                    ]
-                )
+        with (
+            patch.dict(os.environ, {"AGENTRD_ALLOW_LOCAL_EXECUTION": "0"}, clear=False),
+            patch("core.execution.backend.shutil.which", return_value=None),
+        ):
+            code, _out, err = self._run_cli(
+                [
+                    "run",
+                    "--scenario",
+                    "data_science",
+                    "--loops-per-call",
+                    "1",
+                    "--max-loops",
+                    "1",
+                    "--input",
+                    '{"task_summary":"blocked run","max_loops":1}',
+                ]
+            )
 
         self.assertEqual(code, int(ExitCode.INVALID_STATE))
         self.assertIn("allow_local_execution=true", err)

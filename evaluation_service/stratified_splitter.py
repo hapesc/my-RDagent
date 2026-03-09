@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-from typing import Dict, List, Optional
 
 from data_models import DataSplitManifest
 
@@ -19,8 +18,8 @@ class StratifiedSplitter:
 
     def split(
         self,
-        data_ids: List[str],
-        labels: Optional[List[str]] = None,
+        data_ids: list[str],
+        labels: list[str] | None = None,
     ) -> DataSplitManifest:
         if not data_ids:
             return DataSplitManifest(train_ids=[], val_ids=[], test_ids=[], seed=self._seed)
@@ -31,7 +30,7 @@ class StratifiedSplitter:
             return self._stratified_split(data_ids, labels, rng)
         return self._random_split(data_ids, rng)
 
-    def _random_split(self, data_ids: List[str], rng: random.Random) -> DataSplitManifest:
+    def _random_split(self, data_ids: list[str], rng: random.Random) -> DataSplitManifest:
         ids = list(data_ids)
         rng.shuffle(ids)
         n = len(ids)
@@ -46,16 +45,16 @@ class StratifiedSplitter:
 
     def _stratified_split(
         self,
-        data_ids: List[str],
-        labels: List[str],
+        data_ids: list[str],
+        labels: list[str],
         rng: random.Random,
     ) -> DataSplitManifest:
-        groups: Dict[str, List[str]] = {}
-        for data_id, label in zip(data_ids, labels):
+        groups: dict[str, list[str]] = {}
+        for data_id, label in zip(data_ids, labels, strict=False):
             groups.setdefault(label, []).append(data_id)
 
-        train_ids: List[str] = []
-        test_ids: List[str] = []
+        train_ids: list[str] = []
+        test_ids: list[str] = []
 
         for label in sorted(groups):
             group = groups[label]

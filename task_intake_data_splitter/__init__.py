@@ -1,5 +1,5 @@
 """Task Intake & Data Splitter package."""
 
-from .service import TaskIntakeDataSplitter, TaskIntakeConfig
+from .service import TaskIntakeConfig, TaskIntakeDataSplitter
 
 __all__ = ["TaskIntakeDataSplitter", "TaskIntakeConfig"]

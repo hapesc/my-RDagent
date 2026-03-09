@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from data_models import Event
 
@@ -10,8 +10,8 @@ from data_models import Event
 class TraceTimelineView:
     """Transforms trace events into timeline rows for UI rendering."""
 
-    def build_rows(self, events: List[Event]) -> List[Dict[str, Any]]:
-        rows: List[Dict[str, Any]] = []
+    def build_rows(self, events: list[Event]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
         for event in sorted(events, key=lambda item: item.timestamp):
             rows.append(
                 {

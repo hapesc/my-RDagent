@@ -6,7 +6,6 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Optional
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import (
@@ -59,7 +58,14 @@ class ResumeAwareScenarioPlugin:
 
 
 class ResumeAwareProposalEngine:
-    def propose(self, task_summary, context: ContextPack, parent_ids, plan: Plan, scenario: ScenarioContext) -> Proposal:
+    def propose(
+        self,
+        task_summary,
+        context: ContextPack,
+        parent_ids,
+        plan: Plan,
+        scenario: ScenarioContext,
+    ) -> Proposal:
         _ = context
         _ = parent_ids
         _ = plan
@@ -133,7 +139,7 @@ class ResumeAwareFeedbackAnalyzer:
         self,
         experiment: ExperimentNode,
         result: ExecutionResult,
-        score: Optional[Score] = None,
+        score: Score | None = None,
     ) -> FeedbackRecord:
         _ = score
         return FeedbackRecord(
@@ -156,12 +162,10 @@ class RunServiceTests(unittest.TestCase):
             feedback_analyzer=ResumeAwareFeedbackAnalyzer(),
         )
 
-    def _build_runtime(self, tmpdir: str, bundle: Optional[PluginBundle] = None):
+    def _build_runtime(self, tmpdir: str, bundle: PluginBundle | None = None):
         sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=str(Path(tmpdir) / "meta.db")))
         branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=str(Path(tmpdir) / "meta.db")))
-        checkpoint_store = FileCheckpointStore(
-            CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))
-        )
+        checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints")))
         workspace_manager = WorkspaceManager(
             WorkspaceManagerConfig(root_dir=str(Path(tmpdir) / "workspaces")),
             checkpoint_store=checkpoint_store,

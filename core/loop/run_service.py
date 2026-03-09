@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
@@ -37,7 +37,7 @@ class ResumeManager:
         self._checkpoint_store = checkpoint_store
         self._workspace_manager = workspace_manager
 
-    def latest_checkpoint(self, run_id: str) -> Optional[str]:
+    def latest_checkpoint(self, run_id: str) -> str | None:
         checkpoints = self._checkpoint_store.list_checkpoints(run_id)
         if not checkpoints:
             return None
@@ -55,20 +55,20 @@ class ResumeManager:
             return loop_index + 1
         return loop_index
 
-    def restore_latest(self, run_id: str) -> Optional[str]:
+    def restore_latest(self, run_id: str) -> str | None:
         checkpoint_id = self.latest_checkpoint(run_id)
         if checkpoint_id is None:
             return None
         return self.restore_checkpoint(run_id, checkpoint_id)
 
-    def restore_checkpoint(self, run_id: str, checkpoint_id: str) -> Optional[str]:
+    def restore_checkpoint(self, run_id: str, checkpoint_id: str) -> str | None:
         parsed = self._parse_checkpoint_id(checkpoint_id)
         workspace_id = "resume-latest" if parsed is None else f"resume-{parsed[0]:04d}"
         workspace_path = self._workspace_manager.workspace_path(run_id, workspace_id)
         self._workspace_manager.restore_checkpoint(run_id, checkpoint_id, workspace_path)
         return workspace_path
 
-    def _parse_checkpoint_id(self, checkpoint_id: str) -> Optional[tuple[int, str]]:
+    def _parse_checkpoint_id(self, checkpoint_id: str) -> tuple[int, str] | None:
         match = self._CHECKPOINT_PATTERN.match(checkpoint_id)
         if match is None:
             return None
@@ -91,7 +91,7 @@ class RunService:
         loop_engine,
         run_store: RunMetadataStore,
         resume_manager: ResumeManager,
-        branch_store: Optional[BranchTraceStore] = None,
+        branch_store: BranchTraceStore | None = None,
     ) -> None:
         self._config = config
         self._loop_engine = loop_engine
@@ -102,11 +102,11 @@ class RunService:
     def create_run(
         self,
         task_summary: str,
-        scenario: Optional[str] = None,
-        stop_conditions: Optional[StopConditions] = None,
-        run_id: Optional[str] = None,
-        entry_input: Optional[Dict[str, Any]] = None,
-        config_snapshot: Optional[Dict[str, Any]] = None,
+        scenario: str | None = None,
+        stop_conditions: StopConditions | None = None,
+        run_id: str | None = None,
+        entry_input: dict[str, Any] | None = None,
+        config_snapshot: dict[str, Any] | None = None,
     ) -> RunSession:
         session_entry_input = dict(entry_input or {})
         session_entry_input["task_summary"] = task_summary
@@ -121,16 +121,16 @@ class RunService:
         self._run_store.create_run(session)
         return session
 
-    def get_run(self, run_id: str) -> Optional[RunSession]:
+    def get_run(self, run_id: str) -> RunSession | None:
         return self._run_store.get_run(run_id)
 
-    def start_run(self, run_id: str, task_summary: str, loops_per_call: Optional[int] = None) -> LoopContext:
+    def start_run(self, run_id: str, task_summary: str, loops_per_call: int | None = None) -> LoopContext:
         run_session = self._require_run(run_id)
         if run_session.status in {RunStatus.COMPLETED, RunStatus.STOPPED}:
             raise RuntimeError(f"run {run_id} cannot be started from status {run_session.status}")
 
         start_iteration = self._resume_manager.next_iteration(run_id)
-        restored_workspace: Optional[str] = None
+        restored_workspace: str | None = None
         restore_checkpoint_id = run_session.entry_input.pop("fork_checkpoint_id", None)
         fork_start_iteration = run_session.entry_input.pop("fork_start_iteration", None)
         try:
@@ -159,7 +159,7 @@ class RunService:
             raise RuntimeError(message)
         return context
 
-    def fork_branch(self, run_id: str, parent_node_id: Optional[str] = None) -> RunSession:
+    def fork_branch(self, run_id: str, parent_node_id: str | None = None) -> RunSession:
         if self._branch_store is None:
             raise RuntimeError("branch store is not configured")
 
@@ -195,7 +195,7 @@ class RunService:
         self._run_store.create_run(run_session)
         return run_session
 
-    def resume_run(self, run_id: str, task_summary: str, loops_per_call: Optional[int] = None) -> LoopContext:
+    def resume_run(self, run_id: str, task_summary: str, loops_per_call: int | None = None) -> LoopContext:
         run_session = self._require_run(run_id)
         if run_session.status not in {RunStatus.PAUSED, RunStatus.RUNNING, RunStatus.FAILED}:
             raise RuntimeError(f"run {run_id} cannot be resumed from status {run_session.status}")

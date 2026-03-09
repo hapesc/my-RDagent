@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 import time
-from typing import Iterable, Optional, Tuple
+from collections.abc import Iterable
 
 # Ensure project root on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 logger = logging.getLogger("e2e_gemini")
 
 
-def _select_event(events: Iterable[object], event_type: str, step_name: Optional[str] = None):
+def _select_event(events: Iterable[object], event_type: str, step_name: str | None = None):
     matched = []
     for event in events:
         current_type = getattr(getattr(event, "event_type", None), "value", None)
@@ -35,37 +35,37 @@ def _select_event(events: Iterable[object], event_type: str, step_name: Optional
     return matched[-1] if matched else None
 
 
-def evaluate_smoke_success(events: Iterable[object], run_status: Optional[str] = None) -> Tuple[bool, str]:
-     """Evaluate smoke success based on usefulness and feedback gates.
-     
-     In single-loop smoke execution, we validate that:
-     1. execution.finished event was recorded with usefulness_status=ELIGIBLE
-     2. feedback.generated event was recorded with acceptable=True
-     
-     Run status is not checked because single-loop runs may still be in RUNNING state
-     after completing one iteration (max_loops only affects loop condition, not run state transition).
-     The acceptance criteria is purely based on validator gates, not completion status.
-     """
-     execution_event = _select_event(events, "execution.finished", "running")
-     if execution_event is None:
-         return False, "missing execution.finished event"
+def evaluate_smoke_success(events: Iterable[object], run_status: str | None = None) -> tuple[bool, str]:
+    """Evaluate smoke success based on usefulness and feedback gates.
 
-     execution_payload = getattr(execution_event, "payload", {}) or {}
-     usefulness_status = execution_payload.get("usefulness_status")
-     if usefulness_status != "ELIGIBLE":
-         reason = execution_payload.get("usefulness_gate_reason", "unknown")
-         return False, f"usefulness validator rejected output: {reason}"
+    In single-loop smoke execution, we validate that:
+    1. execution.finished event was recorded with usefulness_status=ELIGIBLE
+    2. feedback.generated event was recorded with acceptable=True
 
-     feedback_event = _select_event(events, "feedback.generated", "feedback")
-     if feedback_event is None:
-         return False, "missing feedback.generated event"
+    Run status is not checked because single-loop runs may still be in RUNNING state
+    after completing one iteration (max_loops only affects loop condition, not run state transition).
+    The acceptance criteria is purely based on validator gates, not completion status.
+    """
+    execution_event = _select_event(events, "execution.finished", "running")
+    if execution_event is None:
+        return False, "missing execution.finished event"
 
-     feedback_payload = getattr(feedback_event, "payload", {}) or {}
-     if not feedback_payload.get("acceptable"):
-         reason = feedback_payload.get("reason", "feedback unacceptable")
-         return False, f"feedback rejected smoke result: {reason}"
+    execution_payload = getattr(execution_event, "payload", {}) or {}
+    usefulness_status = execution_payload.get("usefulness_status")
+    if usefulness_status != "ELIGIBLE":
+        reason = execution_payload.get("usefulness_gate_reason", "unknown")
+        return False, f"usefulness validator rejected output: {reason}"
 
-     return True, "usefulness validators passed"
+    feedback_event = _select_event(events, "feedback.generated", "feedback")
+    if feedback_event is None:
+        return False, "missing feedback.generated event"
+
+    feedback_payload = getattr(feedback_event, "payload", {}) or {}
+    if not feedback_payload.get("acceptable"):
+        reason = feedback_payload.get("reason", "feedback unacceptable")
+        return False, f"feedback rejected smoke result: {reason}"
+
+    return True, "usefulness validators passed"
 
 
 def main() -> int:
@@ -75,7 +75,7 @@ def main() -> int:
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
 
     print("=" * 72)
-    print(f"  E2E Gemini Test — synthetic_research scenario")
+    print("  E2E Gemini Test — synthetic_research scenario")
     print(f"  Provider : {provider}")
     print(f"  Model    : {model}")
     print(f"  API Key  : {'set (' + gemini_key[:10] + '...)' if gemini_key else 'NOT SET'}")
@@ -96,7 +96,7 @@ def main() -> int:
 
     t0 = time.time()
     runtime = build_runtime()
-    print(f"\n✅ Runtime built ({time.time()-t0:.1f}s)")
+    print(f"\n✅ Runtime built ({time.time() - t0:.1f}s)")
     print(f"   llm_provider={runtime.config.llm_provider}, llm_model={runtime.config.llm_model}")
     print(f"   costeer_max_rounds={runtime.config.costeer_max_rounds}")
 
@@ -133,6 +133,7 @@ def main() -> int:
 
     # ── 3. Create run session ────────────────────────────────────────
     from data_models import StopConditions
+
     task_summary = "Investigate the effect of learning rate schedules on transformer convergence speed"
     session = run_service.create_run(
         task_summary=task_summary,
@@ -155,9 +156,9 @@ def main() -> int:
     print(f"   task: {task_summary}")
 
     # ── 4. Execute 1 loop iteration ──────────────────────────────────
-    print(f"\n{'─'*72}")
+    print(f"\n{'─' * 72}")
     print("🔄 Starting loop execution (1 iteration)...")
-    print(f"{'─'*72}\n")
+    print(f"{'─' * 72}\n")
 
     t1 = time.time()
     try:
@@ -167,22 +168,23 @@ def main() -> int:
             loops_per_call=1,
         )
         elapsed = time.time() - t1
-        print(f"\n{'─'*72}")
+        print(f"\n{'─' * 72}")
         print(f"✅ Loop completed in {elapsed:.1f}s")
-        print(f"{'─'*72}")
+        print(f"{'─' * 72}")
     except Exception as exc:
         elapsed = time.time() - t1
-        print(f"\n{'─'*72}")
+        print(f"\n{'─' * 72}")
         print(f"❌ Loop FAILED after {elapsed:.1f}s: {exc}")
-        print(f"{'─'*72}")
+        print(f"{'─' * 72}")
         import traceback
+
         traceback.print_exc()
         return 1
 
     # ── 5. Inspect results ───────────────────────────────────────────
-    print(f"\n{'='*72}")
+    print(f"\n{'=' * 72}")
     print("  RESULTS INSPECTION")
-    print(f"{'='*72}")
+    print(f"{'=' * 72}")
 
     # Read events from sqlite
     events = runtime.sqlite_store.query_events(run_id=session.run_id)
@@ -197,6 +199,7 @@ def main() -> int:
 
     # Check workspace artifacts
     import glob as glob_mod
+
     ws_pattern = f"{runtime.config.workspace_root}/{session.run_id}/**/*"
     artifacts = glob_mod.glob(ws_pattern, recursive=True)
     artifacts = [a for a in artifacts if os.path.isfile(a)]
@@ -209,12 +212,12 @@ def main() -> int:
         if size < 2000 and (a.endswith(".txt") or a.endswith(".json") or a.endswith(".md")):
             with open(a) as f:
                 content = f.read()
-            print(f"      ┌── content ──")
+            print("      ┌── content ──")
             for line in content.split("\n")[:20]:
                 print(f"      │ {line}")
             if content.count("\n") > 20:
-                print(f"      │ ... (truncated)")
-            print(f"      └────────────")
+                print("      │ ... (truncated)")
+            print("      └────────────")
 
     # Check branch trace
     nodes = runtime.branch_store.query_nodes(run_id=session.run_id)
@@ -223,14 +226,13 @@ def main() -> int:
         print(f"    {node.node_id} (branch={node.branch_id}, step={node.step_state.value})")
         print(f"      hypothesis: {json.dumps(node.hypothesis)[:200]}")
 
-    run_record = runtime.sqlite_store.get_run(session.run_id)
-    run_status = run_record.status.value if run_record is not None else None
+    runtime.sqlite_store.get_run(session.run_id)
     smoke_success, smoke_reason = evaluate_smoke_success(events)
 
-    print(f"\n{'='*72}")
+    print(f"\n{'=' * 72}")
     print(f"  E2E TEST COMPLETE — {'SUCCESS' if smoke_success else 'FAILED'}")
     print(f"  Reason: {smoke_reason}")
-    print(f"{'='*72}\n")
+    print(f"{'=' * 72}\n")
     return 0 if smoke_success else 1
 
 

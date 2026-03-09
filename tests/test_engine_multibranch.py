@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
 from unittest.mock import Mock
 
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutionResult
 from data_models import (
+    ArtifactVerificationStatus,
     ExecutionOutcomeContract,
     ExperimentNode,
     FeedbackRecord,
@@ -14,14 +14,13 @@ from data_models import (
     RunSession,
     RunStatus,
     Score,
-    StopConditions,
     StepState,
+    StopConditions,
     UsefulnessEligibilityStatus,
-    ArtifactVerificationStatus,
 )
 
 
-def _make_step_result(node_id: str, parent_node_id: Optional[str] = None) -> StepExecutionResult:
+def _make_step_result(node_id: str, parent_node_id: str | None = None) -> StepExecutionResult:
     return StepExecutionResult(
         proposal=Proposal(proposal_id=f"proposal-{node_id}", summary="summary"),
         experiment=ExperimentNode(
@@ -71,7 +70,7 @@ def _make_fatal_step_result(node_id: str) -> StepExecutionResult:
 def _build_engine(
     *,
     branches_per_iteration: int = 1,
-    scheduler: Optional[Mock] = None,
+    scheduler: Mock | None = None,
     step_side_effect=None,
     exploration_manager_override=None,
 ):

@@ -7,7 +7,6 @@ matching the official RDAgent trace_scheduler reward computation.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 
 class RewardCalculator:
@@ -26,7 +25,7 @@ class RewardCalculator:
         self._mode = mode
         self._direction = direction
 
-    def calculate(self, score: Optional[float], decision: Optional[bool]) -> float:
+    def calculate(self, score: float | None, decision: bool | None) -> float:
         """Calculate reward based on score or decision.
 
         Args:

@@ -9,7 +9,6 @@ import random
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from data_models import DataSplitManifest, DataSummaryReport, TaskArtifacts, TaskSpec
 
@@ -33,10 +32,10 @@ class _SplitConfig:
     test_ratio: float
     seed: int
     strategy: str
-    id_column: Optional[str]
-    time_column: Optional[str]
-    group_column: Optional[str]
-    stratify_by: Optional[str]
+    id_column: str | None
+    time_column: str | None
+    group_column: str | None
+    stratify_by: str | None
 
 
 class TaskIntakeDataSplitter:
@@ -46,14 +45,14 @@ class TaskIntakeDataSplitter:
         """Initialize with split defaults and deterministic seed settings."""
 
         self._config = config
-        self._artifacts: Dict[str, TaskArtifacts] = {}
+        self._artifacts: dict[str, TaskArtifacts] = {}
 
     def prepare_task_artifacts(
         self,
         task_id: str,
         description: str,
         data_source: str,
-        constraints: Dict[str, str],
+        constraints: dict[str, str],
     ) -> TaskArtifacts:
         """Prepare task artifacts for the Task Intake & Data Splitter.
 
@@ -137,7 +136,7 @@ class TaskIntakeDataSplitter:
             summary_report=summary_report,
         )
 
-    def _parse_constraints(self, constraints: Dict[str, str]) -> _SplitConfig:
+    def _parse_constraints(self, constraints: dict[str, str]) -> _SplitConfig:
         train_ratio = self._parse_float(constraints.get("train_ratio"), self._config.default_train_ratio)
         val_ratio = self._parse_float(constraints.get("val_ratio"), self._config.default_val_ratio)
         test_ratio = self._parse_float(constraints.get("test_ratio"), self._config.default_test_ratio)
@@ -188,12 +187,12 @@ class TaskIntakeDataSplitter:
             stratify_by=stratify_by,
         )
 
-    def _parse_float(self, value: Optional[str], default: float) -> float:
+    def _parse_float(self, value: str | None, default: float) -> float:
         if value is None or value == "":
             return default
         return float(value)
 
-    def _load_rows(self, data_source: str) -> List[Dict[str, str]]:
+    def _load_rows(self, data_source: str) -> list[dict[str, str]]:
         if not data_source or data_source == "data-source-placeholder":
             logger.warning("task_intake.data_source_missing")
             return []
@@ -210,9 +209,9 @@ class TaskIntakeDataSplitter:
 
         raise ValueError(f"unsupported data_source format: {path.suffix}")
 
-    def _load_csv(self, path: Path) -> List[Dict[str, str]]:
+    def _load_csv(self, path: Path) -> list[dict[str, str]]:
         logger.info("task_intake.load_csv path=%s", path)
-        rows: List[Dict[str, str]] = []
+        rows: list[dict[str, str]] = []
         with path.open(newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             for row in reader:
@@ -220,9 +219,9 @@ class TaskIntakeDataSplitter:
         logger.info("task_intake.load_csv_done rows=%d", len(rows))
         return rows
 
-    def _load_jsonl(self, path: Path) -> List[Dict[str, str]]:
+    def _load_jsonl(self, path: Path) -> list[dict[str, str]]:
         logger.info("task_intake.load_jsonl path=%s", path)
-        rows: List[Dict[str, str]] = []
+        rows: list[dict[str, str]] = []
         with path.open(encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
@@ -232,13 +231,13 @@ class TaskIntakeDataSplitter:
         logger.info("task_intake.load_jsonl_done rows=%d", len(rows))
         return rows
 
-    def _build_summary(self, rows: List[Dict[str, str]]) -> DataSummaryReport:
+    def _build_summary(self, rows: list[dict[str, str]]) -> DataSummaryReport:
         row_count = len(rows)
         if row_count == 0:
             return DataSummaryReport(row_count=0, field_types={}, missing_rates={})
 
-        field_types: Dict[str, Dict[str, int]] = {}
-        missing_counts: Dict[str, int] = {}
+        field_types: dict[str, dict[str, int]] = {}
+        missing_counts: dict[str, int] = {}
         for row in rows:
             for field, value in row.items():
                 if field not in field_types:
@@ -251,9 +250,7 @@ class TaskIntakeDataSplitter:
                 field_types[field][inferred] = field_types[field].get(inferred, 0) + 1
 
         final_types = {field: self._pick_type(counts) for field, counts in field_types.items()}
-        missing_rates = {
-            field: (missing_counts.get(field, 0) / row_count) for field in final_types.keys()
-        }
+        missing_rates = {field: (missing_counts.get(field, 0) / row_count) for field in final_types}
         logger.info("task_intake.summary rows=%d fields=%d", row_count, len(final_types))
         return DataSummaryReport(
             row_count=row_count,
@@ -261,7 +258,7 @@ class TaskIntakeDataSplitter:
             missing_rates=missing_rates,
         )
 
-    def _infer_type(self, value: Optional[str]) -> str:
+    def _infer_type(self, value: str | None) -> str:
         if value is None:
             return "missing"
         if isinstance(value, str):
@@ -306,14 +303,14 @@ class TaskIntakeDataSplitter:
         except ValueError:
             return False
 
-    def _pick_type(self, counts: Dict[str, int]) -> str:
+    def _pick_type(self, counts: dict[str, int]) -> str:
         if not counts:
             return "unknown"
         return max(counts.items(), key=lambda item: item[1])[0]
 
-    def _split_rows(self, rows: List[Dict[str, str]], config: _SplitConfig) -> DataSplitManifest:
+    def _split_rows(self, rows: list[dict[str, str]], config: _SplitConfig) -> DataSplitManifest:
         row_ids = self._extract_row_ids(rows, config.id_column)
-        indexed_rows = list(zip(row_ids, rows))
+        indexed_rows = list(zip(row_ids, rows, strict=False))
         rng = random.Random(config.seed)
         train_count, val_count, test_count = self._allocate_counts(
             len(indexed_rows),
@@ -347,9 +344,9 @@ class TaskIntakeDataSplitter:
             seed=config.seed,
         )
 
-    def _extract_row_ids(self, rows: List[Dict[str, str]], id_column: Optional[str]) -> List[str]:
-        row_ids: List[str] = []
-        seen: Dict[str, int] = {}
+    def _extract_row_ids(self, rows: list[dict[str, str]], id_column: str | None) -> list[str]:
+        row_ids: list[str] = []
+        seen: dict[str, int] = {}
         for idx, row in enumerate(rows):
             raw_id = None
             if id_column and id_column in row and row[id_column] not in {None, ""}:
@@ -370,7 +367,7 @@ class TaskIntakeDataSplitter:
         train_ratio: float,
         val_ratio: float,
         test_ratio: float,
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         train_count = int(total * train_ratio)
         val_count = int(total * val_ratio)
         test_count = total - train_count - val_count
@@ -381,11 +378,11 @@ class TaskIntakeDataSplitter:
 
     def _split_by_random(
         self,
-        rows: List[Tuple[str, Dict[str, str]]],
+        rows: list[tuple[str, dict[str, str]]],
         train_count: int,
         val_count: int,
         rng: random.Random,
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         rng.shuffle(rows)
         train = [row_id for row_id, _ in rows[:train_count]]
         val = [row_id for row_id, _ in rows[train_count : train_count + val_count]]
@@ -394,11 +391,11 @@ class TaskIntakeDataSplitter:
 
     def _split_by_time(
         self,
-        rows: List[Tuple[str, Dict[str, str]]],
-        time_column: Optional[str],
+        rows: list[tuple[str, dict[str, str]]],
+        time_column: str | None,
         train_count: int,
         val_count: int,
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         if not time_column:
             raise ValueError("time_column required for time-based split")
         sorted_rows = sorted(rows, key=lambda item: self._time_key(item[1].get(time_column)))
@@ -407,7 +404,7 @@ class TaskIntakeDataSplitter:
         test = [row_id for row_id, _ in sorted_rows[train_count + val_count :]]
         return train, val, test
 
-    def _time_key(self, value: Optional[str]) -> Tuple[int, str]:
+    def _time_key(self, value: str | None) -> tuple[int, str]:
         if value is None or str(value).strip() == "":
             return (1, "")
         text = str(value)
@@ -419,15 +416,15 @@ class TaskIntakeDataSplitter:
 
     def _split_by_group(
         self,
-        rows: List[Tuple[str, Dict[str, str]]],
-        group_column: Optional[str],
+        rows: list[tuple[str, dict[str, str]]],
+        group_column: str | None,
         train_count: int,
         val_count: int,
         rng: random.Random,
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         if not group_column:
             raise ValueError("group_column required for group-based split")
-        groups: Dict[str, List[str]] = {}
+        groups: dict[str, list[str]] = {}
         for row_id, row in rows:
             key = str(row.get(group_column, "missing"))
             groups.setdefault(key, []).append(row_id)
@@ -450,22 +447,22 @@ class TaskIntakeDataSplitter:
 
     def _split_by_stratified(
         self,
-        rows: List[Tuple[str, Dict[str, str]]],
-        stratify_by: Optional[str],
+        rows: list[tuple[str, dict[str, str]]],
+        stratify_by: str | None,
         train_count: int,
         val_count: int,
         rng: random.Random,
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         if not stratify_by:
             raise ValueError("stratify_by required for stratified split")
-        buckets: Dict[str, List[str]] = {}
+        buckets: dict[str, list[str]] = {}
         for row_id, row in rows:
             key = str(row.get(stratify_by, "missing"))
             buckets.setdefault(key, []).append(row_id)
 
-        train_ids: List[str] = []
-        val_ids: List[str] = []
-        test_ids: List[str] = []
+        train_ids: list[str] = []
+        val_ids: list[str] = []
+        test_ids: list[str] = []
         for key, ids in buckets.items():
             rng.shuffle(ids)
             train_local, val_local, _ = self._allocate_counts(

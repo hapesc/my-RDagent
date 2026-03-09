@@ -1,0 +1,53 @@
+{
+  "scenario": 10,
+  "title": "observability logging QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": "from observability.logging_config import configure_logging works",
+      "pass": true,
+      "evidence": ".sisyphus/evidence/final-qa/task10_import.log"
+    },
+    {
+      "name": "configure_logging() runs without error",
+      "pass": true,
+      "evidence": ".sisyphus/evidence/final-qa/task10_logging.log"
+    },
+    {
+      "name": "JSON format outputs valid JSON",
+      "pass": true,
+      "actual": {
+        "timestamp": "2026-03-09T15:37:34.304967Z",
+        "level": "INFO",
+        "logger": "qa",
+        "message": "hello",
+        "module": "<string>",
+        "function": "<module>",
+        "line": 1,
+        "api_key": "***",
+        "nested": {
+          "password": "***"
+        },
+        "safe": "ok"
+      }
+    },
+    {
+      "name": "Sensitive fields are redacted",
+      "pass": true,
+      "actual": {
+        "timestamp": "2026-03-09T15:37:34.304967Z",
+        "level": "INFO",
+        "logger": "qa",
+        "message": "hello",
+        "module": "<string>",
+        "function": "<module>",
+        "line": 1,
+        "api_key": "***",
+        "nested": {
+          "password": "***"
+        },
+        "safe": "ok"
+      }
+    }
+  ]
+}

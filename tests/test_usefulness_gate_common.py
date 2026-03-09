@@ -6,7 +6,6 @@ from pathlib import Path
 from data_models import ExecutionResult
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.data_science.plugin import build_data_science_v1_bundle
-
 from tests._llm_test_utils import make_mock_llm_adapter
 
 
@@ -43,7 +42,7 @@ def test_common_gate_rejects_missing_key_field_output(tmp_path: Path) -> None:
     result = ExecutionResult(
         run_id="run-missing-key",
         exit_code=0,
-        logs_ref="{\"status\":\"ok\"}",
+        logs_ref='{"status":"ok"}',
         artifacts_ref=json.dumps([str(artifact)]),
     )
 
@@ -79,7 +78,7 @@ def test_scene_validator_layers_on_common_gate(tmp_path: Path) -> None:
     result = ExecutionResult(
         run_id="run-scene-layer",
         exit_code=0,
-        logs_ref="{\"status\":\"ok\",\"row_count\":\"n/a\"}",
+        logs_ref='{"status":"ok","row_count":"n/a"}',
         artifacts_ref=json.dumps([str(artifact)]),
     )
 
@@ -128,7 +127,7 @@ def test_scene_validator_rejects_template_only_metric_value(tmp_path: Path) -> N
     result = ExecutionResult(
         run_id="run-template-metric",
         exit_code=0,
-        logs_ref="{\"status\":\"ok\",\"row_count\":12,\"column_count\":\"placeholder\"}",
+        logs_ref='{"status":"ok","row_count":12,"column_count":"placeholder"}',
         artifacts_ref=json.dumps([str(artifact)]),
     )
 

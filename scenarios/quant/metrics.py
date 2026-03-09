@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -123,7 +122,7 @@ def compute_mdd(cumulative_returns: pd.Series) -> float:
     return float(drawdown.min())
 
 
-def compute_arr(cumulative_returns: pd.Series, n_days: Optional[int] = None) -> float:
+def compute_arr(cumulative_returns: pd.Series, n_days: int | None = None) -> float:
     """Annualized Rate of Return. Input: daily returns series."""
     returns = cumulative_returns.dropna()
     if len(returns) < 2:

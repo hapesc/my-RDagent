@@ -6,7 +6,7 @@ import json
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from data_models import (
     CodeArtifact,
@@ -22,9 +22,7 @@ from data_models import (
     StepState,
 )
 from llm import (
-    FeedbackDraft,
     LLMAdapter,
-    LLMAdapterConfig,
     ProposalDraft,
 )
 from plugins.contracts import (
@@ -44,12 +42,12 @@ from .backtest import LightweightBacktester
 from .constants import METRIC_THRESHOLDS
 from .data_provider import QuantDataProvider
 from .prompts import (
+    DATA_SCHEMA_DESCRIPTION,
     FACTOR_CODE_SYSTEM_PROMPT,
     FACTOR_CODE_USER_TEMPLATE,
     FACTOR_PROPOSAL_SYSTEM_PROMPT,
     FACTOR_PROPOSAL_USER_TEMPLATE,
     FEEDBACK_ANALYSIS_TEMPLATE,
-    DATA_SCHEMA_DESCRIPTION,
 )
 
 if TYPE_CHECKING:
@@ -76,13 +74,13 @@ class QuantConfig:
     n_stocks: int = 50
     n_days: int = 500
     data_seed: int = 42
-    backtest_config: Dict[str, Any] = field(default_factory=dict)
+    backtest_config: dict[str, Any] = field(default_factory=dict)
     default_step_overrides: StepOverrideConfig = field(default_factory=default_quant_step_overrides)
-    data_provider: Optional[QuantDataProvider] = None
+    data_provider: QuantDataProvider | None = None
 
 
 class QuantScenarioPlugin(ScenarioPlugin):
-    def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
+    def build_context(self, run_session: RunSession, input_payload: dict[str, Any]) -> ScenarioContext:
         return ScenarioContext(
             run_id=run_session.run_id,
             scenario_name=run_session.scenario,
@@ -100,7 +98,7 @@ class QuantProposalEngine(ProposalEngine):
         self,
         task_summary: str,
         context: ContextPack,
-        parent_ids: List[str],
+        parent_ids: list[str],
         plan: Plan,
         scenario: ScenarioContext,
     ) -> Proposal:
@@ -141,10 +139,10 @@ class QuantExperimentGenerator(ExperimentGenerator):
         proposal: Proposal,
         run_session: RunSession,
         loop_state: LoopState,
-        parent_ids: List[str],
+        parent_ids: list[str],
     ) -> ExperimentNode:
         branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
-        parent_node_id: Optional[str] = parent_ids[0] if parent_ids else None
+        parent_node_id: str | None = parent_ids[0] if parent_ids else None
         node_id = f"quant-node-{run_session.run_id}-{branch_id}-{loop_state.iteration}"
         workspace_ref = self._workspace_root / run_session.run_id / node_id
         return ExperimentNode(
@@ -162,7 +160,7 @@ class QuantExperimentGenerator(ExperimentGenerator):
 
 
 class QuantCoder(Coder):
-    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+    def __init__(self, llm_adapter: LLMAdapter | None = None) -> None:
         self._llm = llm_adapter
 
     def develop(
@@ -224,7 +222,7 @@ def compute_factor(df):
 
 
 class QuantRunner(Runner):
-    def __init__(self, config: Optional[QuantConfig] = None) -> None:
+    def __init__(self, config: QuantConfig | None = None) -> None:
         self._config = config or QuantConfig()
 
     def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult:
@@ -246,7 +244,8 @@ class QuantRunner(Runner):
             raise RuntimeError(
                 "QuantConfig.data_provider is required. "
                 "Use YFinanceDataProvider for real data or MockDataProvider for tests. "
-                "Example: QuantConfig(data_provider=YFinanceDataProvider(tickers=[...], start='2023-01-01', end='2024-12-31'))"
+                "Example: QuantConfig(data_provider=YFinanceDataProvider("
+                "tickers=[...], start='2023-01-01', end='2024-12-31'))"
             )
         ohlcv = self._config.data_provider.load()
         backtester = LightweightBacktester(config=self._config.backtest_config or None)
@@ -266,7 +265,12 @@ class QuantRunner(Runner):
             )
 
         metrics = bt_result.get("metrics", {})
-        logs = json.dumps({"status": "success", **{k: v for k, v in metrics.items() if isinstance(v, (int, float, str))}})
+        logs = json.dumps(
+            {
+                "status": "success",
+                **{k: v for k, v in metrics.items() if isinstance(v, (int, float, str))},
+            }
+        )
 
         return ExecutionResult(
             run_id=scenario.run_id,
@@ -296,14 +300,14 @@ def _json_safe(obj: Any) -> Any:
 
 
 class QuantFeedbackAnalyzer(FeedbackAnalyzer):
-    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+    def __init__(self, llm_adapter: LLMAdapter | None = None) -> None:
         self._llm = llm_adapter
 
     def summarize(
         self,
         experiment: ExperimentNode,
         result: ExecutionResult,
-        score: Optional[Score] = None,
+        score: Score | None = None,
     ) -> FeedbackRecord:
         usefulness_eligible = result.resolve_outcome().usefulness_eligible
 
@@ -363,7 +367,7 @@ class QuantFeedbackAnalyzer(FeedbackAnalyzer):
             )
 
 
-def _validate_quant_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]:
+def _validate_quant_usefulness(gate_input: UsefulnessGateInput) -> str | None:
     payload = gate_input.structured_payload
     if not isinstance(payload, dict):
         return "missing structured payload"
@@ -377,23 +381,24 @@ def _validate_quant_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]
         return f"sharpe {sharpe:.3f} below threshold {METRIC_THRESHOLDS['sharpe']}"
 
     ic = payload.get("ic_mean")
-    if ic is not None and isinstance(ic, (int, float)) and not math.isnan(ic):
-        if ic < METRIC_THRESHOLDS["ic"]:
-            return f"IC {ic:.4f} below threshold {METRIC_THRESHOLDS['ic']}"
+    if ic is not None and isinstance(ic, (int, float)) and not math.isnan(ic) and ic < METRIC_THRESHOLDS["ic"]:
+        return f"IC {ic:.4f} below threshold {METRIC_THRESHOLDS['ic']}"
 
     return None
 
 
 def build_quant_bundle(
-    config: Optional[QuantConfig] = None,
-    llm_adapter: Optional[LLMAdapter] = None,
+    config: QuantConfig | None = None,
+    llm_adapter: LLMAdapter | None = None,
 ) -> PluginBundle:
     plugin_config = config or QuantConfig()
     if llm_adapter is None:
         raise RuntimeError(
             "llm_adapter is required for build_quant_bundle(). "
             "Configure a real LLM provider, e.g.: "
-            "LLMAdapter(provider=LiteLLMProvider(api_key=os.environ['GEMINI_API_KEY'], model='gemini/gemini-2.5-flash'), config=LLMAdapterConfig(max_retries=2))"
+            "LLMAdapter(provider=LiteLLMProvider("
+            "api_key=os.environ['GEMINI_API_KEY'], model='gemini/gemini-2.5-flash'"
+            "), config=LLMAdapterConfig(max_retries=2))"
         )
     adapter = llm_adapter
 
@@ -410,7 +415,7 @@ def build_quant_bundle(
     )
 
 
-def quant_manifest(config: Optional[QuantConfig] = None) -> ScenarioManifest:
+def quant_manifest(config: QuantConfig | None = None) -> ScenarioManifest:
     plugin_config = config or QuantConfig()
     return ScenarioManifest(
         scenario_name="quant",

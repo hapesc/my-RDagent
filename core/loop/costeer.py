@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from data_models import CodeArtifact, ExperimentNode, FeedbackRecord, Proposal, Score
 from plugins.contracts import Coder, FeedbackAnalyzer, Runner, ScenarioContext
@@ -34,7 +34,7 @@ class CoSTEEREvolver:
         feedback_record: FeedbackRecord,
         code: str,
         execution_output: str,
-    ) -> "StructuredFeedback":
+    ) -> StructuredFeedback:
         if self._llm_adapter is None:
             raise RuntimeError("Structured feedback requires llm_adapter")
 

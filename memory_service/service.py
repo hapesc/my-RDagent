@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from dataclasses import dataclass, field
 import json
 import logging
-from pathlib import Path
 import sqlite3
 import time
-from typing import Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
 
 from data_models import ContextPack
 from memory_service.interaction_kernel import HypothesisRecord
@@ -36,7 +36,7 @@ class MemoryService:
         self._config = config
         self._db_path = config.db_path
         self._db_uri = False
-        self._memory_anchor = None  # type: Optional[sqlite3.Connection]
+        self._memory_anchor: sqlite3.Connection | None = None
         self._hypothesis_selector = hypothesis_selector
         self._interaction_kernel = interaction_kernel
 
@@ -62,7 +62,9 @@ class MemoryService:
             yield connection
             connection.commit()
         except Exception:
-            logger.exception(f"Database operation failed in MemoryService._managed_connection(db_path={self._db_path}); rolling back")
+            logger.exception(
+                f"Database operation failed in MemoryService._managed_connection(db_path={self._db_path}); rolling back"
+            )
             connection.rollback()
             raise
         finally:
@@ -95,7 +97,7 @@ class MemoryService:
                     """
                 )
 
-    def write_memory(self, item: str, metadata: Dict[str, str]) -> None:
+    def write_memory(self, item: str, metadata: dict[str, str]) -> None:
         """Write a memory item into storage.
 
         Responsibility:
@@ -116,7 +118,7 @@ class MemoryService:
                 (item, payload),
             )
 
-    def query_context(self, query: Dict[str, str]) -> ContextPack:
+    def query_context(self, query: dict[str, str]) -> ContextPack:
         """Retrieve a context pack for reasoning.
 
         Responsibility:
@@ -149,14 +151,14 @@ class MemoryService:
         items = [str(row["item"]) for row in rows]
         highlights = list(query.keys()) if items else []
 
-        scored_items = []  # type: List[tuple]
+        scored_items: list[tuple[str, float]] = []
         if self._config.enable_hypothesis_storage:
             hyps = self.query_hypotheses(limit=self._config.max_context_items)
             scored_items = [(h.text, h.score) for h in hyps]
 
         return ContextPack(items=items, highlights=highlights, scored_items=scored_items)
 
-    def get_memory_stats(self) -> Dict[str, int]:
+    def get_memory_stats(self) -> dict[str, int]:
         """Return basic memory statistics.
 
         Responsibility:
@@ -183,7 +185,7 @@ class MemoryService:
         text: str,
         score: float,
         branch_id: str,
-        metadata: Optional[Dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> None:
         ts = time.time()
         meta_json = json.dumps(metadata or {}, sort_keys=True)
@@ -193,9 +195,11 @@ class MemoryService:
                 (text, score, branch_id, ts, meta_json),
             )
 
-    def query_hypotheses(self, branch_id: Optional[str] = None, limit: int = 10) -> List[HypothesisRecord]:
+    def query_hypotheses(self, branch_id: str | None = None, limit: int = 10) -> list[HypothesisRecord]:
         if branch_id is not None:
-            sql = "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id = ? ORDER BY id DESC LIMIT ?"
+            sql = (
+                "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id = ? ORDER BY id DESC LIMIT ?"
+            )
             params = (branch_id, limit)  # type: tuple
         else:
             sql = "SELECT text, score, timestamp, branch_id FROM hypotheses ORDER BY id DESC LIMIT ?"
@@ -212,8 +216,10 @@ class MemoryService:
             for row in rows
         ]
 
-    def get_cross_branch_hypotheses(self, exclude_branch: str, limit: int = 10) -> List[HypothesisRecord]:
-        sql = "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id != ? ORDER BY score DESC LIMIT ?"
+    def get_cross_branch_hypotheses(self, exclude_branch: str, limit: int = 10) -> list[HypothesisRecord]:
+        sql = (
+            "SELECT text, score, timestamp, branch_id FROM hypotheses WHERE branch_id != ? ORDER BY score DESC LIMIT ?"
+        )
         with self._managed_connection() as conn:
             rows = conn.execute(sql, (exclude_branch, limit)).fetchall()
         return [

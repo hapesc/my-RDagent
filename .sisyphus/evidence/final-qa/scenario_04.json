@@ -1,0 +1,24 @@
+{
+  "scenario": 4,
+  "title": "CONTRIBUTING QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": "CONTRIBUTING.md has more than 100 lines",
+      "pass": true,
+      "actual": 292,
+      "evidence": ".sisyphus/evidence/final-qa/task4_contributing_line_count.log"
+    },
+    {
+      "name": "required keywords exist in CONTRIBUTING.md",
+      "pass": true,
+      "actual": {
+        "uv": true,
+        "ruff": true,
+        "pytest": true,
+        "pre-commit": true,
+        "fork": true
+      }
+    }
+  ]
+}

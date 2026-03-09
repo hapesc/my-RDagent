@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 from core.path_safety import ensure_within_root, validate_path_component
 
@@ -54,7 +53,7 @@ class FileCheckpointStore:
         path.unlink()
         return True
 
-    def list_checkpoints(self, run_id: str) -> List[str]:
+    def list_checkpoints(self, run_id: str) -> list[str]:
         run_dir = self._run_dir(run_id)
         checkpoints = [path.stem for path in run_dir.glob("*.ckpt") if path.is_file()]
         return sorted(checkpoints)

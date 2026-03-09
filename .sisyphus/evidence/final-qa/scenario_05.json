@@ -1,0 +1,19 @@
+{
+  "scenario": 5,
+  "title": "SECURITY QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": "SECURITY.md has more than 30 lines",
+      "pass": true,
+      "actual": 69,
+      "evidence": ".sisyphus/evidence/final-qa/task5_security_line_count.log"
+    },
+    {
+      "name": "SECURITY.md mentions vulnerability/reporting",
+      "pass": true,
+      "actual": 4,
+      "evidence": ".sisyphus/evidence/final-qa/task5_security_keyword_count.log"
+    }
+  ]
+}

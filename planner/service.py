@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from data_models import Plan, PlanningContext
 from llm.prompts import planning_strategy_prompt
@@ -18,7 +17,7 @@ class PlannerConfig:
     """Configuration for planning behavior."""
 
     max_exploration_strength: float = 1.0
-    default_budget_allocation: Optional[Dict[str, float]] = None
+    default_budget_allocation: dict[str, float] | None = None
     use_llm_planning: bool = False
 
 
@@ -29,12 +28,12 @@ class Planner:
         """Initialize planner with strategy constraints and defaults."""
 
         self._config = config
-        self._history: List[Dict[str, str]] = []
+        self._history: list[dict[str, str]] = []
         self._llm_adapter = llm_adapter
         if self._config.default_budget_allocation is None:
             self._config.default_budget_allocation = {}
 
-    def generate_strategy(self, context: PlanningContext) -> Optional[PlanningStrategy]:
+    def generate_strategy(self, context: PlanningContext) -> PlanningStrategy | None:
         if self._llm_adapter is None or not self._config.use_llm_planning:
             return None
 
@@ -112,7 +111,7 @@ class Planner:
             guidance=guidance,
         )
 
-    def update_planning_state(self, loop_result: Dict[str, str]) -> None:
+    def update_planning_state(self, loop_result: dict[str, str]) -> None:
         """Update internal planning state from loop results.
 
         Responsibility:
@@ -143,7 +142,7 @@ class Planner:
             return "mid"
         return "late"
 
-    def _build_budget_allocation(self, progress: float) -> Dict[str, float]:
+    def _build_budget_allocation(self, progress: float) -> dict[str, float]:
         base_allocation = self._config.default_budget_allocation or {}
         allocation = dict(base_allocation)
         if "exploration" not in allocation:
@@ -156,8 +155,8 @@ class Planner:
         self,
         stage: str,
         progress: float,
-        history_summary: Dict[str, str],
-    ) -> List[str]:
+        history_summary: dict[str, str],
+    ) -> list[str]:
         guidance = [f"stage:{stage}", f"progress:{progress:.2f}"]
         if stage == "early":
             guidance.append("focus:novelty")

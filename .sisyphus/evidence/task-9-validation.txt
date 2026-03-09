@@ -1,0 +1,21 @@
+Validation evidence for task 9
+
+1) YAML parse/structure check
+- Result: PASS
+- Checks performed:
+  - workflow file exists
+  - jobs include lint, test, build-check
+  - test matrix includes 3.9 and 3.12
+  - banned tokens absent: publish, pypi, registry, docker login, ghcr
+
+2) LSP diagnostics
+- .github/workflows/ci.yml: PASS (no diagnostics found)
+- pyproject.toml: TOML LSP not configured in this environment, so direct LSP validation was unavailable
+
+3) Build verification
+- python3 -m build: PASS after adding explicit hatch wheel file selection
+- docker compose config: PASS
+
+4) Repository adjustment required for build-check realism
+- Updated pyproject.toml with [tool.hatch.build.targets.wheel].only-include
+- Reason: project build was failing before workflow creation because hatchling could not infer wheel contents

@@ -1,13 +1,13 @@
 """TDD tests for MockLLMProvider FC-3 reasoning stage extensions."""
 
 import json
-import pytest
+
 from llm.adapter import LLMAdapter, MockLLMProvider
 from llm.schemas import (
     AnalysisResult,
-    ProblemIdentification,
-    HypothesisFormulation,
     ExperimentDesign,
+    HypothesisFormulation,
+    ProblemIdentification,
     VirtualEvalResult,
 )
 
@@ -19,14 +19,14 @@ class TestMockAnalysisDetection:
         """Mock should detect and respond to analysis prompts with strengths field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         prompt = (
             "Analyze the proposal.\n"
             "## Output Fields\n"
             "- `strengths`: list of strengths\n"
             "- `weaknesses`: list of weaknesses"
         )
-        
+
         result = adapter.generate_structured(prompt, AnalysisResult)
         assert isinstance(result, AnalysisResult)
         assert isinstance(result.strengths, list)
@@ -38,13 +38,9 @@ class TestMockAnalysisDetection:
         """Mock should detect analysis on weaknesses field too."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Analyze the approach.\n"
-            "## Output Fields\n"
-            "- `weaknesses`: list of limitations"
-        )
-        
+
+        prompt = "Analyze the approach.\n## Output Fields\n- `weaknesses`: list of limitations"
+
         result = adapter.generate_structured(prompt, AnalysisResult)
         assert isinstance(result, AnalysisResult)
         assert isinstance(result.strengths, list)
@@ -57,14 +53,9 @@ class TestMockProblemDetection:
         """Mock should detect problem prompts with severity field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Identify the problem.\n"
-            "## Output Fields\n"
-            "- `severity`: how critical is this\n"
-            "- `problem`: description"
-        )
-        
+
+        prompt = "Identify the problem.\n## Output Fields\n- `severity`: how critical is this\n- `problem`: description"
+
         result = adapter.generate_structured(prompt, ProblemIdentification)
         assert isinstance(result, ProblemIdentification)
         assert isinstance(result.problem, str)
@@ -76,13 +67,9 @@ class TestMockProblemDetection:
         """Mock should detect problem on affected_component field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "What component is affected?\n"
-            "## Output Fields\n"
-            "- `affected_component`: which part"
-        )
-        
+
+        prompt = "What component is affected?\n## Output Fields\n- `affected_component`: which part"
+
         result = adapter.generate_structured(prompt, ProblemIdentification)
         assert isinstance(result, ProblemIdentification)
         assert isinstance(result.affected_component, str)
@@ -95,14 +82,9 @@ class TestMockHypothesisDetection:
         """Mock should detect hypothesis prompts with mechanism field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Formulate a hypothesis.\n"
-            "## Output Fields\n"
-            "- `mechanism`: how it works\n"
-            "- `hypothesis`: the claim"
-        )
-        
+
+        prompt = "Formulate a hypothesis.\n## Output Fields\n- `mechanism`: how it works\n- `hypothesis`: the claim"
+
         result = adapter.generate_structured(prompt, HypothesisFormulation)
         assert isinstance(result, HypothesisFormulation)
         assert isinstance(result.hypothesis, str)
@@ -114,13 +96,9 @@ class TestMockHypothesisDetection:
         """Mock should detect hypothesis on testable_prediction field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "What is testable?\n"
-            "## Output Fields\n"
-            "- `testable_prediction`: the measurable outcome"
-        )
-        
+
+        prompt = "What is testable?\n## Output Fields\n- `testable_prediction`: the measurable outcome"
+
         result = adapter.generate_structured(prompt, HypothesisFormulation)
         assert isinstance(result, HypothesisFormulation)
         assert isinstance(result.testable_prediction, str)
@@ -133,14 +111,11 @@ class TestMockExperimentDetection:
         """Mock should detect experiment design prompts with implementation_steps field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         prompt = (
-            "Design an experiment.\n"
-            "## Output Fields\n"
-            "- `implementation_steps`: steps to execute\n"
-            "- `summary`: overview"
+            "Design an experiment.\n## Output Fields\n- `implementation_steps`: steps to execute\n- `summary`: overview"
         )
-        
+
         result = adapter.generate_structured(prompt, ExperimentDesign)
         assert isinstance(result, ExperimentDesign)
         assert isinstance(result.summary, str)
@@ -156,14 +131,9 @@ class TestMockVirtualEvalDetection:
         """Mock should detect virtual eval prompts with rankings field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Rank candidates.\n"
-            "## Output Fields\n"
-            "- `rankings`: ordered indices\n"
-            "- `reasoning`: why this order"
-        )
-        
+
+        prompt = "Rank candidates.\n## Output Fields\n- `rankings`: ordered indices\n- `reasoning`: why this order"
+
         result = adapter.generate_structured(prompt, VirtualEvalResult)
         assert isinstance(result, VirtualEvalResult)
         assert isinstance(result.rankings, list)
@@ -174,13 +144,9 @@ class TestMockVirtualEvalDetection:
         """Mock should detect virtual eval on selected_indices field."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Select top candidates.\n"
-            "## Output Fields\n"
-            "- `selected_indices`: indices to advance"
-        )
-        
+
+        prompt = "Select top candidates.\n## Output Fields\n- `selected_indices`: indices to advance"
+
         result = adapter.generate_structured(prompt, VirtualEvalResult)
         assert isinstance(result, VirtualEvalResult)
         assert isinstance(result.selected_indices, list)
@@ -189,14 +155,14 @@ class TestMockVirtualEvalDetection:
         """Mock should adapt rankings based on candidate count in prompt."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         prompt = (
             "Rank these 3 candidates.\n"
             "## Output Fields\n"
             "- `rankings`: ordered indices\n"
             "- `selected_indices`: top candidates"
         )
-        
+
         result = adapter.generate_structured(prompt, VirtualEvalResult)
         # Should have 3 candidates
         assert len(result.rankings) == 3
@@ -206,13 +172,9 @@ class TestMockVirtualEvalDetection:
         """Mock should default to 5 candidates when not specified."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
-        prompt = (
-            "Rank candidates.\n"
-            "## Output Fields\n"
-            "- `rankings`: ordered indices"
-        )
-        
+
+        prompt = "Rank candidates.\n## Output Fields\n- `rankings`: ordered indices"
+
         result = adapter.generate_structured(prompt, VirtualEvalResult)
         # Should have 5 candidates by default
         assert len(result.rankings) == 5
@@ -225,9 +187,9 @@ class TestMockBackwardCompatibility:
         """Existing proposal detection should still work."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         from llm.schemas import ProposalDraft
-        
+
         prompt = (
             "You are a research scientist.\n"
             "## Task\nmy task\n"
@@ -235,7 +197,7 @@ class TestMockBackwardCompatibility:
             "- `summary`: proposal summary\n"
             "- `virtual_score`: score"
         )
-        
+
         result = adapter.generate_structured(prompt, ProposalDraft)
         assert isinstance(result, ProposalDraft)
         assert result.summary != ""
@@ -245,16 +207,11 @@ class TestMockBackwardCompatibility:
         """Existing coding detection should still work."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         from llm.schemas import CodeDraft
-        
-        prompt = (
-            "You are a code expert.\n"
-            "## Output Fields\n"
-            "- `artifact_id`: the id\n"
-            "- `description`: description"
-        )
-        
+
+        prompt = "You are a code expert.\n## Output Fields\n- `artifact_id`: the id\n- `description`: description"
+
         result = adapter.generate_structured(prompt, CodeDraft)
         assert isinstance(result, CodeDraft)
         assert result.artifact_id == "artifact-llm"
@@ -263,16 +220,11 @@ class TestMockBackwardCompatibility:
         """Existing feedback detection should still work."""
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
-        
+
         from llm.schemas import FeedbackDraft
-        
-        prompt = (
-            "Provide feedback.\n"
-            "## Output Fields\n"
-            "- `acceptable`: is it acceptable\n"
-            "- `reason`: why"
-        )
-        
+
+        prompt = "Provide feedback.\n## Output Fields\n- `acceptable`: is it acceptable\n- `reason`: why"
+
         result = adapter.generate_structured(prompt, FeedbackDraft)
         assert isinstance(result, FeedbackDraft)
         assert isinstance(result.acceptable, bool)

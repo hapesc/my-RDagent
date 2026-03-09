@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import logging.config
-from datetime import datetime, timezone
-from typing import Any, Dict, MutableMapping, cast
+from collections.abc import MutableMapping
+from datetime import UTC, datetime
+from typing import Any, cast
 
 from observability.redaction import sanitize_payload
 
@@ -13,10 +14,8 @@ _STANDARD_RECORD_FIELDS = frozenset(vars(logging.makeLogRecord({})).keys())
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        payload: Dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc)
-            .isoformat()
-            .replace("+00:00", "Z"),
+        payload: dict[str, Any] = {
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -36,7 +35,7 @@ class JsonFormatter(logging.Formatter):
 
         return json.dumps(sanitize_payload(payload), ensure_ascii=False)
 
-    def _extract_extra_fields(self, record: logging.LogRecord) -> Dict[str, Any]:
+    def _extract_extra_fields(self, record: logging.LogRecord) -> dict[str, Any]:
         record_dict = cast(MutableMapping[str, Any], record.__dict__)
         return {
             key: value

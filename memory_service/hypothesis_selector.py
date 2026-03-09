@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import List, Tuple
 
 from llm.prompts import hypothesis_modification_prompt
 from llm.schemas import HypothesisModification
@@ -17,7 +16,7 @@ class HypothesisSelector:
         self._kernel = interaction_kernel
         self._llm = llm_adapter
 
-    def select_hypothesis(self, candidates: List[HypothesisRecord], context: str) -> HypothesisRecord:
+    def select_hypothesis(self, candidates: list[HypothesisRecord], context: str) -> HypothesisRecord:
         if not candidates:
             raise ValueError("candidates list must not be empty")
         return max(candidates, key=lambda h: h.score)
@@ -25,7 +24,7 @@ class HypothesisSelector:
     def modify_hypothesis(
         self,
         source: HypothesisRecord,
-        context_items: List[str],
+        context_items: list[str],
         task_summary: str,
         scenario_name: str,
     ) -> HypothesisModification:
@@ -50,7 +49,7 @@ class HypothesisSelector:
 
     def generate_hypothesis(
         self,
-        context_items: List[str],
+        context_items: list[str],
         task_summary: str,
         scenario_name: str,
     ) -> HypothesisModification:
@@ -75,17 +74,14 @@ class HypothesisSelector:
 
     def adaptive_select(
         self,
-        candidates: List[HypothesisRecord],
+        candidates: list[HypothesisRecord],
         iteration: int,
         max_iterations: int,
-        context_items: List[str],
+        context_items: list[str],
         task_summary: str,
         scenario_name: str,
     ) -> HypothesisModification:
-        if max_iterations <= 0:
-            progress = 1.0
-        else:
-            progress = float(iteration) / float(max_iterations)
+        progress = 1.0 if max_iterations <= 0 else float(iteration) / float(max_iterations)
 
         if progress < 0.33:
             return self.generate_hypothesis(context_items, task_summary, scenario_name)
@@ -107,15 +103,15 @@ class HypothesisSelector:
             modified_hypothesis=best.text,
             modification_type="select",
             source_hypothesis=best.text,
-            reasoning="Selected highest-scoring hypothesis (score={score})".format(score=best.score),
+            reasoning=f"Selected highest-scoring hypothesis (score={best.score})",
         )
 
 
 def rank_by_kernel(
     target: HypothesisRecord,
-    candidates: List[HypothesisRecord],
+    candidates: list[HypothesisRecord],
     kernel: InteractionKernel,
-) -> List[Tuple[HypothesisRecord, float]]:
+) -> list[tuple[HypothesisRecord, float]]:
     scored = [(c, kernel.compute(target, c)) for c in candidates]
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored

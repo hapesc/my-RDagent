@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from data_models import (
     ArtifactVerificationStatus,
@@ -32,7 +33,7 @@ class ScenarioContext:
 
     run_id: str
     scenario_name: str
-    input_payload: Dict[str, Any]
+    input_payload: dict[str, Any]
     task_summary: str = ""
     step_config: StepOverrideConfig = field(default_factory=StepOverrideConfig)
 
@@ -41,8 +42,7 @@ class ScenarioContext:
 class ScenarioPlugin(Protocol):
     """Builds scenario context from run metadata and input payload."""
 
-    def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
-        ...
+    def build_context(self, run_session: RunSession, input_payload: dict[str, Any]) -> ScenarioContext: ...
 
 
 @runtime_checkable
@@ -53,11 +53,10 @@ class ProposalEngine(Protocol):
         self,
         task_summary: str,
         context: ContextPack,
-        parent_ids: List[str],
+        parent_ids: list[str],
         plan: Plan,
         scenario: ScenarioContext,
-    ) -> Proposal:
-        ...
+    ) -> Proposal: ...
 
 
 @runtime_checkable
@@ -69,9 +68,8 @@ class ExperimentGenerator(Protocol):
         proposal: Proposal,
         run_session: RunSession,
         loop_state: LoopState,
-        parent_ids: List[str],
-    ) -> ExperimentNode:
-        ...
+        parent_ids: list[str],
+    ) -> ExperimentNode: ...
 
 
 @runtime_checkable
@@ -83,16 +81,14 @@ class Coder(Protocol):
         experiment: ExperimentNode,
         proposal: Proposal,
         scenario: ScenarioContext,
-    ) -> CodeArtifact:
-        ...
+    ) -> CodeArtifact: ...
 
 
 @runtime_checkable
 class Runner(Protocol):
     """Executes a code artifact and returns runtime result."""
 
-    def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult:
-        ...
+    def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult: ...
 
 
 @runtime_checkable
@@ -103,9 +99,8 @@ class FeedbackAnalyzer(Protocol):
         self,
         experiment: ExperimentNode,
         result: ExecutionResult,
-        score: Optional[Score] = None,
-    ) -> FeedbackRecord:
-        ...
+        score: Score | None = None,
+    ) -> FeedbackRecord: ...
 
 
 @dataclass
@@ -119,13 +114,13 @@ class UsefulnessGateSignal:
 class UsefulnessGateInput:
     scenario: ScenarioContext
     result: ExecutionResult
-    artifact_paths: List[str]
-    artifact_texts: Dict[str, str]
+    artifact_paths: list[str]
+    artifact_texts: dict[str, str]
     normalized_text: str
-    structured_payload: Optional[Dict[str, Any]] = None
+    structured_payload: dict[str, Any] | None = None
 
 
-SceneUsefulnessValidator = Callable[[UsefulnessGateInput], Optional[str]]
+SceneUsefulnessValidator = Callable[[UsefulnessGateInput], str | None]
 
 
 class CommonUsefulnessGate:
@@ -156,7 +151,7 @@ class CommonUsefulnessGate:
         self,
         result: ExecutionResult,
         scenario: ScenarioContext,
-        scene_validator: Optional[SceneUsefulnessValidator] = None,
+        scene_validator: SceneUsefulnessValidator | None = None,
     ) -> tuple[ExecutionOutcomeContract, UsefulnessGateSignal]:
         outcome = result.resolve_outcome()
         if outcome.process_status != ProcessExecutionStatus.SUCCESS:
@@ -218,7 +213,7 @@ class CommonUsefulnessGate:
         result.outcome = outcome
         return outcome, UsefulnessGateSignal(eligible=True, stage="utility", reason="eligible")
 
-    def _semantic_rejection(self, gate_input: UsefulnessGateInput) -> Optional[str]:
+    def _semantic_rejection(self, gate_input: UsefulnessGateInput) -> str | None:
         if not gate_input.artifact_paths:
             return "missing required artifact"
         if not gate_input.normalized_text.strip():
@@ -227,7 +222,7 @@ class CommonUsefulnessGate:
             return "template-only output"
         return None
 
-    def _utility_rejection(self, gate_input: UsefulnessGateInput) -> Optional[str]:
+    def _utility_rejection(self, gate_input: UsefulnessGateInput) -> str | None:
         payload = gate_input.structured_payload
         if isinstance(payload, dict):
             has_status = any(key.lower() in {"status", "result", "outcome", "success"} for key in payload)
@@ -244,7 +239,7 @@ class CommonUsefulnessGate:
             return "contradictory status"
         return None
 
-    def _decode_artifact_paths(self, artifacts_ref: str) -> List[str]:
+    def _decode_artifact_paths(self, artifacts_ref: str) -> list[str]:
         value = (artifacts_ref or "").strip()
         if not value:
             return []
@@ -261,8 +256,8 @@ class CommonUsefulnessGate:
             return [decoded] if decoded.strip() else []
         return []
 
-    def _load_artifact_texts(self, artifact_paths: List[str]) -> Dict[str, str]:
-        texts: Dict[str, str] = {}
+    def _load_artifact_texts(self, artifact_paths: list[str]) -> dict[str, str]:
+        texts: dict[str, str] = {}
         for raw_path in artifact_paths:
             path = Path(raw_path)
             if not path.exists() or not path.is_file():
@@ -281,14 +276,14 @@ class CommonUsefulnessGate:
         normalized = "\n".join(chunk.strip() for chunk in chunks if chunk and chunk.strip())
         return normalized.lower()
 
-    def _extract_payload(self, logs_ref: str, artifact_texts: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    def _extract_payload(self, logs_ref: str, artifact_texts: dict[str, str]) -> dict[str, Any] | None:
         for content in artifact_texts.values():
             payload = self._parse_first_json_object(content)
             if payload is not None:
                 return payload
         return self._parse_first_json_object(logs_ref)
 
-    def _parse_first_json_object(self, text: str) -> Optional[Dict[str, Any]]:
+    def _parse_first_json_object(self, text: str) -> dict[str, Any] | None:
         if not text:
             return None
         stripped = text.strip()
@@ -316,7 +311,7 @@ class CommonUsefulnessGate:
             return True
         return any(token in normalized_text for token in self._PLACEHOLDER_TOKENS)
 
-    def _is_contradictory_status(self, payload: Dict[str, Any]) -> bool:
+    def _is_contradictory_status(self, payload: dict[str, Any]) -> bool:
         status_value = str(payload.get("status", payload.get("result", payload.get("outcome", "")))).lower()
         if not status_value:
             return False
@@ -341,5 +336,5 @@ class PluginBundle:
     coder: Coder
     runner: Runner
     feedback_analyzer: FeedbackAnalyzer
-    scene_usefulness_validator: Optional[SceneUsefulnessValidator] = None
+    scene_usefulness_validator: SceneUsefulnessValidator | None = None
     default_step_overrides: StepOverrideConfig = field(default_factory=StepOverrideConfig)

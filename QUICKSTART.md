@@ -260,4 +260,4 @@ print(p.complete('Hello'))
 1. **开发推荐**: 使用 `make dev-shell` 进入 Docker 开发容器，代码修改会实时同步
 2. **生产部署**: 修改 `docker-compose.yml` 中的环境变量，使用外部 LLM API
 3. **数据持久化**: 默认数据存储在 Docker volumes 中，重启不会丢失
-4. **代码检查**: 运行 `make format` 和 `make lint` 保持代码规范（需安装 black、ruff 等工具）
+4. **代码检查**: 运行 `make format` 和 `make lint` 保持代码规范（需安装 ruff）

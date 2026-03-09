@@ -6,9 +6,9 @@ import dataclasses
 import json
 import logging
 import re
-from dataclasses import dataclass
 from collections import Counter
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Type, TypeVar, cast, get_args, get_origin
+from dataclasses import dataclass
+from typing import Any, Protocol, TypeVar, cast, get_args, get_origin
 
 from service_contracts import ModelSelectorConfig
 
@@ -23,14 +23,13 @@ _log = logging.getLogger(__name__)
 class LLMProvider(Protocol):
     """Provider interface for text completion."""
 
-    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
-        ...
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str: ...
 
 
 class MockLLMProvider:
     """Deterministic mock provider for testing structured outputs."""
 
-    def __init__(self, responses: Optional[List[str]] = None) -> None:
+    def __init__(self, responses: list[str] | None = None) -> None:
         self._responses = list(responses or [])
 
     @staticmethod
@@ -42,11 +41,11 @@ class MockLLMProvider:
             return after.split("\n")[0].strip()
         return ""
 
-    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
-        def _metadata_tokens() -> List[str]:
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
+        def _metadata_tokens() -> list[str]:
             if model_config is None:
                 return []
-            tokens: List[str] = []
+            tokens: list[str] = []
             if model_config.provider:
                 tokens.append(f"provider:{model_config.provider}")
             if model_config.model:
@@ -117,15 +116,19 @@ class MockLLMProvider:
             )
 
         # FC-3 Structured Feedback
-        is_structured_feedback = "structured feedback" in prompt_lower or ("`execution`" in prompt and "`code`" in prompt and "`reasoning`" in prompt)
+        is_structured_feedback = "structured feedback" in prompt_lower or (
+            "`execution`" in prompt and "`code`" in prompt and "`reasoning`" in prompt
+        )
         if is_structured_feedback:
-            return json.dumps({
-                "execution": "Mock execution status: passed",
-                "return_checking": "Mock return check: values consistent",
-                "code": "Mock code review: clean implementation",
-                "final_decision": True,
-                "reasoning": "Mock reasoning: all checks passed",
-            })
+            return json.dumps(
+                {
+                    "execution": "Mock execution status: passed",
+                    "return_checking": "Mock return check: values consistent",
+                    "code": "Mock code review: clean implementation",
+                    "final_decision": True,
+                    "reasoning": "Mock reasoning: all checks passed",
+                }
+            )
 
         # FC-3 Reasoning Stages (check more specific patterns first)
         is_analysis = "`strengths`" in prompt or "`weaknesses`" in prompt
@@ -233,7 +236,7 @@ class ParseDiagnostic:
 
 
 class StructuredOutputParseError(ValueError):
-    def __init__(self, message: str, diagnostics: List[ParseDiagnostic]) -> None:
+    def __init__(self, message: str, diagnostics: list[ParseDiagnostic]) -> None:
         super().__init__(message)
         self.diagnostics = diagnostics
         self.retry_count = max(0, len(diagnostics) - 1)
@@ -244,11 +247,11 @@ class StructuredOutputParseError(ValueError):
 class LLMAdapter:
     """Adapter that parses structured JSON outputs with retries."""
 
-    def __init__(self, provider: LLMProvider, config: Optional[LLMAdapterConfig] = None) -> None:
+    def __init__(self, provider: LLMProvider, config: LLMAdapterConfig | None = None) -> None:
         self._provider = provider
         self._config = config or LLMAdapterConfig()
 
-    def _build_schema_hint(self, schema_cls: Type) -> str:
+    def _build_schema_hint(self, schema_cls: type) -> str:
         """Build JSON schema hint from a dataclass with from_dict."""
         if not dataclasses.is_dataclass(schema_cls):
             return ""
@@ -271,7 +274,7 @@ class LLMAdapter:
                 example[f.name] = "value"
         return json.dumps(example, indent=2)
 
-    def _enhance_prompt(self, prompt: str, schema_cls: Type) -> str:
+    def _enhance_prompt(self, prompt: str, schema_cls: type) -> str:
         schema_hint = self._build_schema_hint(schema_cls)
         if not schema_hint:
             return prompt
@@ -304,7 +307,7 @@ class LLMAdapter:
             except json.JSONDecodeError:
                 continue
             if isinstance(payload, dict):
-                return raw[idx:idx + end].strip()
+                return raw[idx : idx + end].strip()
         return raw.strip()
 
     @staticmethod
@@ -345,12 +348,12 @@ class LLMAdapter:
         args = get_args(field_type)
         return type(None) in args
 
-    def _validate_required_fields(self, schema_cls: Type, payload: Dict[str, Any]) -> None:
+    def _validate_required_fields(self, schema_cls: type, payload: dict[str, Any]) -> None:
         if not dataclasses.is_dataclass(schema_cls):
             return
 
-        missing: List[str] = []
-        null_fields: List[str] = []
+        missing: list[str] = []
+        null_fields: list[str] = []
         for field in dataclasses.fields(schema_cls):
             if self._is_optional_field(field.type):
                 continue
@@ -361,7 +364,7 @@ class LLMAdapter:
                 null_fields.append(field.name)
 
         if missing or null_fields:
-            parts: List[str] = []
+            parts: list[str] = []
             if missing:
                 parts.append(f"missing={missing}")
             if null_fields:
@@ -383,16 +386,20 @@ class LLMAdapter:
         if "List[str]" in expected or "list[str]" in expected:
             return isinstance(value, list) and all(isinstance(item, str) for item in value)
         if "List[int]" in expected or "list[int]" in expected:
-            return isinstance(value, list) and all(isinstance(item, int) and not isinstance(item, bool) for item in value)
+            return isinstance(value, list) and all(
+                isinstance(item, int) and not isinstance(item, bool) for item in value
+            )
         if "List[float]" in expected or "list[float]" in expected:
-            return isinstance(value, list) and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value)
+            return isinstance(value, list) and all(
+                isinstance(item, (int, float)) and not isinstance(item, bool) for item in value
+            )
         return True
 
-    def _validate_field_types(self, schema_cls: Type, payload: Dict[str, Any]) -> None:
+    def _validate_field_types(self, schema_cls: type, payload: dict[str, Any]) -> None:
         if not dataclasses.is_dataclass(schema_cls):
             return
 
-        mismatches: List[str] = []
+        mismatches: list[str] = []
         for field in dataclasses.fields(schema_cls):
             if field.name not in payload:
                 continue
@@ -409,15 +416,13 @@ class LLMAdapter:
             scalar_ok = self._is_valid_scalar_type(field_type, value)
             list_ok = self._is_valid_list_type(field_type, value)
             if not scalar_ok or not list_ok:
-                mismatches.append(
-                    f"{field.name}: expected {field_type}, got {type(value).__name__}"
-                )
+                mismatches.append(f"{field.name}: expected {field_type}, got {type(value).__name__}")
 
         if mismatches:
             raise ValueError("field type validation failed: " + "; ".join(mismatches))
 
     @staticmethod
-    def _classify_parse_error(exc: Exception) -> Tuple[bool, str]:
+    def _classify_parse_error(exc: Exception) -> tuple[bool, str]:
         if isinstance(exc, (ConnectionError, TimeoutError)):
             return True, "provider_disconnect"
         if isinstance(exc, TypeError) and "schema_cls missing callable from_dict" in str(exc):
@@ -432,7 +437,7 @@ class LLMAdapter:
             return True, "field_types"
         return True, "parse"
 
-    def _parse_with_schema(self, raw: str, schema_cls: Type[T]) -> T:
+    def _parse_with_schema(self, raw: str, schema_cls: type[T]) -> T:
         cleaned = self._extract_json(raw)
         repaired = self._repair_json(cleaned)
         payload = json.loads(repaired)
@@ -449,11 +454,11 @@ class LLMAdapter:
     def generate_structured(
         self,
         prompt: str,
-        schema_cls: Type[T],
-        model_config: Optional[ModelSelectorConfig] = None,
+        schema_cls: type[T],
+        model_config: ModelSelectorConfig | None = None,
     ) -> T:
-        last_error: Optional[Exception] = None
-        diagnostics: List[ParseDiagnostic] = []
+        last_error: Exception | None = None
+        diagnostics: list[ParseDiagnostic] = []
         max_retries = self._config.max_retries
         if model_config is not None and model_config.max_retries is not None:
             max_retries = model_config.max_retries
@@ -470,8 +475,9 @@ class LLMAdapter:
                 return self._parse_with_schema(raw, schema_cls)
             except Exception as exc:
                 retryable, stage = self._classify_parse_error(exc)
-                _log.warning("parse attempt %d/%d failed: %s  raw[:200]=%s",
-                             attempt + 1, attempts, exc, (raw or "")[:200])
+                _log.warning(
+                    "parse attempt %d/%d failed: %s  raw[:200]=%s", attempt + 1, attempts, exc, (raw or "")[:200]
+                )
                 diagnostics.append(
                     ParseDiagnostic(
                         attempt=attempt + 1,
@@ -485,30 +491,29 @@ class LLMAdapter:
                     break
 
         details = "; ".join(
-            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}"
-            for d in diagnostics
+            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}" for d in diagnostics
         )
         raise StructuredOutputParseError(
             f"structured output parse failed after {len(diagnostics)} attempts: {last_error}; diagnostics=[{details}]",
             diagnostics,
         )
 
-    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
         return self._provider.complete(prompt, model_config=model_config)
 
     def generate_code(
         self,
         prompt: str,
-        metadata_schema_cls: Type[T],
-        model_config: Optional[ModelSelectorConfig] = None,
-    ) -> Tuple[T, str]:
+        metadata_schema_cls: type[T],
+        model_config: ModelSelectorConfig | None = None,
+    ) -> tuple[T, str]:
         max_retries = self._config.max_retries
         if model_config is not None and model_config.max_retries is not None:
             max_retries = model_config.max_retries
         attempts = max_retries + 1
 
-        diagnostics: List[ParseDiagnostic] = []
-        last_error: Optional[Exception] = None
+        diagnostics: list[ParseDiagnostic] = []
+        last_error: Exception | None = None
         for attempt in range(attempts):
             raw = ""
             try:
@@ -531,8 +536,7 @@ class LLMAdapter:
                     break
 
         details = "; ".join(
-            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}"
-            for d in diagnostics
+            f"attempt={d.attempt},stage={d.stage},retryable={d.retryable},error={d.error}" for d in diagnostics
         )
         raise StructuredOutputParseError(
             f"code generation parse failed after {len(diagnostics)} attempts: {last_error}; diagnostics=[{details}]",

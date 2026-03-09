@@ -1,7 +1,6 @@
 """Test MCTS statistics fields on NodeRecord."""
 
-import pytest
-from data_models import NodeRecord, BranchState
+from data_models import BranchState, NodeRecord
 
 
 class TestNodeRecordMCTSFields:

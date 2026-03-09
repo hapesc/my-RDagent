@@ -7,27 +7,24 @@ real LLM calls silently produce empty/default objects.
 
 import dataclasses
 import re
-from typing import List, Type
-
-import pytest
 
 from llm.prompts import (
     reasoning_analysis_prompt,
-    reasoning_identify_prompt,
-    reasoning_hypothesize_prompt,
     reasoning_design_prompt,
+    reasoning_hypothesize_prompt,
+    reasoning_identify_prompt,
     virtual_eval_prompt,
 )
 from llm.schemas import (
     AnalysisResult,
-    ProblemIdentification,
-    HypothesisFormulation,
     ExperimentDesign,
+    HypothesisFormulation,
+    ProblemIdentification,
     VirtualEvalResult,
 )
 
 
-def _extract_output_field_names(prompt_text: str) -> List[str]:
+def _extract_output_field_names(prompt_text: str) -> list[str]:
     # regex: everything after "## Output Fields\n" until next "## " or end of string
     match = re.search(r"## Output Fields\s*\n(.*?)(?:\n##|\Z)", prompt_text, re.DOTALL)
     if not match:
@@ -37,12 +34,12 @@ def _extract_output_field_names(prompt_text: str) -> List[str]:
     return re.findall(r"`(\w+)`", section)
 
 
-def _get_schema_field_names(schema_cls: Type) -> List[str]:
+def _get_schema_field_names(schema_cls: type) -> list[str]:
     assert dataclasses.is_dataclass(schema_cls), f"{schema_cls} is not a dataclass"
     return [f.name for f in dataclasses.fields(schema_cls)]
 
 
-def _assert_alignment(prompt_text: str, schema_cls: Type, prompt_name: str) -> None:
+def _assert_alignment(prompt_text: str, schema_cls: type, prompt_name: str) -> None:
     prompt_fields = set(_extract_output_field_names(prompt_text))
     schema_fields = set(_get_schema_field_names(schema_cls))
 
@@ -58,13 +55,11 @@ def _assert_alignment(prompt_text: str, schema_cls: Type, prompt_name: str) -> N
     assert not errors, (
         f"\nMISALIGNMENT: {prompt_name} <-> {schema_cls.__name__}\n"
         f"Prompt: {sorted(prompt_fields)}\n"
-        f"Schema: {sorted(schema_fields)}\n"
-        + "\n".join(errors)
+        f"Schema: {sorted(schema_fields)}\n" + "\n".join(errors)
     )
 
 
 class TestPromptSchemaAlignment:
-
     def test_analysis_prompt_matches_analysis_result(self):
         prompt = reasoning_analysis_prompt(
             task_summary="Test task",
@@ -114,10 +109,10 @@ class TestPromptSchemaAlignment:
 
 
 class TestSchemaHintAlignment:
-
     def test_schema_hint_covers_list_int_fields(self):
-        from llm.adapter import LLMAdapter, MockLLMProvider
         import json
+
+        from llm.adapter import LLMAdapter, MockLLMProvider
 
         adapter = LLMAdapter(MockLLMProvider())
         hint = adapter._build_schema_hint(VirtualEvalResult)
@@ -129,8 +124,9 @@ class TestSchemaHintAlignment:
         assert parsed["selected_indices"] == [0]
 
     def test_schema_hint_covers_all_fc3_schemas(self):
-        from llm.adapter import LLMAdapter, MockLLMProvider
         import json
+
+        from llm.adapter import LLMAdapter, MockLLMProvider
 
         adapter = LLMAdapter(MockLLMProvider())
 
@@ -146,6 +142,4 @@ class TestSchemaHintAlignment:
             parsed = json.loads(hint)
             schema_fields = {f.name for f in dataclasses.fields(schema_cls)}
             hint_fields = set(parsed.keys())
-            assert schema_fields == hint_fields, (
-                f"{schema_cls.__name__}: hint {hint_fields} != schema {schema_fields}"
-            )
+            assert schema_fields == hint_fields, f"{schema_cls.__name__}: hint {hint_fields} != schema {schema_fields}"

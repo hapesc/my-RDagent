@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 from data_models import ExecutionResult, Score
 
@@ -9,17 +9,17 @@ if TYPE_CHECKING:
 
 
 class ValidationSelector:
-    def __init__(self, evaluation_service: "EvaluationService") -> None:
+    def __init__(self, evaluation_service: EvaluationService) -> None:
         self._eval_service = evaluation_service
 
     def rank_candidates(
         self,
-        candidates: List[ExecutionResult],
-    ) -> List[Tuple[ExecutionResult, Score]]:
+        candidates: list[ExecutionResult],
+    ) -> list[tuple[ExecutionResult, Score]]:
         if not candidates:
             return []
 
-        scored: List[Tuple[ExecutionResult, Score]] = []
+        scored: list[tuple[ExecutionResult, Score]] = []
         for candidate in candidates:
             eval_result = self._eval_service.evaluate_run(candidate)
             scored.append((candidate, eval_result.score))
@@ -29,8 +29,8 @@ class ValidationSelector:
 
     def select_best(
         self,
-        candidates: List[ExecutionResult],
-    ) -> Tuple[ExecutionResult, Score]:
+        candidates: list[ExecutionResult],
+    ) -> tuple[ExecutionResult, Score]:
         ranked = self.rank_candidates(candidates)
         if not ranked:
             raise ValueError("No candidates to select from")

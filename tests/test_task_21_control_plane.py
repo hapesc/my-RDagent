@@ -11,9 +11,8 @@ from unittest.mock import patch
 from app.control_plane import build_control_plane_app
 from app.fastapi_compat import TestClient
 from app.run_supervisor import RunSupervisor, RunSupervisorConfig
-from app.runtime import build_runtime, build_run_service
+from app.runtime import build_run_service, build_runtime
 from data_models import RunSession, RunStatus, StopConditions
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -67,9 +66,7 @@ class ControlPlaneTests(unittest.TestCase):
             json={
                 "scenario": "data_science",
                 "task_summary": "controlled data science run",
-                "entry_input": {
-                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
-                },
+                "entry_input": {"command": 'python3 pipeline.py && python3 -c "import time; time.sleep(0.2)"'},
                 "stop_conditions": {"max_loops": 4, "max_duration_sec": 60},
             },
         )
@@ -94,9 +91,7 @@ class ControlPlaneTests(unittest.TestCase):
             json={
                 "scenario": "data_science",
                 "task_summary": "stop run",
-                "entry_input": {
-                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
-                },
+                "entry_input": {"command": 'python3 pipeline.py && python3 -c "import time; time.sleep(0.2)"'},
                 "stop_conditions": {"max_loops": 5, "max_duration_sec": 60},
             },
         )
@@ -219,7 +214,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_build_config_snapshot_serializes_stop_conditions_without_to_dict_method(self) -> None:
         from app.control_plane import _build_config_snapshot
         from service_contracts import RunCreateRequest, StepOverrideConfig
-        
+
         # Create a RunCreateRequest with StopConditions (which lacks to_dict method)
         request = RunCreateRequest(
             scenario="synthetic_research",
@@ -227,11 +222,11 @@ class ControlPlaneTests(unittest.TestCase):
             stop_conditions=StopConditions(max_loops=5, max_steps=10, max_duration_sec=3600),
             step_overrides=StepOverrideConfig(),
         )
-        
+
         runtime = build_runtime()
         manifest = runtime.plugin_registry.get_manifest("synthetic_research")
         snapshot = _build_config_snapshot(runtime, request, manifest)
-        
+
         # Verify stop_conditions was serialized correctly via fallback
         self.assertEqual(snapshot["stop_conditions"]["max_loops"], 5)
         self.assertEqual(snapshot["stop_conditions"]["max_steps"], 10)
@@ -268,9 +263,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertTrue(runtime_snapshot["uses_real_llm_provider"])
         self.assertIn("real_provider_safe_profile", runtime_snapshot)
         self.assertIn("guardrail_warnings", runtime_snapshot)
-        self.assertTrue(
-            any("running.timeout_sec=180" in warning for warning in runtime_snapshot["guardrail_warnings"])
-        )
+        self.assertTrue(any("running.timeout_sec=180" in warning for warning in runtime_snapshot["guardrail_warnings"]))
 
     def test_invalid_event_pagination_returns_structured_invalid_request(self) -> None:
         create_response = self.client.post(

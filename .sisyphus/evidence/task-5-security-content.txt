@@ -1,0 +1,44 @@
+TASK: Create SECURITY.md in English
+STATUS: COMPLETED
+DATE: 2026-03-09
+
+DELIVERABLE:
+File: /Users/michael-liang/Code/my-RDagent/SECURITY.md
+
+VERIFICATION RESULTS:
+✅ File line count: 69 lines (exceeds 30 line minimum)
+✅ Contains "Reporting": Found in section "## Reporting a Vulnerability"
+✅ Contains "vulnerability": Found multiple times (case-insensitive match)
+✅ Contact placeholder: security@example.com (appears 2x in file)
+
+CONTENT SECTIONS VERIFIED:
+1. Supported Versions
+   - Table showing v0.1.x as currently supported ✅
+   - Older versions (< v0.1) marked as not supported ✅
+
+2. Reporting a Vulnerability
+   - Email-based reporting emphasized (DO NOT use public issues) ✅
+   - Placeholder email: security@example.com ✅
+   - Includes: description, steps to reproduce, impact, suggested fix ✅
+   - Timeline: acknowledgment within 48 hours ✅
+   - Timeline: initial assessment within 7 days ✅
+
+3. Disclosure Policy
+   - Security fixes released publicly after patch ✅
+   - Credit to reporter in release notes (with permission) ✅
+
+4. Security Best Practices
+   - Never hardcode API keys ✅
+   - Use .env file for secrets (references .env.example) ✅
+   - Use Docker sandbox for code execution ✅
+   - Mentions redaction: observability/redaction.py sanitizes sensitive fields ✅
+
+CODE FILES TOUCHED: NONE (as required)
+- Document is pure markdown, no code modifications
+
+CONTENT QUALITY:
+- Professional security policy document in English
+- Clear formatting with markdown headers
+- Comprehensive coverage of all security concerns
+- Appropriate tone for vulnerability disclosure
+- Ready for user to replace security@example.com with real address

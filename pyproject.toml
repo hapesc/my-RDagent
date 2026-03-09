@@ -3,7 +3,7 @@ name = "rdagent"
 version = "0.1.0"
 description = "Agentic R&D Platform - LLM-agent system for automated data science and ML workflows"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "RDAgent Team"}
@@ -15,8 +15,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -72,9 +70,9 @@ rdagent = "agentrd_cli:main"
 rdagent-cli = "cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/rdagent"
-Documentation = "https://github.com/yourusername/rdagent#readme"
-Repository = "https://github.com/yourusername/rdagent"
+Homepage = "https://github.com/hapesc/my-RDagent"
+Documentation = "https://github.com/hapesc/my-RDagent#readme"
+Repository = "https://github.com/hapesc/my-RDagent"
 
 [build-system]
 requires = ["hatchling"]
@@ -111,7 +109,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 120
 exclude = [".venv", "venv", "build", "dist", ".eggs", ".git", ".tox", ".mypy_cache", ".ruff_cache"]
 

@@ -1,0 +1,19 @@
+IMPORT
+configure_logging_callable=True
+JsonFormatter_subclass=True
+JSON_OUTPUT
+{"timestamp": "2026-03-09T15:18:34.797051Z", "level": "INFO", "logger": "task10.json", "message": "hello", "module": "<stdin>", "function": "<module>", "line": 19, "api_key": "***", "request_id": "req-1"}
+timestamp_present=True
+level=INFO
+message=hello
+api_key=***
+request_id=req-1
+TEXT_OUTPUT
+2026-03-09T23:18:34+0800 INFO [task10.text] plain hello
+EXCEPTION_OUTPUT
+{"timestamp": "2026-03-09T15:18:34.797654Z", "level": "ERROR", "logger": "task10.exc", "message": "failed", "module": "<stdin>", "function": "<module>", "line": 51, "api_key": "***", "exception": "Traceback (most recent call last):\n  File \"<stdin>\", line 49, in <module>\nRuntimeError: boom"}
+exception_contains_runtimeerror=True
+PY_COMPILE
+<ok>
+PROTECTED_FILES_DIFF
+<no changes>

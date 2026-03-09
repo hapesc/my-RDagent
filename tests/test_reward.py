@@ -6,8 +6,6 @@ against official RDAgent reward computation.
 
 import math
 
-import pytest
-
 from exploration_manager.reward import RewardCalculator
 
 

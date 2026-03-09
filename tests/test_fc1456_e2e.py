@@ -15,7 +15,6 @@ from llm.adapter import MockLLMProvider
 from memory_service.hypothesis_selector import HypothesisSelector
 from memory_service.interaction_kernel import HypothesisRecord, InteractionKernel
 from memory_service.service import MemoryService, MemoryServiceConfig
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 

@@ -15,7 +15,6 @@ from data_models import (
     Score,
     StopConditions,
 )
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -101,15 +100,18 @@ class TestFC1456Wiring(unittest.TestCase):
         self.assertTrue(config.debug_mode)
 
     def test_build_runtime_succeeds(self):
-        with patch.dict(
-            os.environ,
-            {
-                "RD_AGENT_LLM_PROVIDER": "mock",
-                "RD_AGENT_HYPOTHESIS_STORAGE": "false",
-                "RD_AGENT_LLM_PLANNING": "false",
-            },
-            clear=False,
-        ), patch_runtime_llm_provider():
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "RD_AGENT_LLM_PROVIDER": "mock",
+                    "RD_AGENT_HYPOTHESIS_STORAGE": "false",
+                    "RD_AGENT_LLM_PLANNING": "false",
+                },
+                clear=False,
+            ),
+            patch_runtime_llm_provider(),
+        ):
             runtime = build_runtime()
         self.assertIsNotNone(runtime)
         self.assertFalse(runtime.config.enable_hypothesis_storage)

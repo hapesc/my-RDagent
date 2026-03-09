@@ -7,9 +7,9 @@ import subprocess
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from data_models import (
     ArtifactVerificationStatus,
@@ -22,7 +22,7 @@ from data_models import (
 from trace_store import TraceStore, TraceStoreConfig
 
 
-class ExecutionStatus(str, Enum):
+class ExecutionStatus(StrEnum):
     """Normalized execution failure semantics."""
 
     SUCCESS = "SUCCESS"
@@ -42,10 +42,10 @@ class BackendResult:
     stderr: str
     duration_sec: float
     timed_out: bool
-    artifact_paths: List[str] = field(default_factory=list)
-    artifact_manifest: Dict[str, Any] = field(default_factory=dict)
-    malformed_artifact_paths: List[str] = field(default_factory=list)
-    outcome: Optional[ExecutionOutcomeContract] = None
+    artifact_paths: list[str] = field(default_factory=list)
+    artifact_manifest: dict[str, Any] = field(default_factory=dict)
+    malformed_artifact_paths: list[str] = field(default_factory=list)
+    outcome: ExecutionOutcomeContract | None = None
 
 
 @dataclass
@@ -58,7 +58,7 @@ class DockerExecutionBackendConfig:
     command_shell: str = "/bin/sh"
     default_timeout_sec: int = 300
     trace_storage_path: str = "/tmp/rd_agent_trace/events.jsonl"
-    artifact_globs: List[str] = field(
+    artifact_globs: list[str] = field(
         default_factory=lambda: [
             "*.txt",
             "*.log",
@@ -83,9 +83,8 @@ class ExecutionBackend(Protocol):
         loop_index: int,
         workspace_path: str,
         command: str,
-        timeout_sec: Optional[int] = None,
-    ) -> BackendResult:
-        ...
+        timeout_sec: int | None = None,
+    ) -> BackendResult: ...
 
 
 class DockerExecutionBackend:
@@ -101,7 +100,7 @@ class DockerExecutionBackend:
         loop_index: int,
         workspace_path: str,
         command: str,
-        timeout_sec: Optional[int] = None,
+        timeout_sec: int | None = None,
     ) -> BackendResult:
         timeout = timeout_sec if timeout_sec is not None else self._config.default_timeout_sec
         workspace = Path(workspace_path).resolve()
@@ -216,7 +215,7 @@ class DockerExecutionBackend:
             return "docker is unavailable and local execution is disabled; set allow_local_execution=true to opt in"
         return "no permitted execution backend available; enable docker execution or set allow_local_execution=true"
 
-    def _build_docker_command(self, workspace: Path, command: str) -> List[str]:
+    def _build_docker_command(self, workspace: Path, command: str) -> list[str]:
         return [
             "docker",
             "run",
@@ -231,14 +230,14 @@ class DockerExecutionBackend:
             command,
         ]
 
-    def _build_local_command(self, command: str) -> List[str]:
+    def _build_local_command(self, command: str) -> list[str]:
         return [self._config.command_shell, "-lc", command]
 
     def _run_command(
         self,
-        cmd: List[str],
+        cmd: list[str],
         *,
-        cwd: Optional[str],
+        cwd: str | None,
         timeout: int,
     ) -> tuple[ExecutionStatus, int, str, str, bool]:
         timed_out = False
@@ -295,7 +294,7 @@ class DockerExecutionBackend:
         )
         return daemon_unavailable or exit_code in {-1, 125}
 
-    def _collect_artifacts(self, workspace: Path) -> List[str]:
+    def _collect_artifacts(self, workspace: Path) -> list[str]:
         paths = set()
         for pattern in self._config.artifact_globs:
             for path in workspace.rglob(pattern):
@@ -303,8 +302,8 @@ class DockerExecutionBackend:
                     paths.add(str(path))
         return sorted(paths)
 
-    def _collect_malformed_artifact_paths(self, artifact_paths: List[str]) -> List[str]:
-        malformed_paths: List[str] = []
+    def _collect_malformed_artifact_paths(self, artifact_paths: list[str]) -> list[str]:
+        malformed_paths: list[str] = []
         for path_str in artifact_paths:
             normalized = path_str.strip()
             if not normalized:

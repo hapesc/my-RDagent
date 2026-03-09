@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 from data_models import Event, EventType
 from observability import sanitize_payload
@@ -36,10 +35,10 @@ class TraceStore:
 
     def query_events(
         self,
-        run_id: Optional[str] = None,
-        event_type: Optional[EventType] = None,
-    ) -> List[Event]:
-        events: List[Event] = []
+        run_id: str | None = None,
+        event_type: EventType | None = None,
+    ) -> list[Event]:
+        events: list[Event] = []
         with self._path.open("r", encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()

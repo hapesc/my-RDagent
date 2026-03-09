@@ -1,0 +1,19 @@
+{
+  "scenario": 2,
+  "title": "LICENSE QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": "LICENSE first line contains MIT License",
+      "pass": true,
+      "actual": "MIT License",
+      "evidence": ".sisyphus/evidence/final-qa/task2_license_head.log"
+    },
+    {
+      "name": "Copyright (c) 2024 appears exactly once",
+      "pass": true,
+      "actual": "1",
+      "evidence": ".sisyphus/evidence/final-qa/task2_license_copyright_count.log"
+    }
+  ]
+}

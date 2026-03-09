@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from enum import Enum, StrEnum
+from typing import Any
 
 
 def utc_now() -> datetime:
     """Return timezone-aware UTC timestamp."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _to_iso_utc(value: datetime) -> str:
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _from_iso_utc(value: str) -> datetime:
@@ -41,7 +41,7 @@ def model_to_dict(value: Any) -> Any:
     return value
 
 
-class ValueEnum(str, Enum):
+class ValueEnum(StrEnum):
     """String enum that renders as its value."""
 
     def __str__(self) -> str:  # pragma: no cover - tiny helper
@@ -114,7 +114,7 @@ class StopConditions:
     """Stop conditions applied to a run session."""
 
     max_loops: int = 20
-    max_steps: Optional[int] = None
+    max_steps: int | None = None
     max_duration_sec: int = 14400
 
 
@@ -128,19 +128,19 @@ class RunSession:
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
     stop_conditions: StopConditions = field(default_factory=StopConditions)
-    entry_input: Dict[str, Any] = field(default_factory=dict)
-    active_branch_ids: List[str] = field(default_factory=lambda: ["main"])
-    config_snapshot: Dict[str, Any] = field(default_factory=dict)
+    entry_input: dict[str, Any] = field(default_factory=dict)
+    active_branch_ids: list[str] = field(default_factory=lambda: ["main"])
+    config_snapshot: dict[str, Any] = field(default_factory=dict)
 
     def update_status(self, status: RunStatus) -> None:
         self.status = status
         self.updated_at = utc_now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RunSession":
+    def from_dict(cls, data: dict[str, Any]) -> RunSession:
         stop_conditions = data.get("stop_conditions", {})
         return cls(
             run_id=str(data["run_id"]),
@@ -150,11 +150,7 @@ class RunSession:
             updated_at=_from_iso_utc(str(data["updated_at"])),
             stop_conditions=StopConditions(
                 max_loops=int(stop_conditions.get("max_loops", 20)),
-                max_steps=(
-                    int(stop_conditions["max_steps"])
-                    if stop_conditions.get("max_steps") is not None
-                    else None
-                ),
+                max_steps=(int(stop_conditions["max_steps"]) if stop_conditions.get("max_steps") is not None else None),
                 max_duration_sec=int(stop_conditions.get("max_duration_sec", 14400)),
             ),
             entry_input=dict(data.get("entry_input", {})),
@@ -170,26 +166,24 @@ class ExperimentNode:
     node_id: str
     run_id: str
     branch_id: str
-    parent_node_id: Optional[str] = None
+    parent_node_id: str | None = None
     loop_index: int = 0
     step_state: StepState = StepState.RECORDED
-    hypothesis: Dict[str, Any] = field(default_factory=dict)
+    hypothesis: dict[str, Any] = field(default_factory=dict)
     workspace_ref: str = ""
     result_ref: str = ""
     feedback_ref: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExperimentNode":
+    def from_dict(cls, data: dict[str, Any]) -> ExperimentNode:
         return cls(
             node_id=str(data["node_id"]),
             run_id=str(data["run_id"]),
             branch_id=str(data["branch_id"]),
-            parent_node_id=(
-                str(data["parent_node_id"]) if data.get("parent_node_id") is not None else None
-            ),
+            parent_node_id=(str(data["parent_node_id"]) if data.get("parent_node_id") is not None else None),
             loop_index=int(data.get("loop_index", 0)),
             step_state=StepState(str(data.get("step_state", StepState.RECORDED.value))),
             hypothesis=dict(data.get("hypothesis", {})),
@@ -213,11 +207,11 @@ class WorkspaceSnapshot:
 
     workspace_id: str
     run_id: str
-    file_manifest: List[FileManifestEntry] = field(default_factory=list)
+    file_manifest: list[FileManifestEntry] = field(default_factory=list)
     checkpoint_type: str = "zip"
     created_at: datetime = field(default_factory=utc_now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -232,7 +226,7 @@ class FeedbackRecord:
     observations: str = ""
     code_change_summary: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -247,13 +241,13 @@ class Event:
     step_name: str
     event_type: EventType
     timestamp: datetime = field(default_factory=utc_now)
-    payload: Dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Event":
+    def from_dict(cls, data: dict[str, Any]) -> Event:
         return cls(
             event_id=str(data["event_id"]),
             run_id=str(data["run_id"]),
@@ -272,16 +266,16 @@ class TaskSpec:
 
     task_id: str
     description: str
-    constraints: Dict[str, str] = field(default_factory=dict)
+    constraints: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class DataSplitManifest:
     """Fixed train/val/test split indices for deterministic evaluation."""
 
-    train_ids: List[str] = field(default_factory=list)
-    val_ids: List[str] = field(default_factory=list)
-    test_ids: List[str] = field(default_factory=list)
+    train_ids: list[str] = field(default_factory=list)
+    val_ids: list[str] = field(default_factory=list)
+    test_ids: list[str] = field(default_factory=list)
     seed: int = 0
 
 
@@ -290,8 +284,8 @@ class DataSummaryReport:
     """Dataset summary statistics and schema notes."""
 
     row_count: int = 0
-    field_types: Dict[str, str] = field(default_factory=dict)
-    missing_rates: Dict[str, float] = field(default_factory=dict)
+    field_types: dict[str, str] = field(default_factory=dict)
+    missing_rates: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -307,12 +301,12 @@ class TaskArtifacts:
 class ExplorationGraph:
     """Exploration graph for tracking proposals, artifacts, and scores."""
 
-    nodes: List["NodeRecord"] = field(default_factory=list)
-    edges: List["GraphEdge"] = field(default_factory=list)
-    traces: List[tuple] = field(default_factory=list)
-    branch_scores: Dict[str, float] = field(default_factory=dict)
-    branch_states: Dict[str, BranchState] = field(default_factory=dict)
-    visit_counts: Dict[str, int] = field(default_factory=dict)
+    nodes: list[NodeRecord] = field(default_factory=list)
+    edges: list[GraphEdge] = field(default_factory=list)
+    traces: list[tuple] = field(default_factory=list)
+    branch_scores: dict[str, float] = field(default_factory=dict)
+    branch_states: dict[str, BranchState] = field(default_factory=dict)
+    visit_counts: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -328,11 +322,11 @@ class NodeRecord:
     """Metadata for a single node in the exploration graph."""
 
     node_id: str
-    parent_ids: List[str] = field(default_factory=list)
-    proposal_id: Optional[str] = None
-    artifact_id: Optional[str] = None
-    score_id: Optional[str] = None
-    score: Optional[float] = None
+    parent_ids: list[str] = field(default_factory=list)
+    proposal_id: str | None = None
+    artifact_id: str | None = None
+    score_id: str | None = None
+    score: float | None = None
     branch_state: BranchState = BranchState.ACTIVE
     visits: int = 0
     total_value: float = 0.0
@@ -340,7 +334,7 @@ class NodeRecord:
 
     def update_stats(self, reward: float) -> None:
         """Update MCTS statistics with a new reward.
-        
+
         Args:
             reward: The reward value to accumulate.
         """
@@ -355,8 +349,8 @@ class Plan:
 
     plan_id: str
     exploration_strength: float = 0.0
-    budget_allocation: Dict[str, float] = field(default_factory=dict)
-    guidance: List[str] = field(default_factory=list)
+    budget_allocation: dict[str, float] = field(default_factory=dict)
+    guidance: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -365,7 +359,7 @@ class Proposal:
 
     proposal_id: str
     summary: str
-    constraints: List[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
     virtual_score: float = 0.0
 
 
@@ -385,7 +379,7 @@ class Score:
     score_id: str
     value: float
     metric_name: str
-    details: Dict[str, str] = field(default_factory=dict)
+    details: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -402,9 +396,9 @@ class LoopContext:
     """Bundled context for loop state and budget tracking."""
 
     loop_state: LoopState
-    budget: "BudgetLedger"
-    run_session: Optional[RunSession] = None
-    merged_result: Optional[object] = None
+    budget: BudgetLedger
+    run_session: RunSession | None = None
+    merged_result: object | None = None
 
 
 @dataclass
@@ -413,7 +407,7 @@ class BudgetLedger:
 
     total_time_budget: float
     elapsed_time: float = 0.0
-    iteration_durations: List[float] = field(default_factory=list)
+    iteration_durations: list[float] = field(default_factory=list)
     estimated_remaining: float = 0.0
 
 
@@ -423,16 +417,16 @@ class PlanningContext:
 
     loop_state: LoopState
     budget: BudgetLedger
-    history_summary: Dict[str, str] = field(default_factory=dict)
+    history_summary: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class ContextPack:
     """Context bundle from memory service for reasoning."""
 
-    items: List[str] = field(default_factory=list)
-    highlights: List[str] = field(default_factory=list)
-    scored_items: List[Tuple[str, float]] = field(default_factory=list)
+    items: list[str] = field(default_factory=list)
+    highlights: list[str] = field(default_factory=list)
+    scored_items: list[tuple[str, float]] = field(default_factory=list)
 
 
 @dataclass
@@ -445,10 +439,10 @@ class ExecutionResult:
     artifacts_ref: str
     duration_sec: float = 0.0
     timed_out: bool = False
-    artifact_manifest: Optional[Dict[str, Any]] = None
-    outcome: Optional["ExecutionOutcomeContract"] = None
+    artifact_manifest: dict[str, Any] | None = None
+    outcome: ExecutionOutcomeContract | None = None
 
-    def resolve_outcome(self) -> "ExecutionOutcomeContract":
+    def resolve_outcome(self) -> ExecutionOutcomeContract:
         if self.outcome is not None:
             return self.outcome
 
@@ -523,9 +517,9 @@ class ExecutionOutcomeContract:
 
 
 def _resolve_artifact_manifest(
-    manifest: Optional[Dict[str, Any]],
+    manifest: dict[str, Any] | None,
     artifacts_ref: str,
-) -> Tuple[List[str], bool]:
+) -> tuple[list[str], bool]:
     if manifest is not None:
         return _normalize_artifact_manifest(manifest)
 
@@ -540,7 +534,7 @@ def _resolve_artifact_manifest(
     return _normalize_artifact_manifest(decoded)
 
 
-def _normalize_artifact_manifest(raw_manifest: Any) -> Tuple[List[str], bool]:
+def _normalize_artifact_manifest(raw_manifest: Any) -> tuple[list[str], bool]:
     if isinstance(raw_manifest, dict):
         if "paths" not in raw_manifest:
             return ([], True)
@@ -553,7 +547,7 @@ def _normalize_artifact_manifest(raw_manifest: Any) -> Tuple[List[str], bool]:
     if not isinstance(raw_paths, list):
         return ([], True)
 
-    normalized_paths: List[str] = []
+    normalized_paths: list[str] = []
     for item in raw_paths:
         if not isinstance(item, str):
             return ([], True)

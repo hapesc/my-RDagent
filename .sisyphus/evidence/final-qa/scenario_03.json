@@ -1,0 +1,25 @@
+{
+  "scenario": 3,
+  "title": "gitignore QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": ".gitignore has more than 30 lines",
+      "pass": true,
+      "actual": 50,
+      "evidence": ".sisyphus/evidence/final-qa/task3_gitignore_line_count.log"
+    },
+    {
+      "name": "exact .env entry appears once",
+      "pass": true,
+      "actual": "1",
+      "evidence": ".sisyphus/evidence/final-qa/task3_gitignore_env_count.log"
+    },
+    {
+      "name": ".env.test is ignored by git",
+      "pass": true,
+      "actual": ".env.test",
+      "evidence": ".sisyphus/evidence/final-qa/task3_gitignore_check_ignore.log"
+    }
+  ]
+}

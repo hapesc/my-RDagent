@@ -3,21 +3,45 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+
+def _as_list(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _as_float(value: object, default: float) -> float:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return default
+
+
+def _as_int_list(value: object) -> list[int]:
+    return [item for item in _as_list(value) if isinstance(item, int) and not isinstance(item, bool)]
+
+
+def _as_str_dict(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(key): item for key, item in value.items()}
 
 
 @dataclass
 class ProposalDraft:
     summary: str
-    constraints: List[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
     virtual_score: float = 0.0
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "ProposalDraft":
+    def from_dict(cls, data: dict[str, object]) -> ProposalDraft:
         return cls(
             summary=str(data.get("summary", "")),
-            constraints=[str(item) for item in data.get("constraints", [])],
-            virtual_score=float(data.get("virtual_score", 0.0)),
+            constraints=[str(item) for item in _as_list(data.get("constraints", []))],
+            virtual_score=_as_float(data.get("virtual_score", 0.0), 0.0),
         )
 
 
@@ -28,7 +52,7 @@ class CodeDraft:
     location: str
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "CodeDraft":
+    def from_dict(cls, data: dict[str, object]) -> CodeDraft:
         return cls(
             artifact_id=str(data.get("artifact_id", "artifact-llm")),
             description=str(data.get("description", "")),
@@ -45,7 +69,7 @@ class FeedbackDraft:
     code_change_summary: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "FeedbackDraft":
+    def from_dict(cls, data: dict[str, object]) -> FeedbackDraft:
         return cls(
             decision=bool(data.get("decision", False)),
             acceptable=bool(data.get("acceptable", False)),
@@ -57,16 +81,16 @@ class FeedbackDraft:
 
 @dataclass
 class AnalysisResult:
-    strengths: List[str] = field(default_factory=list)
-    weaknesses: List[str] = field(default_factory=list)
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
     current_performance: str = ""
     key_observations: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "AnalysisResult":
+    def from_dict(cls, data: dict[str, object]) -> AnalysisResult:
         return cls(
-            strengths=[str(item) for item in data.get("strengths", [])],
-            weaknesses=[str(item) for item in data.get("weaknesses", [])],
+            strengths=[str(item) for item in _as_list(data.get("strengths", []))],
+            weaknesses=[str(item) for item in _as_list(data.get("weaknesses", []))],
             current_performance=str(data.get("current_performance", "")),
             key_observations=str(data.get("key_observations", "")),
         )
@@ -80,7 +104,7 @@ class ProblemIdentification:
     affected_component: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "ProblemIdentification":
+    def from_dict(cls, data: dict[str, object]) -> ProblemIdentification:
         return cls(
             problem=str(data.get("problem", "")),
             severity=str(data.get("severity", "")),
@@ -97,7 +121,7 @@ class HypothesisFormulation:
     testable_prediction: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "HypothesisFormulation":
+    def from_dict(cls, data: dict[str, object]) -> HypothesisFormulation:
         return cls(
             hypothesis=str(data.get("hypothesis", "")),
             mechanism=str(data.get("mechanism", "")),
@@ -109,32 +133,32 @@ class HypothesisFormulation:
 @dataclass
 class ExperimentDesign:
     summary: str = ""
-    constraints: List[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
     virtual_score: float = 0.0
-    implementation_steps: List[str] = field(default_factory=list)
+    implementation_steps: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "ExperimentDesign":
+    def from_dict(cls, data: dict[str, object]) -> ExperimentDesign:
         return cls(
             summary=str(data.get("summary", "")),
-            constraints=[str(item) for item in data.get("constraints", [])],
-            virtual_score=float(data.get("virtual_score", 0.0)),
-            implementation_steps=[str(item) for item in data.get("implementation_steps", [])],
+            constraints=[str(item) for item in _as_list(data.get("constraints", []))],
+            virtual_score=_as_float(data.get("virtual_score", 0.0), 0.0),
+            implementation_steps=[str(item) for item in _as_list(data.get("implementation_steps", []))],
         )
 
 
 @dataclass
 class VirtualEvalResult:
-    rankings: List[int] = field(default_factory=list)
+    rankings: list[int] = field(default_factory=list)
     reasoning: str = ""
-    selected_indices: List[int] = field(default_factory=list)
+    selected_indices: list[int] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "VirtualEvalResult":
+    def from_dict(cls, data: dict[str, object]) -> VirtualEvalResult:
         return cls(
-            rankings=[int(item) for item in data.get("rankings", [])],
+            rankings=_as_int_list(data.get("rankings", [])),
             reasoning=str(data.get("reasoning", "")),
-            selected_indices=[int(item) for item in data.get("selected_indices", [])],
+            selected_indices=_as_int_list(data.get("selected_indices", [])),
         )
 
 
@@ -146,11 +170,11 @@ class PlanningStrategy:
     reasoning: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "PlanningStrategy":
+    def from_dict(cls, data: dict[str, object]) -> PlanningStrategy:
         return cls(
             strategy_name=str(data.get("strategy_name", "")),
             method_selection=str(data.get("method_selection", "")),
-            exploration_weight=float(data.get("exploration_weight", 0.5)),
+            exploration_weight=_as_float(data.get("exploration_weight", 0.5), 0.5),
             reasoning=str(data.get("reasoning", "")),
         )
 
@@ -163,7 +187,7 @@ class HypothesisModification:
     reasoning: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "HypothesisModification":
+    def from_dict(cls, data: dict[str, object]) -> HypothesisModification:
         return cls(
             modified_hypothesis=str(data.get("modified_hypothesis", "")),
             modification_type=str(data.get("modification_type", "")),
@@ -175,19 +199,24 @@ class HypothesisModification:
 @dataclass
 class StructuredFeedback:
     """FC-3 three-dimensional structured feedback (execution + return_checking + code)."""
+
     execution: str = ""
-    return_checking: Optional[str] = None
+    return_checking: str | None = None
     code: str = ""
-    final_decision: Optional[bool] = None
+    final_decision: bool | None = None
     reasoning: str = ""
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "StructuredFeedback":
+    def from_dict(cls, data: dict[str, object]) -> StructuredFeedback:
         return cls(
             execution=str(data.get("execution", "")),
-            return_checking=data.get("return_checking") if data.get("return_checking") is not None else None,
+            return_checking=(str(data.get("return_checking")) if data.get("return_checking") is not None else None),
             code=str(data.get("code", "")),
-            final_decision=bool(data["final_decision"]) if "final_decision" in data and data["final_decision"] is not None else None,
+            final_decision=(
+                bool(data["final_decision"])
+                if "final_decision" in data and data["final_decision"] is not None
+                else None
+            ),
             reasoning=str(data.get("reasoning", "")),
         )
 
@@ -195,16 +224,17 @@ class StructuredFeedback:
 @dataclass
 class ReasoningTrace:
     """FC-3 reasoning pipeline trace record."""
+
     trace_id: str = ""
-    stages: Dict[str, Any] = field(default_factory=dict)
+    stages: dict[str, Any] = field(default_factory=dict)
     timestamp: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "ReasoningTrace":
+    def from_dict(cls, data: dict[str, object]) -> ReasoningTrace:
         return cls(
             trace_id=str(data.get("trace_id", "")),
-            stages=dict(data.get("stages", {})),
+            stages=_as_str_dict(data.get("stages", {})),
             timestamp=str(data.get("timestamp", "")),
-            metadata=dict(data.get("metadata", {})),
+            metadata=_as_str_dict(data.get("metadata", {})),
         )

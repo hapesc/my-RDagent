@@ -1,8 +1,9 @@
 """Tests for FC-6 — stratified splitter, ValidationSelector, aggregate scoring."""
+
 import unittest
 from importlib import import_module
 
-from data_models import DataSplitManifest, EvalResult, ExecutionResult, Score
+from data_models import ExecutionResult, Score
 
 
 class TestStratifiedSplitter(unittest.TestCase):
@@ -121,9 +122,8 @@ class TestValidationSelector(unittest.TestCase):
     def test_rank_candidates(self):
         """rank_candidates sorts by score descending."""
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig())
         vs = ValidationSelector(es)
@@ -135,9 +135,8 @@ class TestValidationSelector(unittest.TestCase):
     def test_select_best(self):
         """select_best returns highest scorer."""
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig())
         vs = ValidationSelector(es)
@@ -150,9 +149,8 @@ class TestValidationSelector(unittest.TestCase):
     def test_rank_single_candidate(self):
         """rank_candidates works with one candidate."""
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig())
         vs = ValidationSelector(es)
@@ -163,9 +161,8 @@ class TestValidationSelector(unittest.TestCase):
     def test_rank_empty_list(self):
         """rank_candidates with empty list returns empty."""
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig())
         vs = ValidationSelector(es)

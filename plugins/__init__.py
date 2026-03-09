@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from service_contracts import ScenarioManifest
 
@@ -29,7 +29,7 @@ def _load_scenarios_module() -> Any:
     return import_module("scenarios")
 
 
-def _data_science_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+def _data_science_manifest(config: Any | None = None) -> ScenarioManifest:
     scenarios_module = _load_scenarios_module()
     plugin_config = config or scenarios_module.DataScienceV1Config()
     return ScenarioManifest(
@@ -44,13 +44,15 @@ def _data_science_manifest(config: Optional[Any] = None) -> ScenarioManifest:
     )
 
 
-def _synthetic_research_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+def _synthetic_research_manifest(config: Any | None = None) -> ScenarioManifest:
     scenarios_module = _load_scenarios_module()
     plugin_config = config or scenarios_module.SyntheticResearchConfig()
     return ScenarioManifest(
         scenario_name="synthetic_research",
         title="Synthetic Research",
-        description="Generate a lightweight synthetic research brief and findings package through the shared loop engine.",
+        description=(
+            "Generate a lightweight synthetic research brief and findings package through the shared loop engine."
+        ),
         tags=["built-in", "research", "synthetic"],
         supports_branching=True,
         supports_resume=True,
@@ -59,18 +61,18 @@ def _synthetic_research_manifest(config: Optional[Any] = None) -> ScenarioManife
     )
 
 
-def _quant_manifest(config: Optional[Any] = None) -> ScenarioManifest:
+def _quant_manifest(config: Any | None = None) -> ScenarioManifest:
     scenarios_module = _load_scenarios_module()
     return scenarios_module.quant_manifest(config)
 
 
 def build_default_registry(
-    data_science_config: Optional[Any] = None,
-    synthetic_research_config: Optional[Any] = None,
-    quant_config: Optional[Any] = None,
-    llm_adapter: Optional["LLMAdapter"] = None,
-    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
-    virtual_evaluator: Optional["VirtualEvaluator"] = None,
+    data_science_config: Any | None = None,
+    synthetic_research_config: Any | None = None,
+    quant_config: Any | None = None,
+    llm_adapter: LLMAdapter | None = None,
+    reasoning_pipeline: ReasoningPipeline | None = None,
+    virtual_evaluator: VirtualEvaluator | None = None,
 ) -> PluginRegistry:
     """Create registry with built-in minimal plugins."""
 

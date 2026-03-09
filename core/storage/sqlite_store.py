@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, List, Optional
 
 from data_models import Event, RunSession
 from observability import sanitize_payload
@@ -44,7 +44,10 @@ class SQLiteMetadataStore:
             yield connection
             connection.commit()
         except Exception:
-            logger.exception(f"Database operation failed in SQLiteMetadataStore._managed_connection(db_path={self._db_path}); rolling back")
+            logger.exception(
+                "Database operation failed in "
+                f"SQLiteMetadataStore._managed_connection(db_path={self._db_path}); rolling back"
+            )
             connection.rollback()
             raise
         finally:
@@ -74,10 +77,7 @@ class SQLiteMetadataStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_run_id ON events(run_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_branch_id ON events(branch_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
-            columns = {
-                row["name"]
-                for row in conn.execute("PRAGMA table_info(events)").fetchall()
-            }
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(events)").fetchall()}
             if "branch_id" not in columns:
                 conn.execute("ALTER TABLE events ADD COLUMN branch_id TEXT NOT NULL DEFAULT 'main'")
 
@@ -89,15 +89,15 @@ class SQLiteMetadataStore:
                 (run_session.run_id, payload),
             )
 
-    def get_run(self, run_id: str) -> Optional[RunSession]:
+    def get_run(self, run_id: str) -> RunSession | None:
         with self._managed_connection() as conn:
             row = conn.execute("SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         if row is None:
             return None
         return RunSession.from_dict(json.loads(row["payload_json"]))
 
-    def list_runs(self) -> List[RunSession]:
-        runs: List[RunSession] = []
+    def list_runs(self) -> list[RunSession]:
+        runs: list[RunSession] = []
         with self._managed_connection() as conn:
             rows = conn.execute("SELECT payload_json FROM runs ORDER BY run_id").fetchall()
         for row in rows:
@@ -110,7 +110,11 @@ class SQLiteMetadataStore:
         payload = json.dumps(event_dict, sort_keys=True)
         with self._managed_connection() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO events (event_id, run_id, branch_id, timestamp, payload_json) VALUES (?, ?, ?, ?, ?)",
+                (
+                    "INSERT OR REPLACE INTO events "
+                    "(event_id, run_id, branch_id, timestamp, payload_json) "
+                    "VALUES (?, ?, ?, ?, ?)"
+                ),
                 (
                     str(event_dict["event_id"]),
                     str(event_dict["run_id"]),
@@ -120,12 +124,10 @@ class SQLiteMetadataStore:
                 ),
             )
 
-    def query_events(self, run_id: Optional[str] = None, branch_id: Optional[str] = None) -> List[Event]:
+    def query_events(self, run_id: str | None = None, branch_id: str | None = None) -> list[Event]:
         with self._managed_connection() as conn:
             if run_id is None and branch_id is None:
-                rows = conn.execute(
-                    "SELECT payload_json FROM events ORDER BY timestamp, event_id"
-                ).fetchall()
+                rows = conn.execute("SELECT payload_json FROM events ORDER BY timestamp, event_id").fetchall()
             elif run_id is not None and branch_id is None:
                 rows = conn.execute(
                     "SELECT payload_json FROM events WHERE run_id = ? ORDER BY timestamp, event_id",
@@ -142,7 +144,7 @@ class SQLiteMetadataStore:
                     (run_id, branch_id),
                 ).fetchall()
 
-        events: List[Event] = []
+        events: list[Event] = []
         for row in rows:
             events.append(Event.from_dict(json.loads(row["payload_json"])))
         return events

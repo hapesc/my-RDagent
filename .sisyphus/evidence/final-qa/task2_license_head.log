@@ -1,0 +1,11 @@
+COMMAND
+head -1 LICENSE
+
+EXIT_CODE
+0
+
+STDOUT
+MIT License
+
+STDERR
+

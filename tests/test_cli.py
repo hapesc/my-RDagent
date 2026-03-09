@@ -4,13 +4,9 @@ from __future__ import annotations
 
 import contextlib
 import io
-import logging
-import sys
 import unittest
-from unittest.mock import MagicMock, patch
 
 from cli import main
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -35,11 +31,8 @@ class TestCli(unittest.TestCase):
 
     def test_help_contains_all_flags(self):
         output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            try:
-                main(["--help"])
-            except SystemExit:
-                pass
+        with contextlib.redirect_stdout(output), contextlib.suppress(SystemExit):
+            main(["--help"])
 
         help_text = output.getvalue()
         assert "--scenario" in help_text

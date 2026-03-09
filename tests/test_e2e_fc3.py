@@ -20,7 +20,6 @@ from data_models import (
 from llm.adapter import LLMAdapter, MockLLMProvider
 from llm.schemas import ReasoningTrace, StructuredFeedback
 from plugins.contracts import ScenarioContext
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -121,7 +120,7 @@ class TestFC3E2E(unittest.TestCase):
         def complete_stub(prompt: str) -> str:
             return "mock knowledge"
 
-        setattr(adapter, "complete", complete_stub)
+        adapter.complete = complete_stub
         success_memory = MagicMock()
         fail_memory = MagicMock()
 

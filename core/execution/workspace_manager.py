@@ -8,9 +8,9 @@ import logging
 import shutil
 import uuid
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
 
 from core.path_safety import ensure_within_root, resolve_relative_to_root, validate_path_component
 from core.storage import CheckpointStoreConfig, FileCheckpointStore
@@ -32,7 +32,7 @@ class WorkspaceManager:
     def __init__(
         self,
         config: WorkspaceManagerConfig,
-        checkpoint_store: Optional[FileCheckpointStore] = None,
+        checkpoint_store: FileCheckpointStore | None = None,
     ) -> None:
         self._config = config
         self._root = Path(config.root_dir)
@@ -53,9 +53,7 @@ class WorkspaceManager:
     def _resolve_workspace_path(self, workspace_path: str) -> Path:
         return ensure_within_root(self._root, Path(workspace_path), "workspace_path")
 
-    def create_workspace(
-        self, run_id: str, workspace_id: str, source_path: Optional[str] = None
-    ) -> str:
+    def create_workspace(self, run_id: str, workspace_id: str, source_path: str | None = None) -> str:
         workspace_dir = self._workspace_dir(run_id, workspace_id)
         if workspace_dir.exists():
             shutil.rmtree(workspace_dir)
@@ -71,9 +69,9 @@ class WorkspaceManager:
     def copy_workspace(self, source_workspace: str, run_id: str, workspace_id: str) -> str:
         return self.create_workspace(run_id=run_id, workspace_id=workspace_id, source_path=source_workspace)
 
-    def inject_files(self, workspace_path: str, files: Dict[str, Union[str, bytes]]) -> List[str]:
+    def inject_files(self, workspace_path: str, files: dict[str, str | bytes]) -> list[str]:
         workspace_dir = self._resolve_workspace_path(workspace_path)
-        written: List[str] = []
+        written: list[str] = []
         for relative_path, content in files.items():
             target = resolve_relative_to_root(workspace_dir, relative_path, "relative_path")
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -153,8 +151,10 @@ class WorkspaceManager:
         try:
             operation(workspace_dir)
             return True
-        except Exception as e:
-            logger.exception(f"Operation failed in execute_with_recovery(run_id={run_id}); restoring checkpoint {checkpoint_id}")
+        except Exception:
+            logger.exception(
+                f"Operation failed in execute_with_recovery(run_id={run_id}); restoring checkpoint {checkpoint_id}"
+            )
             self.restore_checkpoint(run_id=run_id, checkpoint_id=checkpoint_id, workspace_path=workspace_path)
             return False
 
@@ -185,8 +185,8 @@ class WorkspaceManager:
         except zipfile.BadZipFile as exc:
             raise ValueError("checkpoint payload is not a valid zip archive") from exc
 
-    def _build_manifest(self, workspace_dir: Path) -> List[FileManifestEntry]:
-        manifest: List[FileManifestEntry] = []
+    def _build_manifest(self, workspace_dir: Path) -> list[FileManifestEntry]:
+        manifest: list[FileManifestEntry] = []
         for path in sorted(workspace_dir.rglob("*")):
             if not path.is_file():
                 continue

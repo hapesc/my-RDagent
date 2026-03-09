@@ -21,7 +21,7 @@ import os
 import sys
 import tempfile
 import time
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 # Ensure project root on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,7 +29,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s  %(message)s")
 logger = logging.getLogger("e2e_ds_arena")
 
-def _select_event(events: Iterable[object], event_type: str, step_name: Optional[str] = None):
+
+def _select_event(events: Iterable[object], event_type: str, step_name: str | None = None):
     matched = []
     for event in events:
         current_type = getattr(getattr(event, "event_type", None), "value", None)
@@ -44,9 +45,9 @@ def _select_event(events: Iterable[object], event_type: str, step_name: Optional
 def main() -> int:
     provider = os.environ.get("RD_AGENT_LLM_PROVIDER", "mock")
     model = os.environ.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini")
-    
+
     print("=" * 72)
-    print(f"  E2E Data Science Arena — Micro-Accuracy Test")
+    print("  E2E Data Science Arena — Micro-Accuracy Test")
     print(f"  Provider : {provider}")
     print(f"  Model    : {model}")
     print("=" * 72)
@@ -58,7 +59,7 @@ def main() -> int:
     # 1. Generate deterministic dataset
     temp_dir = tempfile.mkdtemp(prefix="rd_arena_")
     csv_path = os.path.join(temp_dir, "data.csv")
-    
+
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["x", "y"])
@@ -68,7 +69,7 @@ def main() -> int:
         # Outliers
         writer.writerow([100, 5000])
         writer.writerow([101, -5000])
-    
+
     print(f"✅ Generated dataset with outliers at {csv_path}")
 
     # 2. Build runtime
@@ -87,7 +88,7 @@ def main() -> int:
     if not manifest:
         print("❌ Scenario manifest missing")
         return 1
-    
+
     smoke_overrides = build_real_provider_smoke_step_overrides(
         runtime.config,
         manifest.default_step_overrides,
@@ -100,12 +101,13 @@ def main() -> int:
 
     # 3. Create run session
     from data_models import StopConditions
+
     task_summary = (
         f"Read the dataset at {csv_path}. Find the two obvious outliers. "
         f"Fit a linear regression on the normal data. Write the fitted slope (as a float key 'slope') "
         f"and outlier indices to metrics.json. Explain your findings."
     )
-    
+
     session = run_service.create_run(
         task_summary=task_summary,
         scenario=scenario,
@@ -138,37 +140,44 @@ def main() -> int:
 
     # 5. Verify Artifacts & Math Accuracy
     import glob
+
     ws_pattern = f"{runtime.config.workspace_root}/{session.run_id}/**/*metrics.json"
     files = glob.glob(ws_pattern, recursive=True)
-    
+
     if not files:
         print("❌ metrics.json not found. The LLM failed to produce the required artifact.")
         return 1
-        
+
     metrics_file = files[-1]
     try:
-        with open(metrics_file, "r") as f:
+        with open(metrics_file) as f:
             metrics = json.load(f)
-            
+
         print(f"\n📊 Extracted Metrics: {json.dumps(metrics, indent=2)}")
-        
+
         slope = metrics.get("slope")
         if slope is None:
             # Maybe they named it differently
             print("❌ 'slope' key missing from metrics.json")
             return 1
-            
+
         slope_val = float(slope)
         if 1.9 <= slope_val <= 2.1:
-            print(f"\n🎉 SUCCESS: The LLM correctly filtered outliers and computed slope = {slope_val:.2f} (Expected ~2.0)")
+            print(
+                "\n🎉 SUCCESS: The LLM correctly filtered outliers and computed "
+                f"slope = {slope_val:.2f} (Expected ~2.0)"
+            )
             return 0
         else:
-            print(f"\n❌ FAILURE: Slope is {slope_val:.2f}, which is far from 2.0. The math or outlier filtering failed.")
+            print(
+                f"\n❌ FAILURE: Slope is {slope_val:.2f}, which is far from 2.0. The math or outlier filtering failed."
+            )
             return 1
-            
+
     except Exception as e:
         print(f"❌ Failed to parse metrics.json: {e}")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

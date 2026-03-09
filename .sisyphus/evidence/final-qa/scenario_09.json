@@ -1,0 +1,34 @@
+{
+  "scenario": 9,
+  "title": "CI workflow QA",
+  "pass": false,
+  "checks": [
+    {
+      "name": "ci.yml has lint, test, build-check jobs",
+      "pass": true,
+      "actual": [
+        "build-check",
+        "lint",
+        "test"
+      ]
+    },
+    {
+      "name": "ci.yml tests Python 3.9 and 3.12",
+      "pass": true,
+      "actual": [
+        "3.9",
+        "3.11",
+        "3.12"
+      ]
+    },
+    {
+      "name": "ci.yml contains no publish/pypi/push keywords",
+      "pass": false,
+      "actual": {
+        "publish": 0,
+        "pypi": 0,
+        "push": 1
+      }
+    }
+  ]
+}

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from llm.adapter import LLMAdapter
 from llm.prompts import (
@@ -43,9 +43,9 @@ class ReasoningPipeline:
         task_summary: str,
         scenario_name: str,
         iteration: int,
-        previous_results: List[str],
-        current_scores: List[float],
-        model_config: Optional[ModelSelectorConfig] = None,
+        previous_results: list[str],
+        current_scores: list[float],
+        model_config: ModelSelectorConfig | None = None,
     ) -> ExperimentDesign:
         """Run 4-stage reasoning pipeline, return experiment design."""
 
@@ -92,7 +92,7 @@ class ReasoningPipeline:
         trace_record = ReasoningTrace(
             trace_id=str(uuid.uuid4()),
             stages=trace_dict,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             metadata={
                 "task_summary": task_summary,
                 "scenario": scenario_name,
@@ -109,9 +109,9 @@ class ReasoningPipeline:
         task_summary: str,
         scenario_name: str,
         iteration: int,
-        previous_results: List[str],
-        current_scores: List[float],
-        model_config: Optional[ModelSelectorConfig],
+        previous_results: list[str],
+        current_scores: list[float],
+        model_config: ModelSelectorConfig | None,
     ) -> AnalysisResult:
         prompt = reasoning_analysis_prompt(
             task_summary=task_summary,
@@ -131,7 +131,7 @@ class ReasoningPipeline:
         analysis: AnalysisResult,
         task_summary: str,
         scenario_name: str,
-        model_config: Optional[ModelSelectorConfig],
+        model_config: ModelSelectorConfig | None,
     ) -> ProblemIdentification:
         prompt = reasoning_identify_prompt(
             analysis_text=analysis.key_observations,
@@ -150,7 +150,7 @@ class ReasoningPipeline:
         problem: ProblemIdentification,
         task_summary: str,
         scenario_name: str,
-        model_config: Optional[ModelSelectorConfig],
+        model_config: ModelSelectorConfig | None,
     ) -> HypothesisFormulation:
         prompt = reasoning_hypothesize_prompt(
             analysis_text=analysis.key_observations,
@@ -172,7 +172,7 @@ class ReasoningPipeline:
         task_summary: str,
         scenario_name: str,
         iteration: int,
-        model_config: Optional[ModelSelectorConfig],
+        model_config: ModelSelectorConfig | None,
     ) -> ExperimentDesign:
         prompt = reasoning_design_prompt(
             analysis_text=analysis.key_observations,
@@ -195,7 +195,7 @@ class ReasoningPipeline:
         problem: ProblemIdentification,
         hypothesis: HypothesisFormulation,
         design: ExperimentDesign,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build trace dict for logging/storage of 4-stage output."""
         return {
             "analysis": {

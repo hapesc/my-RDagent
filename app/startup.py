@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import argparse
+import json
 
 from .config import load_config
 
@@ -19,4 +19,5 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     import sys
+
     raise SystemExit(main(sys.argv[1:]))

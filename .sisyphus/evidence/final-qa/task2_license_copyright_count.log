@@ -1,0 +1,11 @@
+COMMAND
+grep -c "Copyright (c) 2024" LICENSE
+
+EXIT_CODE
+0
+
+STDOUT
+1
+
+STDERR
+

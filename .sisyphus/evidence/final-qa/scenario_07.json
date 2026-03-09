@@ -1,0 +1,20 @@
+{
+  "scenario": 7,
+  "title": "Dependabot QA",
+  "pass": true,
+  "checks": [
+    {
+      "name": "dependabot.yml version is 2",
+      "pass": true,
+      "actual": 2
+    },
+    {
+      "name": "dependabot.yml has pip and github-actions ecosystems",
+      "pass": true,
+      "actual": [
+        "pip",
+        "github-actions"
+      ]
+    }
+  ]
+}

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-from typing import Optional
 
 from .constants import BLOCKED_IMPORTS, SAFE_IMPORTS
 
@@ -12,7 +11,7 @@ _DANGEROUS_BUILTINS: frozenset[str] = frozenset(
 )
 
 
-def validate_code_safety(code: str) -> tuple[bool, Optional[str]]:
+def validate_code_safety(code: str) -> tuple[bool, str | None]:
     """Validate that *code* is safe to execute in the backtest sandbox.
 
     Returns:
@@ -35,14 +34,13 @@ def validate_code_safety(code: str) -> tuple[bool, Optional[str]]:
             if reason:
                 return False, reason
 
-        if isinstance(node, ast.Name) and node.id in _DANGEROUS_BUILTINS:
-            if isinstance(node.ctx, ast.Load):
-                return False, f"Dangerous builtin reference: '{node.id}'"
+        if isinstance(node, ast.Name) and node.id in _DANGEROUS_BUILTINS and isinstance(node.ctx, ast.Load):
+            return False, f"Dangerous builtin reference: '{node.id}'"
 
     return True, None
 
 
-def _check_import_node(node: ast.Import | ast.ImportFrom) -> Optional[str]:
+def _check_import_node(node: ast.Import | ast.ImportFrom) -> str | None:
     if isinstance(node, ast.Import):
         for alias in node.names:
             top = alias.name.split(".")[0]
@@ -60,10 +58,9 @@ def _check_import_node(node: ast.Import | ast.ImportFrom) -> Optional[str]:
     return None
 
 
-def _check_call_node(node: ast.Call) -> Optional[str]:
+def _check_call_node(node: ast.Call) -> str | None:
     if isinstance(node.func, ast.Name) and node.func.id in _DANGEROUS_BUILTINS:
         return f"Dangerous builtin call: '{node.func.id}()'"
-    if isinstance(node.func, ast.Attribute):
-        if node.func.attr in _DANGEROUS_BUILTINS:
-            return f"Dangerous attribute call: '.{node.func.attr}()'"
+    if isinstance(node.func, ast.Attribute) and node.func.attr in _DANGEROUS_BUILTINS:
+        return f"Dangerous attribute call: '.{node.func.attr}()'"
     return None

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, ResumeManager, RunService, RunServiceConfig, StepExecutor
@@ -63,14 +62,14 @@ class RuntimeContext:
     plugin_registry: PluginRegistry
     llm_adapter: LLMAdapter
     scheduler: MCTSScheduler
-    reasoning_pipeline: Optional[ReasoningPipeline] = None
-    virtual_evaluator: Optional[VirtualEvaluator] = None
+    reasoning_pipeline: ReasoningPipeline | None = None
+    virtual_evaluator: VirtualEvaluator | None = None
 
 
 @dataclass(frozen=True)
 class ScenarioRuntimeProfile:
     effective_step_config: StepOverrideConfig
-    guardrail_warnings: Tuple[str, ...] = ()
+    guardrail_warnings: tuple[str, ...] = ()
 
 
 class _ReasoningTraceStore:
@@ -182,7 +181,7 @@ def build_real_provider_smoke_step_overrides(
 def resolve_scenario_runtime_profile(
     config: AppConfig,
     defaults: StepOverrideConfig,
-    requested_step_overrides: Optional[StepOverrideConfig] = None,
+    requested_step_overrides: StepOverrideConfig | None = None,
 ) -> ScenarioRuntimeProfile:
     effective_step_config = resolve_step_override_config(defaults, requested_step_overrides)
     warnings = validate_runtime_guardrails(
@@ -200,7 +199,7 @@ def resolve_scenario_runtime_profile(
     )
 
 
-def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
+def build_runtime(config_path: str | None = None) -> RuntimeContext:
     config = load_config(config_path=config_path)
     data_science_defaults = _effective_step_overrides(
         default_data_science_step_overrides(config.sandbox_timeout_sec),
@@ -220,9 +219,7 @@ def build_runtime(config_path: Optional[str] = None) -> RuntimeContext:
     merger = TraceMerger(llm_adapter)
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=config.sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=config.sqlite_path))
-    checkpoint_store = FileCheckpointStore(
-        CheckpointStoreConfig(root_dir=f"{config.artifact_root}/checkpoints")
-    )
+    checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=f"{config.artifact_root}/checkpoints"))
     workspace_manager = WorkspaceManager(
         WorkspaceManagerConfig(root_dir=config.workspace_root),
         checkpoint_store=checkpoint_store,

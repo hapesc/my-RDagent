@@ -1,0 +1,11 @@
+COMMAND
+wc -l .gitignore
+
+EXIT_CODE
+0
+
+STDOUT
+      50 .gitignore
+
+STDERR
+

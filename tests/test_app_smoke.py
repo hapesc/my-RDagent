@@ -11,12 +11,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app import fastapi_compat
-from app.fastapi_compat import FASTAPI_AVAILABLE, HTTPException, Query, TestClient as CompatTestClient
+from app.fastapi_compat import FASTAPI_AVAILABLE, HTTPException, Query
+from app.fastapi_compat import TestClient as CompatTestClient
 from app.query_services import load_artifact_page, load_branch_page, load_event_page, load_run_summary
 from app.run_supervisor import RunSupervisor, RunSupervisorConfig
 from app.runtime import build_runtime
 from data_models import RunSession, RunStatus, StopConditions
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 

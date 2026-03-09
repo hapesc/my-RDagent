@@ -6,7 +6,6 @@ import unittest
 
 from data_models import (
     ContextPack,
-    EventType,
     ExecutionResult,
     ExperimentNode,
     LoopState,
@@ -18,17 +17,19 @@ from data_models import (
 )
 from llm import CodeDraft, LLMAdapter, LLMAdapterConfig, MockLLMProvider, ProposalDraft
 from llm.adapter import StructuredOutputParseError
-from service_contracts import ModelSelectorConfig
 from plugins.examples import build_minimal_data_science_bundle
+from service_contracts import ModelSelectorConfig
 
 
 class SchemaWithoutFromDict:
     """Test class without from_dict method."""
+
     pass
 
 
 class SchemaWithNonCallableFromDict:
     """Test class with non-callable from_dict attribute."""
+
     from_dict = "not-callable"
 
 
@@ -111,9 +112,7 @@ class LLMAdapterTests(unittest.TestCase):
 
     def test_wrong_type_virtual_score_is_rejected(self) -> None:
         adapter = LLMAdapter(
-            provider=MockLLMProvider(
-                responses=['{"summary":"ok","constraints":[],"virtual_score":"0.9"}']
-            ),
+            provider=MockLLMProvider(responses=['{"summary":"ok","constraints":[],"virtual_score":"0.9"}']),
             config=LLMAdapterConfig(max_retries=0),
         )
 
@@ -125,9 +124,7 @@ class LLMAdapterTests(unittest.TestCase):
 
     def test_wrong_type_constraints_is_rejected(self) -> None:
         adapter = LLMAdapter(
-            provider=MockLLMProvider(
-                responses=['{"summary":"ok","constraints":"x","virtual_score":0.9}']
-            ),
+            provider=MockLLMProvider(responses=['{"summary":"ok","constraints":"x","virtual_score":0.9}']),
             config=LLMAdapterConfig(max_retries=0),
         )
 
@@ -202,9 +199,7 @@ class LLMAdapterTests(unittest.TestCase):
 
     def test_repair_json_allows_trailing_comma_recovery(self) -> None:
         adapter = LLMAdapter(
-            provider=MockLLMProvider(
-                responses=['{"summary":"ok","constraints":[],"virtual_score":0.4,}']
-            ),
+            provider=MockLLMProvider(responses=['{"summary":"ok","constraints":[],"virtual_score":0.4,}']),
             config=LLMAdapterConfig(max_retries=0),
         )
         broken = '{"summary":"ok","constraints":[],"virtual_score":0.4,}'

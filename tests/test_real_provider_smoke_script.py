@@ -81,7 +81,7 @@ def test_evaluate_smoke_success_accepts_completed_useful_run() -> None:
 
 def test_evaluate_smoke_success_accepts_running_status_with_valid_gates() -> None:
     """Smoke success should depend on usefulness/feedback gates, not run status.
-    
+
     In single-loop smoke execution, the run may still be RUNNING after the loop
     completes (max_loops affects loop iteration count, not run state transition).
     Success must be based on validator gates, not completion status.

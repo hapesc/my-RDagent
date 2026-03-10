@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agentrd_cli import ExitCode, main
+from planner.service import Planner
 from tests._llm_test_utils import patch_runtime_llm_provider
 from ui.trace_ui import load_run_summary
 
@@ -204,19 +205,32 @@ class Task20PerStepConfigTests(unittest.TestCase):
     def test_default_timeout_reflected_in_config_snapshot_when_no_plan_timeout(self) -> None:
         """Regression test T6b: Verify config_snapshot reflects default running timeout.
         
-        When no explicit step_overrides are provided and no plan timeout is available
-        (or plan timeout resolution fails), the default timeout should be used.
-        This test verifies that the default-timeout path works correctly.
+        When no explicit step_overrides are provided and the planner does not provide
+        a "running" timeout in budget_allocation, _resolve_step_config() must fall back
+        to the default timeout from the plugin's default_step_overrides.
+        
+        This test patches the planner to return budget_allocation WITHOUT "running" so the
+        fallback path is exercised.
         """
-        code_run, out_run, err_run = self._run_cli(
-            [
-                "run",
-                "--scenario",
-                "data_science",
-                "--input",
-                '{"task_summary":"task-20 default-timeout","max_loops":1}',
-            ]
-        )
+        
+        original_generate_plan = Planner.generate_plan
+        
+        def patched_generate_plan(self, *args, **kwargs):
+            plan = original_generate_plan(self, *args, **kwargs)
+            if plan.budget_allocation is not None and "running" in plan.budget_allocation:
+                plan.budget_allocation = {k: v for k, v in plan.budget_allocation.items() if k != "running"}
+            return plan
+        
+        with patch.object(Planner, "generate_plan", patched_generate_plan):
+            code_run, out_run, err_run = self._run_cli(
+                [
+                    "run",
+                    "--scenario",
+                    "data_science",
+                    "--input",
+                    '{"task_summary":"task-20 default-timeout","max_loops":1}',
+                ]
+            )
 
         self.assertEqual(code_run, int(ExitCode.OK))
         self.assertEqual(err_run, "")
@@ -224,25 +238,18 @@ class Task20PerStepConfigTests(unittest.TestCase):
         run_id = run_payload["run_id"]
         step_config = run_payload["run"]["config_snapshot"]["step_overrides"]
         
-        # When the plan-timeout path is taken (which is normal), the snapshot reflects
-        # the plan-allocated timeout (typically 75-150s depending on budget split).
-        # When the default-timeout path is taken (rare, requires plan to lack "running"),
-        # the snapshot reflects the default from AGENTRD_SANDBOX_TIMEOUT_SEC (123 in test env).
-        # This test ensures the snapshot always contains a valid timeout from either source.
         self.assertIsNotNone(step_config["running"]["timeout_sec"])
         self.assertIsInstance(step_config["running"]["timeout_sec"], int)
         self.assertGreater(step_config["running"]["timeout_sec"], 0)
         
-        # The timeout should be either the default (123) or plan-generated (e.g., 75).
-        # Both are valid for this test.
-        self.assertIn(step_config["running"]["timeout_sec"], [75, 123, 150])  # Allow plan or default values
+        default_timeout = int(os.environ["AGENTRD_SANDBOX_TIMEOUT_SEC"])
+        self.assertEqual(step_config["running"]["timeout_sec"], default_timeout)
         
-        # Verify via database that the snapshot is persisted correctly
         run_summary = load_run_summary(os.environ["AGENTRD_SQLITE_PATH"], run_id)
         self.assertIsNotNone(run_summary)
         assert run_summary is not None
         db_timeout = run_summary.config_snapshot["step_overrides"]["running"]["timeout_sec"]
-        self.assertEqual(db_timeout, step_config["running"]["timeout_sec"])
+        self.assertEqual(db_timeout, default_timeout)
 
 
 if __name__ == "__main__":

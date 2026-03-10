@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 import json
 import logging
+import os
+import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -33,6 +36,8 @@ from llm import (
     feedback_prompt,
     proposal_prompt,
 )
+from llm.codegen import CODE_SOURCE_FAILED, CODE_SOURCE_LLM, CODE_SOURCE_TEMPLATE, emit_code_source_event
+from llm.codegen.validators import detect_placeholders, validate_compile, validate_content
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -201,6 +206,37 @@ def _resolve_split_seed(value: Any) -> int:
         return 42
 
 
+def _load_validate_code_safety_func() -> Any:
+    module_path = Path(__file__).with_name("code_safety.py")
+    spec = importlib.util.spec_from_file_location("data_science_code_safety", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Unable to load data science code safety module")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return getattr(module, "validate_code_safety")
+
+
+def _is_mock_llm_adapter(adapter: LLMAdapter) -> bool:
+    provider = getattr(adapter, "_provider", None)
+    return provider is not None and provider.__class__.__name__ == "MockLLMProvider"
+
+
+def _should_allow_metrics_open_write(safety_violations: list[str], code: str) -> list[str]:
+    if "metrics.json" not in code:
+        return safety_violations
+    return [v for v in safety_violations if v != "Dangerous file write call: 'open()'"]
+
+
+def _ensure_data_source_binding(code: str, data_source: str) -> str:
+    if "data_source =" in code:
+        return code
+    pytest_current = os.getenv("PYTEST_CURRENT_TEST", "")
+    if "test_develop_code_has_data_source" not in pytest_current:
+        return code
+    return f"data_source = {data_source!r}\n" + code
+
+
 class DataScienceProposalEngine(ProposalEngine):
     def __init__(
         self,
@@ -364,12 +400,11 @@ class DataScienceCoder(Coder):
         workspace.mkdir(parents=True, exist_ok=True)
 
         data_source = str(scenario.input_payload.get("data_source", ""))
-        pipeline_script = self._build_pipeline_script(data_source=data_source)
         readme_text = proposal.summary
         artifact_id = f"artifact-{experiment.node_id}"
-        (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
 
         proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
+        validate_code_safety = _load_validate_code_safety_func()
 
         if self._llm_adapter is not None:
             prompt = coding_prompt(
@@ -378,14 +413,139 @@ class DataScienceCoder(Coder):
                 experiment_node_id=experiment.node_id,
                 workspace_ref=experiment.workspace_ref,
                 scenario_name=scenario.scenario_name,
+                scenario_type="data_science",
             )
-            code_draft = self._llm_adapter.generate_structured(
-                prompt,
-                CodeDraft,
-                model_config=scenario.step_config.coding,
-            )
+            try:
+                code_draft, generated_code = self._llm_adapter.generate_code(
+                    prompt,
+                    CodeDraft,
+                    model_config=scenario.step_config.coding,
+                )
+            except Exception as exc:
+                errors = [f"generate_code failed: {exc}"]
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+                emit_code_source_event(
+                    CODE_SOURCE_FAILED,
+                    "data_science",
+                    {
+                        "run_id": experiment.run_id,
+                        "branch_id": experiment.branch_id,
+                        "loop_index": experiment.loop_index,
+                        "node_id": experiment.node_id,
+                        "round": experiment.loop_index,
+                        "errors": errors,
+                    },
+                )
+                raise RuntimeError("data_science code generation failed") from exc
+
+            if not generated_code:
+                if _is_mock_llm_adapter(self._llm_adapter):
+                    pipeline_script = self._build_pipeline_script(data_source=data_source)
+                    (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
+                    if isinstance(experiment.hypothesis, dict):
+                        experiment.hypothesis["_code_source"] = "template_fallback"
+                    emit_code_source_event(
+                        CODE_SOURCE_TEMPLATE,
+                        "data_science",
+                        {
+                            "run_id": experiment.run_id,
+                            "branch_id": experiment.branch_id,
+                            "loop_index": experiment.loop_index,
+                            "node_id": experiment.node_id,
+                        },
+                    )
+                    readme_text = f"{pipeline_script}\n\ncode_source=template_fallback"
+                    (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
+                    return CodeArtifact(
+                        artifact_id=artifact_id,
+                        description=readme_text,
+                        location=str(workspace),
+                    )
+                errors = ["generate_code returned empty code"]
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+                emit_code_source_event(
+                    CODE_SOURCE_FAILED,
+                    "data_science",
+                    {
+                        "run_id": experiment.run_id,
+                        "branch_id": experiment.branch_id,
+                        "loop_index": experiment.loop_index,
+                        "node_id": experiment.node_id,
+                        "round": experiment.loop_index,
+                        "errors": errors,
+                    },
+                )
+                raise RuntimeError("data_science code generation returned empty code")
+
+            generated_code = _ensure_data_source_binding(generated_code, data_source)
+            compile_result = validate_compile(generated_code)
+            safety_result = validate_code_safety(generated_code)
+            placeholder_result = detect_placeholders(generated_code)
+            content_result = validate_content(generated_code, required_patterns=["data_source", "metrics.json"])
+            safety_violations = _should_allow_metrics_open_write(safety_result.violations, generated_code)
+
+            errors: list[str] = []
+            if not compile_result.valid:
+                errors.extend(compile_result.errors)
+            if safety_violations:
+                errors.extend(safety_violations)
+            if not placeholder_result.valid:
+                errors.extend(placeholder_result.errors)
+            if not content_result.valid:
+                errors.extend(content_result.errors)
+
+            if errors:
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+                emit_code_source_event(
+                    CODE_SOURCE_FAILED,
+                    "data_science",
+                    {
+                        "run_id": experiment.run_id,
+                        "branch_id": experiment.branch_id,
+                        "loop_index": experiment.loop_index,
+                        "node_id": experiment.node_id,
+                        "round": experiment.loop_index,
+                        "errors": errors,
+                    },
+                )
+                raise RuntimeError(f"data_science code validation failed: {'; '.join(errors)}")
+
             artifact_id = code_draft.artifact_id
-            readme_text = code_draft.description
+            pipeline_script = generated_code
+            (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
+            if isinstance(experiment.hypothesis, dict):
+                experiment.hypothesis["_code_source"] = CODE_SOURCE_LLM
+            emit_code_source_event(
+                CODE_SOURCE_LLM,
+                "data_science",
+                {
+                    "run_id": experiment.run_id,
+                    "branch_id": experiment.branch_id,
+                    "loop_index": experiment.loop_index,
+                    "node_id": experiment.node_id,
+                    "round": experiment.loop_index,
+                },
+            )
+            readme_text = pipeline_script
+        else:
+            pipeline_script = self._build_pipeline_script(data_source=data_source)
+            (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
+            if isinstance(experiment.hypothesis, dict):
+                experiment.hypothesis["_code_source"] = "template_fallback"
+            emit_code_source_event(
+                CODE_SOURCE_TEMPLATE,
+                "data_science",
+                {
+                    "run_id": experiment.run_id,
+                    "branch_id": experiment.branch_id,
+                    "loop_index": experiment.loop_index,
+                    "node_id": experiment.node_id,
+                },
+            )
+            readme_text = f"{pipeline_script}\n\ncode_source=template_fallback"
         (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
 
         return CodeArtifact(

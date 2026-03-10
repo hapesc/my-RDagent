@@ -223,6 +223,8 @@ Cross-branch memory enabling knowledge sharing via an interaction kernel:
    - **Algorithm 2**: Adaptive selection (Select/Modify/Generate)
    - Cross-branch knowledge transfer weighted by performance and similarity
 
+> **Note (fixed in fix/fc1456-review-fixes)**: Production runtime's `query_context()` lacked `branch_id`, `scenario`, `task_summary`, and `max_iterations` until this fix branch. FC-4 now correctly receives full evaluation context for cross-branch hypothesis weighting.
+
 ### Gap Rating: **MINOR** (Remaining: deep embedding support, vector DB integration)
 
 #### Implementation Status
@@ -325,6 +327,8 @@ Automated evaluation infrastructure and candidate ranking:
    - **ValidationSelector**: Leaderboard-based candidate ranking across branches
    - **Automated evaluation pipeline**: Split-validation-ranking sequence
    - Deterministic seed support for consistent evaluation splits
+
+> **Note (fixed in fix/fc1456-review-fixes)**: Production runtime wiring lacked `evaluation_service` into `LoopEngine` until this fix branch. FC-6 now fully receives evaluation feedback for validation ranking.
 
 ### Gap Rating: **MINOR** (Remaining: dynamic competition-specific grading script generation)
 

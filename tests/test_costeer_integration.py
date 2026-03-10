@@ -24,7 +24,7 @@ from data_models import (
     Score,
     StopConditions,
 )
-from llm.schemas import StructuredFeedback
+from llm.schemas import CodeDraft, StructuredFeedback
 from plugins.contracts import PluginBundle, ScenarioContext
 from service_contracts import StepOverrideConfig
 
@@ -273,9 +273,21 @@ def test_costeer_max_rounds_caps_iterations(tmp_path) -> None:
 def test_costeer_data_science_coder_reads_feedback(tmp_path) -> None:
     data_science_coder = _load_data_science_coder_class()
     llm_adapter = MagicMock()
-    llm_adapter.generate_structured.return_value = SimpleNamespace(
-        artifact_id="artifact-ds",
-        description="mock generated code",
+    llm_adapter.generate_code.return_value = (
+        CodeDraft(
+            artifact_id="artifact-ds",
+            description="mock code",
+            location="/tmp",
+        ),
+        "import pandas as pd\n"
+        "data_source = ''\n"
+        "df = pd.read_csv(data_source)\n"
+        "def train_RandomForestClassifier(df):\n"
+        "    pass\n"
+        "metrics = {'accuracy': 0.9}\n"
+        "import json\n"
+        "with open('metrics.json', 'w') as f:\n"
+        "    json.dump(metrics, f)\n",
     )
     coder = data_science_coder(llm_adapter=llm_adapter)
     experiment = ExperimentNode(
@@ -301,7 +313,7 @@ def test_costeer_data_science_coder_reads_feedback(tmp_path) -> None:
 
     artifact = coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
     pipeline_text = (tmp_path / "workspace-ds" / "pipeline.py").read_text(encoding="utf-8")
-    coding_prompt_text = llm_adapter.generate_structured.call_args.args[0]
+    coding_prompt_text = llm_adapter.generate_code.call_args.args[0]
 
     assert "Previous round feedback" in coding_prompt_text
     assert "leakage checks" in coding_prompt_text

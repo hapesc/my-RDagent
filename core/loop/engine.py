@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import traceback
 import uuid
@@ -29,6 +30,8 @@ from data_models import (
 from evaluation_service.validation_selector import ValidationSelector
 from exploration_manager.scheduler import MCTSScheduler
 from exploration_manager.service import supports_diverse_roots, supports_trace_merge
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -76,7 +79,7 @@ class LoopEngine:
         start_iteration: int = 0,
         restored_workspace: str | None = None,
     ) -> LoopContext:
-        run_session.update_status(RunStatus.RUNNING)
+        run_session.update_status(cast(RunStatus, RunStatus.RUNNING))
         self._run_store.create_run(run_session)
 
         loop_state = LoopState(
@@ -299,15 +302,15 @@ class LoopEngine:
 
         fail_on_usefulness_reject = self._is_real_provider_run(run_session)
         if loop_state.iteration >= total_loop_limit and not (fail_on_usefulness_reject and saw_usefulness_reject):
-            run_session.update_status(RunStatus.COMPLETED)
-            loop_state.status = RunStatus.COMPLETED
+            run_session.update_status(cast(RunStatus, RunStatus.COMPLETED))
+            loop_state.status = cast(RunStatus, RunStatus.COMPLETED)
         elif loop_state.iteration >= total_loop_limit and fail_on_usefulness_reject and saw_usefulness_reject:
-            run_session.update_status(RunStatus.FAILED)
-            loop_state.status = RunStatus.FAILED
+            run_session.update_status(cast(RunStatus, RunStatus.FAILED))
+            loop_state.status = cast(RunStatus, RunStatus.FAILED)
             run_session.entry_input["last_error"] = "run completed loops but usefulness gate rejected output"
         else:
-            run_session.update_status(RunStatus.RUNNING)
-            loop_state.status = RunStatus.RUNNING
+            run_session.update_status(cast(RunStatus, RunStatus.RUNNING))
+            loop_state.status = cast(RunStatus, RunStatus.RUNNING)
         self._run_store.create_run(run_session)
         return loop_context
 
@@ -488,8 +491,8 @@ class LoopEngine:
         failed_stage: str | None = None,
     ) -> None:
         run_session.entry_input["last_error"] = error_message
-        run_session.update_status(RunStatus.FAILED)
-        loop_state.status = RunStatus.FAILED
+        run_session.update_status(cast(RunStatus, RunStatus.FAILED))
+        loop_state.status = cast(RunStatus, RunStatus.FAILED)
         self._run_store.create_run(run_session)
         self._event_store.append_event(
             Event(
@@ -524,24 +527,29 @@ class LoopEngine:
             return None
 
         try:
-            execution_results = []
+            execution_results: list[ExecutionResult] = []
+            candidate_node_ids: dict[int, str] = {}
             for step_result in step_results:
-                exec_result = ExecutionResult(
-                    run_id=step_result.experiment.node_id,
-                    exit_code=0 if not self._is_fatal_step_result(step_result) else 1,
-                    logs_ref="",
-                    artifacts_ref=step_result.artifact_id or "",
-                    duration_sec=0.0,
-                    timed_out=False,
-                )
+                exec_result = getattr(step_result, "execution_result", None)
+                if exec_result is None:
+                    logger.warning(
+                        "StepExecutionResult missing execution_result for node_id=%s; using fabricated fallback",
+                        step_result.experiment.node_id,
+                    )
+                    exec_result = ExecutionResult(
+                        run_id=step_result.experiment.node_id,
+                        exit_code=0 if not self._is_fatal_step_result(step_result) else 1,
+                        logs_ref="",
+                        artifacts_ref=step_result.artifact_id or "",
+                        duration_sec=0.0,
+                        timed_out=False,
+                    )
                 execution_results.append(exec_result)
+                candidate_node_ids[id(exec_result)] = step_result.experiment.node_id
 
             best_candidate, best_score = self._validation_selector.select_best(execution_results)
 
-            best_node_id = best_candidate.run_id
-            import logging
-
-            logger = logging.getLogger(__name__)
+            best_node_id = candidate_node_ids.get(id(best_candidate), best_candidate.run_id)
             logger.info(
                 "ValidationSelector.select_best() chose candidate with score %.4f (node_id=%s)",
                 best_score.value,
@@ -549,8 +557,5 @@ class LoopEngine:
             )
             return best_node_id
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.warning("ValidationSelector.select_best() failed: %s; proceeding without selection", str(e))
             return None

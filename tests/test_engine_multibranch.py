@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 from unittest.mock import Mock
 
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutionResult
 from data_models import (
     ArtifactVerificationStatus,
+    ExecutionResult,
     ExecutionOutcomeContract,
     ExperimentNode,
     FeedbackRecord,
@@ -359,3 +361,56 @@ def test_merge_capability_missing_skips_merge_without_failure() -> None:
 
     assert context.loop_state.iteration == 2
     assert context.merged_result is None
+
+
+def test_select_best_branch_prefers_real_execution_result() -> None:
+    engine, _planner, _exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
+        branches_per_iteration=2,
+    )
+    selector = Mock()
+    engine._validation_selector = selector
+
+    real_first = ExecutionResult(run_id="real-run-1", exit_code=1, logs_ref="log-1", artifacts_ref="artifact-1")
+    real_second = ExecutionResult(run_id="real-run-2", exit_code=0, logs_ref="log-2", artifacts_ref='["artifact-2"]')
+    first = _make_step_result("node-1")
+    first.execution_result = real_first
+    second = _make_step_result("node-2")
+    second.execution_result = real_second
+    selector.select_best.return_value = (real_second, Score(score_id="best", value=0.9, metric_name="acc"))
+
+    best_node_id = engine._select_best_branch(
+        [first, second],
+        [("node-1", first, True), ("node-2", second, True)],
+    )
+
+    assert best_node_id == "node-2"
+    selector.select_best.assert_called_once_with([real_first, real_second])
+
+
+def test_select_best_branch_warns_when_fabricating_execution_result(caplog) -> None:
+    engine, _planner, _exploration_manager, _step_executor, _run_store, _event_store = _build_engine(
+        branches_per_iteration=2,
+    )
+    selector = Mock()
+    engine._validation_selector = selector
+
+    real_result = ExecutionResult(run_id="real-run", exit_code=0, logs_ref="log", artifacts_ref='["artifact"]')
+    fallback_step = _make_step_result("node-fallback")
+    real_step = _make_step_result("node-real")
+    real_step.execution_result = real_result
+
+    def _capture_candidates(candidates):
+        assert candidates[1] is real_result
+        assert candidates[0].run_id == "node-fallback"
+        return real_result, Score(score_id="best", value=0.8, metric_name="acc")
+
+    selector.select_best.side_effect = _capture_candidates
+
+    with caplog.at_level(logging.WARNING):
+        best_node_id = engine._select_best_branch(
+            [fallback_step, real_step],
+            [("node-fallback", fallback_step, True), ("node-real", real_step, True)],
+        )
+
+    assert best_node_id == "node-real"
+    assert "using fabricated fallback" in caplog.text

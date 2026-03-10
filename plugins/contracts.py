@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from data_models import (
     ArtifactVerificationStatus,
@@ -121,7 +121,7 @@ class UsefulnessGateInput:
     structured_payload: dict[str, Any] | None = None
 
 
-SceneUsefulnessValidator = Callable[[UsefulnessGateInput], Optional[str]]
+SceneUsefulnessValidator = Callable[[UsefulnessGateInput], str | None]
 
 
 class CommonUsefulnessGate:

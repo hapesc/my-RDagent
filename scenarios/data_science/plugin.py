@@ -7,7 +7,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from core.execution import DockerExecutionBackend, DockerExecutionBackendConfig
 from data_models import (
@@ -23,7 +23,6 @@ from data_models import (
     Score,
     StepState,
 )
-from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     CodeDraft,
     FeedbackDraft,
@@ -45,6 +44,7 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
+from evaluation_service.stratified_splitter import StratifiedSplitter
 
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
@@ -366,9 +366,9 @@ class DataScienceCoder(Coder):
         readme_text = proposal.summary
         artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-
+        
         proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
-
+        
         if self._llm_adapter is not None:
             prompt = coding_prompt(
                 proposal_summary=proposal_summary_with_feedback,
@@ -396,7 +396,7 @@ class DataScienceCoder(Coder):
         feedback_text = None
         if isinstance(experiment.hypothesis, dict):
             feedback_text = experiment.hypothesis.get("_costeer_feedback")
-
+        
         if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
             return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
         return proposal.summary
@@ -438,12 +438,12 @@ class DataScienceRunner(Runner):
         ):
             sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
             sample_fraction = max(0.0, min(sample_fraction, 1.0))
-
+            
             if sample_fraction == 0.0:
                 logger.warning(
                     "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 row)"
                 )
-
+            
             data_source = str(scenario.input_payload.get("data_source", "")).strip()
             if data_source:
                 data_path = Path(data_source)

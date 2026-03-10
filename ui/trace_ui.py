@@ -285,7 +285,7 @@ def run_app() -> None:
 
     control_columns = st.columns(3)
     control_actions = [("Pause", "pause"), ("Resume", "resume"), ("Stop", "stop")]
-    for column, (label, action) in zip(control_columns, control_actions):
+    for column, (label, action) in zip(control_columns, control_actions, strict=False):
         with column:
             if st.button(label):
                 try:

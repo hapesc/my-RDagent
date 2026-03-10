@@ -7,7 +7,7 @@ import subprocess
 import time
 import uuid
 from dataclasses import dataclass, field
-from data_models import StrEnum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 

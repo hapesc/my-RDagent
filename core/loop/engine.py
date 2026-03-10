@@ -10,6 +10,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
 
+from exploration_manager.scheduler import MCTSScheduler
+from exploration_manager.service import supports_diverse_roots, supports_trace_merge
+
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
 from data_models import (
     BranchState,
@@ -27,8 +30,6 @@ from data_models import (
     StepState,
 )
 from evaluation_service.validation_selector import ValidationSelector
-from exploration_manager.scheduler import MCTSScheduler
-from exploration_manager.service import supports_diverse_roots, supports_trace_merge
 
 
 @dataclass
@@ -176,7 +177,7 @@ class LoopEngine:
                 failed_branches = 0
                 successful_step_results = []
                 branch_nodes = []
-
+                
                 for branch_index in range(branches_per_iteration):
                     selected_node_id = self._scheduler.select_node(graph)
                     if selected_node_id is None:
@@ -235,7 +236,7 @@ class LoopEngine:
                     pruned_graph = self._exploration_manager.prune_branches(graph)
                     if isinstance(pruned_graph, ExplorationGraph):
                         graph = pruned_graph
-
+                    
                     branch_nodes.append((node.node_id, step_result, useful_decision))
 
                 if successful_branches > 1 and self._validation_selector is not None:
@@ -532,7 +533,7 @@ class LoopEngine:
                 execution_results.append(exec_result)
 
             best_candidate, best_score = self._validation_selector.select_best(execution_results)
-
+            
             best_node_id = best_candidate.run_id
             import logging
             logger = logging.getLogger(__name__)

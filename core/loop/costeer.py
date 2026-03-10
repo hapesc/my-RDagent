@@ -86,8 +86,7 @@ class CoSTEEREvolver:
         estimated_full_time_sec = debug_time_sec / sample_fraction
         experiment.hypothesis["estimated_full_time_sec"] = estimated_full_time_sec
         _log.debug(
-            "CoSTEER debug timing recorded for round %s: "
-            "debug_time_sec=%.6f sample_fraction=%.6f estimated_full_time_sec=%.6f",
+            "CoSTEER debug timing recorded for round %s: debug_time_sec=%.6f sample_fraction=%.6f estimated_full_time_sec=%.6f",
             round_idx,
             debug_time_sec,
             sample_fraction,

@@ -104,6 +104,13 @@ class MemoryServiceTests(unittest.TestCase):
                 score=0.9,
                 branch_id="branch-b",
             )
+            expected_timestamp = max(
+                hypothesis.timestamp
+                for hypothesis in [
+                    *service.query_hypotheses(branch_id="branch-a", limit=5),
+                    *service.get_cross_branch_hypotheses("branch-a", limit=5),
+                ]
+            )
 
             context = service.query_context(
                 {
@@ -116,12 +123,47 @@ class MemoryServiceTests(unittest.TestCase):
             )
 
             self.assertEqual(context.branch_id, "branch-a")
-            self.assertEqual(context.source_type, "memory")
+            self.assertEqual(context.source_type, "cross_branch")
             self.assertEqual(len(context.scored_items), 3)
             self.assertIn("branch-b volatility alpha with momentum overlay", [text for text, _ in context.scored_items])
             self.assertGreaterEqual(context.scored_items[0][1], context.scored_items[1][1])
             self.assertGreaterEqual(context.scored_items[1][1], context.scored_items[2][1])
             self.assertEqual(context.highlights[0], context.scored_items[0][0])
+            self.assertIsNotNone(context.timestamp)
+            self.assertEqual(context.timestamp, expected_timestamp)
+
+    def test_query_context_same_branch_hypotheses_keep_memory_source_type(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(
+                MemoryServiceConfig(
+                    db_path=db_path,
+                    enable_hypothesis_storage=True,
+                    max_context_items=5,
+                )
+            )
+
+            service.write_hypothesis(
+                text="branch-a local hypothesis",
+                score=0.8,
+                branch_id="branch-a",
+            )
+            service.write_hypothesis(
+                text="branch-a second local hypothesis",
+                score=0.7,
+                branch_id="branch-a",
+            )
+            expected_timestamp = max(
+                hypothesis.timestamp for hypothesis in service.query_hypotheses(branch_id="branch-a", limit=5)
+            )
+
+            context = service.query_context({"branch_id": "branch-a"})
+
+            self.assertEqual(context.branch_id, "branch-a")
+            self.assertEqual(context.source_type, "memory")
+            self.assertEqual(len(context.scored_items), 2)
+            self.assertIsNotNone(context.timestamp)
+            self.assertEqual(context.timestamp, expected_timestamp)
 
     def test_query_context_ignores_branch_control_key_for_failure_case_filtering(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

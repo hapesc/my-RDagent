@@ -250,13 +250,12 @@ class MemoryService:
         items = [str(row["item"]) for row in rows]
         highlights = list(metadata_query.keys()) if items else []
 
-        scored_items = []  # type: List[tuple]
+        scored_items: list[tuple[str, float]] = []
         branch_id = query.get("branch_id")
-        source_type = None  # type: Optional[str]
+        source_type: str | None = None
+        timestamp: float | None = None
         if self._config.enable_hypothesis_storage:
-            same_branch_hypotheses = []  # type: List[HypothesisRecord]
-            cross_branch_hypotheses = []  # type: List[HypothesisRecord]
-
+            same_branch_hypotheses: list[HypothesisRecord] = []
             cross_branch_hypotheses: list[HypothesisRecord] = []
             if branch_id:
                 same_branch_hypotheses = self.query_hypotheses(
@@ -272,7 +271,8 @@ class MemoryService:
 
             candidates = same_branch_hypotheses + cross_branch_hypotheses
             if candidates:
-                source_type = "memory"
+                source_type = "cross_branch" if cross_branch_hypotheses else "memory"
+                timestamp = max(candidate.timestamp for candidate in candidates)
                 try:
                     scored_items = self._rank_hypothesis_candidates(query, items, candidates)
                 except Exception:
@@ -289,6 +289,7 @@ class MemoryService:
             scored_items=scored_items,
             branch_id=str(branch_id) if branch_id is not None else None,
             source_type=source_type,
+            timestamp=timestamp,
         )
 
     def get_memory_stats(self) -> dict[str, int]:

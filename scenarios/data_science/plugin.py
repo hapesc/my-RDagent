@@ -23,6 +23,7 @@ from data_models import (
     Score,
     StepState,
 )
+from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     CodeDraft,
     FeedbackDraft,
@@ -44,7 +45,6 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
-from evaluation_service.stratified_splitter import StratifiedSplitter
 
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
@@ -90,7 +90,7 @@ class DataScienceScenarioPlugin(ScenarioPlugin):
         )
 
 
-def _build_data_science_split_manifest(input_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _build_data_science_split_manifest(input_payload: dict[str, Any]) -> dict[str, Any] | None:
     data_ids = _normalize_id_list(input_payload.get("data_ids"))
     labels = _normalize_label_list(input_payload.get("labels"))
 
@@ -111,7 +111,7 @@ def _build_data_science_split_manifest(input_payload: Dict[str, Any]) -> Optiona
     return asdict(manifest)
 
 
-def _load_data_rows(data_source: str) -> List[Dict[str, Any]]:
+def _load_data_rows(data_source: str) -> list[dict[str, Any]]:
     if not data_source:
         return []
 
@@ -124,7 +124,7 @@ def _load_data_rows(data_source: str) -> List[Dict[str, Any]]:
         with path.open(newline="", encoding="utf-8") as handle:
             return [dict(row) for row in csv.DictReader(handle)]
     if suffix in {".jsonl", ".ndjson"}:
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         with path.open(encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
@@ -138,8 +138,8 @@ def _load_data_rows(data_source: str) -> List[Dict[str, Any]]:
 
 
 def _extract_split_inputs_from_rows(
-    rows: List[Dict[str, Any]], input_payload: Dict[str, Any]
-) -> tuple[List[str], Optional[List[str]]]:
+    rows: list[dict[str, Any]], input_payload: dict[str, Any]
+) -> tuple[list[str], list[str] | None]:
     id_column = str(input_payload.get("id_column", "")).strip() or _first_matching_key(
         rows,
         ["id", "data_id", "row_id", "item_id"],
@@ -149,11 +149,8 @@ def _extract_split_inputs_from_rows(
         ["label", "target", "y", "class", "category"],
     )
 
-    data_ids = [
-        str(row.get(id_column) or index)
-        for index, row in enumerate(rows)
-    ]
-    labels: Optional[List[str]] = None
+    data_ids = [str(row.get(id_column) or index) for index, row in enumerate(rows)]
+    labels: list[str] | None = None
     if label_column:
         candidate_labels = [str(row.get(label_column, "")) for row in rows]
         if any(label.strip() for label in candidate_labels):
@@ -161,7 +158,7 @@ def _extract_split_inputs_from_rows(
     return data_ids, labels
 
 
-def _first_matching_key(rows: List[Dict[str, Any]], candidates: List[str]) -> str:
+def _first_matching_key(rows: list[dict[str, Any]], candidates: list[str]) -> str:
     if not rows:
         return ""
     first_row = rows[0]
@@ -171,13 +168,13 @@ def _first_matching_key(rows: List[Dict[str, Any]], candidates: List[str]) -> st
     return ""
 
 
-def _normalize_id_list(value: Any) -> List[str]:
+def _normalize_id_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if str(item).strip()]
 
 
-def _normalize_label_list(value: Any) -> Optional[List[str]]:
+def _normalize_label_list(value: Any) -> list[str] | None:
     if not isinstance(value, list):
         return None
     labels = [str(item) for item in value]
@@ -221,7 +218,7 @@ class DataScienceProposalEngine(ProposalEngine):
         summary = task_summary or scenario.task_summary or "data science task"
         highlights = list(getattr(context, "highlights", None) or [])
         scored_items = list(getattr(context, "scored_items", None) or [])
-        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        context_lines: list[str] = [f"- {item}" for item in highlights if str(item).strip()]
         for item, score in scored_items[:3]:
             item_text = str(item).strip()
             if not item_text:
@@ -366,9 +363,9 @@ class DataScienceCoder(Coder):
         readme_text = proposal.summary
         artifact_id = f"artifact-{experiment.node_id}"
         (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-        
+
         proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
-        
+
         if self._llm_adapter is not None:
             prompt = coding_prompt(
                 proposal_summary=proposal_summary_with_feedback,
@@ -396,7 +393,7 @@ class DataScienceCoder(Coder):
         feedback_text = None
         if isinstance(experiment.hypothesis, dict):
             feedback_text = experiment.hypothesis.get("_costeer_feedback")
-        
+
         if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
             return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
         return proposal.summary
@@ -438,12 +435,10 @@ class DataScienceRunner(Runner):
         ):
             sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
             sample_fraction = max(0.0, min(sample_fraction, 1.0))
-            
+
             if sample_fraction == 0.0:
-                logger.warning(
-                    "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 row)"
-                )
-            
+                logger.warning("Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 row)")
+
             data_source = str(scenario.input_payload.get("data_source", "")).strip()
             if data_source:
                 data_path = Path(data_source)

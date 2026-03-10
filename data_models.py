@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 
 def utc_now() -> datetime:
@@ -424,17 +424,18 @@ class PlanningContext:
 class ContextPack:
     """Context bundle from memory service for reasoning."""
 
-    items: List[str] = field(default_factory=list)
-    highlights: List[str] = field(default_factory=list)
-    scored_items: List[Tuple[str, float]] = field(default_factory=list)
-    branch_id: Optional[str] = None
-    source_type: Optional[str] = None  # "memory" | "cross_branch" | "plan"
-    timestamp: Optional[float] = None
+    items: list[str] = field(default_factory=list)
+    highlights: list[str] = field(default_factory=list)
+    scored_items: list[tuple[str, float]] = field(default_factory=list)
+    branch_id: str | None = None
+    source_type: str | None = None  # "memory" | "cross_branch" | "plan"
+    timestamp: float | None = None
 
 
 @dataclass
 class DebugConfig:
     """Configuration for debug/fast-iteration mode."""
+
     debug_mode: bool = False
     sample_fraction: float = 0.1
     max_epochs: int = 2

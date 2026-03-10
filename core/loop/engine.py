@@ -8,10 +8,7 @@ import uuid
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
-
-from exploration_manager.scheduler import MCTSScheduler
-from exploration_manager.service import supports_diverse_roots, supports_trace_merge
+from typing import Any, cast
 
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
 from data_models import (
@@ -30,6 +27,8 @@ from data_models import (
     StepState,
 )
 from evaluation_service.validation_selector import ValidationSelector
+from exploration_manager.scheduler import MCTSScheduler
+from exploration_manager.service import supports_diverse_roots, supports_trace_merge
 
 
 @dataclass
@@ -55,7 +54,7 @@ class LoopEngine:
         step_executor,
         run_store: RunMetadataStore,
         event_store: EventMetadataStore,
-        scheduler: Optional[MCTSScheduler] = None,
+        scheduler: MCTSScheduler | None = None,
         evaluation_service=None,
     ) -> None:
         self._config = config
@@ -67,9 +66,7 @@ class LoopEngine:
         self._event_store = event_store
         self._scheduler = scheduler
         self._evaluation_service = evaluation_service
-        self._validation_selector = (
-            ValidationSelector(evaluation_service) if evaluation_service is not None else None
-        )
+        self._validation_selector = ValidationSelector(evaluation_service) if evaluation_service is not None else None
 
     def run(
         self,
@@ -108,14 +105,14 @@ class LoopEngine:
         target_iteration = min(total_loop_limit, start_iteration + max(0, loops_this_call))
         source_workspace = restored_workspace
         saw_usefulness_reject = False
-        history_summary: Dict[str, Dict[str, Any]] = {}
+        history_summary: dict[str, dict[str, Any]] = {}
 
         while loop_state.iteration < target_iteration:
             iter_start = time.monotonic()
             planning_context = PlanningContext(
                 loop_state=loop_state,
                 budget=budget,
-                history_summary=cast(Dict[str, str], dict(history_summary)),
+                history_summary=cast(dict[str, str], dict(history_summary)),
             )
             plan = self._planner.generate_plan(planning_context)
             context_pack = self._memory_service.query_context(
@@ -177,7 +174,7 @@ class LoopEngine:
                 failed_branches = 0
                 successful_step_results = []
                 branch_nodes = []
-                
+
                 for branch_index in range(branches_per_iteration):
                     selected_node_id = self._scheduler.select_node(graph)
                     if selected_node_id is None:
@@ -236,13 +233,13 @@ class LoopEngine:
                     pruned_graph = self._exploration_manager.prune_branches(graph)
                     if isinstance(pruned_graph, ExplorationGraph):
                         graph = pruned_graph
-                    
+
                     branch_nodes.append((node.node_id, step_result, useful_decision))
 
                 if successful_branches > 1 and self._validation_selector is not None:
                     best_node_id = self._select_best_branch(successful_step_results, branch_nodes)
                     for node_id, step_result, original_decision in branch_nodes:
-                        is_best = (node_id == best_node_id)
+                        is_best = node_id == best_node_id
                         feedback_decision = original_decision if is_best else False
                         feedback_score = self._continuation_score(step_result) if is_best else None
                         self._exploration_manager.observe_feedback(
@@ -424,7 +421,7 @@ class LoopEngine:
 
         return max(successful_step_results, key=lambda result: self._continuation_score(result) or float("-inf"))
 
-    def _build_iteration_history_entry(self, step_result) -> Dict[str, Any]:
+    def _build_iteration_history_entry(self, step_result) -> dict[str, Any]:
         score = self._continuation_score(step_result)
         if score is None:
             raw_score = getattr(getattr(step_result, "score", None), "value", None)
@@ -515,7 +512,7 @@ class LoopEngine:
             encoding="utf-8",
         )
 
-    def _select_best_branch(self, step_results: list, branch_nodes: list) -> Optional[str]:
+    def _select_best_branch(self, step_results: list, branch_nodes: list) -> str | None:
         if not step_results or len(step_results) <= 1 or self._validation_selector is None:
             return None
 
@@ -533,9 +530,10 @@ class LoopEngine:
                 execution_results.append(exec_result)
 
             best_candidate, best_score = self._validation_selector.select_best(execution_results)
-            
+
             best_node_id = best_candidate.run_id
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(
                 "ValidationSelector.select_best() chose candidate with score %.4f (node_id=%s)",
@@ -545,6 +543,7 @@ class LoopEngine:
             return best_node_id
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning("ValidationSelector.select_best() failed: %s; proceeding without selection", str(e))
             return None

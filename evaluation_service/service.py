@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from data_models import EvalResult, ExecutionResult, Score
 
@@ -24,7 +24,7 @@ class EvaluationService:
         """Initialize evaluation service with metric settings."""
 
         self._config = config
-        self._leaderboard: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        self._leaderboard: dict[str, dict[str, dict[str, Any]]] = {}
 
     def evaluate_run(self, execution_result: ExecutionResult) -> EvalResult:
         """Evaluate an execution result against standardized metrics.
@@ -39,7 +39,7 @@ class EvaluationService:
             Evaluation Service -> evaluate_run
         """
 
-        stages: Dict[str, float] = {}
+        stages: dict[str, float] = {}
 
         execution_score = 1.0 if execution_result.exit_code == 0 else 0.0
         stages["execution"] = execution_score
@@ -47,26 +47,18 @@ class EvaluationService:
         alignment_score = 1.0 if execution_result.artifacts_ref else 0.0
         stages["alignment"] = alignment_score
 
-        if execution_result.timed_out:
-            debug_score = 0.0
-        else:
-            debug_score = 1.0
+        debug_score = 0.0 if execution_result.timed_out else 1.0
         stages["debug_compliance"] = debug_score
 
         authenticity_score = 1.0 if execution_result.logs_ref else 0.5
         stages["authenticity"] = authenticity_score
 
-        total = (
-            0.4 * execution_score
-            + 0.2 * alignment_score
-            + 0.2 * debug_score
-            + 0.2 * authenticity_score
-        )
+        total = 0.4 * execution_score + 0.2 * alignment_score + 0.2 * debug_score + 0.2 * authenticity_score
         task_id = self._resolve_task_id(execution_result)
         self._leaderboard.setdefault(task_id, {})[execution_result.run_id] = {
             "score": total,
             "metrics": {**stages, "total": total, "metric_name": self._config.metric_name},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         score = Score(
@@ -91,7 +83,7 @@ class EvaluationService:
                 return task_id.strip()
         return "default"
 
-    def aggregate_branch_scores(self, scores: List[Score]) -> Score:
+    def aggregate_branch_scores(self, scores: list[Score]) -> Score:
         """Aggregate scores from multiple branches.
 
         Responsibility:
@@ -118,7 +110,7 @@ class EvaluationService:
             metric_name=self._config.metric_name,
         )
 
-    def get_leaderboard(self, task_id: str) -> Dict[str, Dict[str, Any]]:
+    def get_leaderboard(self, task_id: str) -> dict[str, dict[str, Any]]:
         """Return leaderboard entries for a task.
 
         Responsibility:

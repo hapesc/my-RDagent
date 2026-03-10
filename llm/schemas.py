@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def _as_list(value: object) -> list[object]:
@@ -173,11 +173,11 @@ class PlanningStrategy:
     method_selection: str = ""
     exploration_weight: float = 0.5
     reasoning: str = ""
-    budget_allocation: Optional[Dict[str, float]] = None
+    budget_allocation: dict[str, float] | None = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, object]) -> "PlanningStrategy":
-        budget_alloc: Optional[Dict[str, float]] = None
+    def from_dict(cls, data: dict[str, object]) -> PlanningStrategy:
+        budget_alloc: dict[str, float] | None = None
         raw_budget = data.get("budget_allocation")
         if raw_budget is not None and isinstance(raw_budget, dict):
             budget_alloc = {k: float(v) for k, v in raw_budget.items()}

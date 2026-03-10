@@ -7,7 +7,7 @@ import logging
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -25,6 +25,7 @@ from data_models import (
     Score,
     StepState,
 )
+from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     LLMAdapter,
     ProposalDraft,
@@ -41,7 +42,6 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, ScenarioManifest, StepOverrideConfig
-from evaluation_service.stratified_splitter import StratifiedSplitter
 
 from .backtest import LightweightBacktester
 from .constants import METRIC_THRESHOLDS
@@ -85,7 +85,7 @@ class QuantConfig:
 
 
 class QuantScenarioPlugin(ScenarioPlugin):
-    def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
+    def build_context(self, run_session: RunSession, input_payload: dict[str, Any]) -> ScenarioContext:
         split_manifest = _build_quant_split_manifest(input_payload)
         return ScenarioContext(
             run_id=run_session.run_id,
@@ -97,7 +97,7 @@ class QuantScenarioPlugin(ScenarioPlugin):
         )
 
 
-def _build_quant_split_manifest(input_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _build_quant_split_manifest(input_payload: dict[str, Any]) -> dict[str, Any] | None:
     data_ids = _normalize_quant_ids(input_payload.get("data_ids"))
     labels = _normalize_quant_labels(input_payload.get("labels"))
     ordered_pairs = _extract_quant_ordered_pairs(input_payload)
@@ -121,7 +121,7 @@ def _build_quant_split_manifest(input_payload: Dict[str, Any]) -> Optional[Dict[
     return asdict(splitter.split(data_ids, labels=None))
 
 
-def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[str, str]]:
+def _extract_quant_ordered_pairs(input_payload: dict[str, Any]) -> list[tuple[str, str]]:
     direct_data_ids = _normalize_quant_ids(input_payload.get("data_ids"))
     order_values = input_payload.get("timestamps")
     if not isinstance(order_values, list):
@@ -130,7 +130,7 @@ def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[st
         return sorted(
             [
                 (str(order_value), data_id)
-                for order_value, data_id in zip(order_values, direct_data_ids)
+                for order_value, data_id in zip(order_values, direct_data_ids, strict=False)
                 if str(data_id).strip()
             ],
             key=lambda item: item[0],
@@ -146,7 +146,9 @@ def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[st
         date_column = _first_quant_column(normalized, ["date", "datetime", "timestamp"])
         stock_column = _first_quant_column(normalized, ["stock_id", "symbol", "ticker", "asset_id"])
         if date_column and stock_column:
-            normalized["__split_id__"] = normalized[date_column].astype(str) + "|" + normalized[stock_column].astype(str)
+            normalized["__split_id__"] = (
+                normalized[date_column].astype(str) + "|" + normalized[stock_column].astype(str)
+            )
             id_column = "__split_id__"
         elif date_column:
             normalized["__split_id__"] = normalized[date_column].astype(str)
@@ -157,13 +159,10 @@ def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[st
 
     order_column = _first_quant_column(normalized, ["date", "datetime", "timestamp"]) or id_column
     normalized = normalized.sort_values(by=[order_column, id_column], kind="stable")
-    return [
-        (str(row[order_column]), str(row[id_column]))
-        for _, row in normalized.iterrows()
-    ]
+    return [(str(row[order_column]), str(row[id_column])) for _, row in normalized.iterrows()]
 
 
-def _coerce_quant_frame(input_payload: Dict[str, Any]) -> Optional[pd.DataFrame]:
+def _coerce_quant_frame(input_payload: dict[str, Any]) -> pd.DataFrame | None:
     for key in ("ohlcv", "data_frame", "data", "records"):
         value = input_payload.get(key)
         if isinstance(value, pd.DataFrame):
@@ -173,7 +172,7 @@ def _coerce_quant_frame(input_payload: Dict[str, Any]) -> Optional[pd.DataFrame]
     return None
 
 
-def _build_ordered_manifest(data_ids: List[str], splitter: StratifiedSplitter) -> DataSplitManifest:
+def _build_ordered_manifest(data_ids: list[str], splitter: StratifiedSplitter) -> DataSplitManifest:
     if not data_ids:
         return DataSplitManifest(seed=splitter._seed)
 
@@ -188,20 +187,20 @@ def _build_ordered_manifest(data_ids: List[str], splitter: StratifiedSplitter) -
     )
 
 
-def _first_quant_column(frame: pd.DataFrame, candidates: List[str]) -> str:
+def _first_quant_column(frame: pd.DataFrame, candidates: list[str]) -> str:
     for candidate in candidates:
         if candidate in frame.columns:
             return candidate
     return ""
 
 
-def _normalize_quant_ids(value: Any) -> List[str]:
+def _normalize_quant_ids(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if str(item).strip()]
 
 
-def _normalize_quant_labels(value: Any) -> Optional[List[str]]:
+def _normalize_quant_labels(value: Any) -> list[str] | None:
     if not isinstance(value, list):
         return None
     labels = [str(item) for item in value]
@@ -241,7 +240,7 @@ class QuantProposalEngine(ProposalEngine):
 
         highlights = list(getattr(context, "highlights", None) or [])
         scored_items = list(getattr(context, "scored_items", None) or [])
-        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        context_lines: list[str] = [f"- {item}" for item in highlights if str(item).strip()]
         for item, score in scored_items[:3]:
             item_text = str(item).strip()
             if not item_text:
@@ -349,7 +348,7 @@ class QuantCoder(Coder):
         feedback_text = None
         if isinstance(experiment.hypothesis, dict):
             feedback_text = experiment.hypothesis.get("_costeer_feedback")
-        
+
         if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
             return f"{hypothesis}\n\nPrevious round feedback:\n{feedback_text}"
         return hypothesis
@@ -430,12 +429,10 @@ class QuantRunner(Runner):
         ):
             sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
             sample_fraction = max(0.0, min(sample_fraction, 1.0))
-            
+
             if sample_fraction == 0.0:
-                logger.warning(
-                    "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 date, 1 stock)"
-                )
-            
+                logger.warning("Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 date, 1 stock)")
+
             logger.info("Debug mode active: sampling %.0f%% of data", sample_fraction * 100)
             if not ohlcv.empty:
                 dates = sorted(ohlcv["date"].unique())
@@ -444,9 +441,7 @@ class QuantRunner(Runner):
                 keep_stocks = stocks[: max(1, int(len(stocks) * sample_fraction))]
                 ohlcv = cast(
                     pd.DataFrame,
-                    ohlcv[
-                        ohlcv["date"].isin(keep_dates) & ohlcv["stock_id"].isin(keep_stocks)
-                    ].copy(),
+                    ohlcv[ohlcv["date"].isin(keep_dates) & ohlcv["stock_id"].isin(keep_stocks)].copy(),
                 )
         backtester = LightweightBacktester(config=self._config.backtest_config or None)
         bt_result = backtester.run(ohlcv, factor_code)

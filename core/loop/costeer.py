@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from data_models import CodeArtifact, ExperimentNode, FeedbackRecord, Proposal, Score
 from plugins.contracts import Coder, FeedbackAnalyzer, Runner, ScenarioContext
@@ -49,7 +49,7 @@ class CoSTEEREvolver:
         )
         return self._llm_adapter.generate_structured(prompt, StructuredFeedback)
 
-    def _get_debug_sample_fraction(self, scenario: ScenarioContext) -> Optional[float]:
+    def _get_debug_sample_fraction(self, scenario: ScenarioContext) -> float | None:
         debug_config = scenario.config.get("debug_config")
         if debug_config is None or not getattr(debug_config, "debug_mode", False):
             return None
@@ -86,7 +86,8 @@ class CoSTEEREvolver:
         estimated_full_time_sec = debug_time_sec / sample_fraction
         experiment.hypothesis["estimated_full_time_sec"] = estimated_full_time_sec
         _log.debug(
-            "CoSTEER debug timing recorded for round %s: debug_time_sec=%.6f sample_fraction=%.6f estimated_full_time_sec=%.6f",
+            "CoSTEER debug timing recorded for round %s: "
+            "debug_time_sec=%.6f sample_fraction=%.6f estimated_full_time_sec=%.6f",
             round_idx,
             debug_time_sec,
             sample_fraction,

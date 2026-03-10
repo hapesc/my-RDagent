@@ -172,9 +172,7 @@ class TestValidationSelector(unittest.TestCase):
     def test_rank_candidates_scores_sorted_descending(self):
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
 
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig(metric_name="fc6_metric"))
         vs = ValidationSelector(es)
@@ -194,9 +192,7 @@ class TestValidationSelector(unittest.TestCase):
     def test_select_best_raises_for_empty_candidates(self):
         from evaluation_service.service import EvaluationService, EvaluationServiceConfig
 
-        ValidationSelector = import_module(
-            "evaluation_service.validation_selector"
-        ).ValidationSelector
+        ValidationSelector = import_module("evaluation_service.validation_selector").ValidationSelector
 
         es = EvaluationService(EvaluationServiceConfig())
         vs = ValidationSelector(es)

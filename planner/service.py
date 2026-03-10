@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 from data_models import Plan, PlanningContext
 from llm.prompts import planning_strategy_prompt
@@ -154,8 +153,8 @@ class Planner:
 
     def _coerce_strategy_budget_allocation(
         self,
-        strategy: Optional[PlanningStrategy],
-    ) -> Optional[Dict[str, float]]:
+        strategy: PlanningStrategy | None,
+    ) -> dict[str, float] | None:
         if strategy is None or strategy.budget_allocation is None:
             return None
 
@@ -163,7 +162,7 @@ class Planner:
         if set(allocation.keys()) != set(PLANNER_STEP_KEYS):
             return None
 
-        normalized: Dict[str, float] = {}
+        normalized: dict[str, float] = {}
         for step in PLANNER_STEP_KEYS:
             value = allocation.get(step)
             if value is None:
@@ -181,7 +180,7 @@ class Planner:
 
         return normalized
 
-    def _build_budget_allocation(self, total_budget: float, elapsed_time: float) -> Dict[str, float]:
+    def _build_budget_allocation(self, total_budget: float, elapsed_time: float) -> dict[str, float]:
         effective_total_budget = total_budget if total_budget > 0 else DEFAULT_TOTAL_TIME_BUDGET
         remaining_budget = max(0.0, effective_total_budget - elapsed_time)
 

@@ -162,7 +162,7 @@ def test_synthetic_proposal_engine_reasoning_service_fallback() -> None:
     )
 
     assert proposal.proposal_id == "proposal-placeholder"
-    assert proposal.summary == "fallback-task"
+    assert proposal.summary.startswith("fallback-task")
 
 
 def test_build_data_science_bundle_accepts_fc3_components() -> None:

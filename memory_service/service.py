@@ -11,7 +11,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from data_models import ContextPack
 from memory_service.hypothesis_selector import rank_by_kernel
@@ -136,7 +135,7 @@ class MemoryService:
             return normalized
         return f"{normalized[: max_chars - 3]}..."
 
-    def _build_context_items(self, query: Dict[str, str], items: List[str]) -> List[str]:
+    def _build_context_items(self, query: dict[str, str], items: list[str]) -> list[str]:
         if items:
             return items
 
@@ -149,9 +148,9 @@ class MemoryService:
 
     def _select_reference_hypothesis(
         self,
-        query: Dict[str, str],
-        items: List[str],
-        candidates: List[HypothesisRecord],
+        query: dict[str, str],
+        items: list[str],
+        candidates: list[HypothesisRecord],
     ) -> HypothesisRecord:
         if not candidates:
             raise ValueError("candidates list must not be empty")
@@ -197,10 +196,10 @@ class MemoryService:
 
     def _rank_hypothesis_candidates(
         self,
-        query: Dict[str, str],
-        items: List[str],
-        candidates: List[HypothesisRecord],
-    ) -> List[Tuple[str, float]]:
+        query: dict[str, str],
+        items: list[str],
+        candidates: list[HypothesisRecord],
+    ) -> list[tuple[str, float]]:
         if not candidates:
             return []
 
@@ -211,11 +210,11 @@ class MemoryService:
         ranked = rank_by_kernel(reference, candidates, self._interaction_kernel)
         return [(candidate.text, score) for candidate, score in ranked]
 
-    def _build_highlights(self, scored_items: List[Tuple[str, float]]) -> List[str]:
+    def _build_highlights(self, scored_items: list[tuple[str, float]]) -> list[str]:
         top_k = min(3, self._config.max_context_items, len(scored_items))
         return [self._summarize_text(text) for text, _ in scored_items[:top_k]]
 
-    def query_context(self, query: Dict[str, str]) -> ContextPack:
+    def query_context(self, query: dict[str, str]) -> ContextPack:
         """Retrieve a context pack for reasoning.
 
         Responsibility:
@@ -257,7 +256,7 @@ class MemoryService:
             same_branch_hypotheses = []  # type: List[HypothesisRecord]
             cross_branch_hypotheses = []  # type: List[HypothesisRecord]
 
-            cross_branch_hypotheses: List[HypothesisRecord] = []
+            cross_branch_hypotheses: list[HypothesisRecord] = []
             if branch_id:
                 same_branch_hypotheses = self.query_hypotheses(
                     branch_id=str(branch_id),

@@ -106,7 +106,7 @@ class SyntheticResearchProposalEngine(ProposalEngine):
         summary = task_summary or scenario.task_summary or "synthetic research task"
         highlights = list(getattr(context, "highlights", None) or [])
         scored_items = list(getattr(context, "scored_items", None) or [])
-        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        context_lines: list[str] = [f"- {item}" for item in highlights if str(item).strip()]
         for item, score in scored_items[:3]:
             item_text = str(item).strip()
             if not item_text:
@@ -248,7 +248,7 @@ class SyntheticResearchCoder(Coder):
         feedback_text = None
         if isinstance(experiment.hypothesis, dict):
             feedback_text = experiment.hypothesis.get("_costeer_feedback")
-        
+
         if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
             return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
         return proposal.summary
@@ -272,9 +272,9 @@ class SyntheticResearchCoder(Coder):
             brief_lines.extend([f"- {topic}" for topic in topics])
         brief_text = "\n".join(brief_lines) + "\n"
         artifact_description = proposal.summary
-        
+
         proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
-        
+
         if self._llm_adapter is not None:
             prompt = coding_prompt(
                 proposal_summary=proposal_summary_with_feedback,

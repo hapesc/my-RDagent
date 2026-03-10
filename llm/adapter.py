@@ -173,6 +173,12 @@ class MockLLMProvider:
                     "method_selection": "targeted_improvement",
                     "exploration_weight": 0.6,
                     "reasoning": "Mock planning strategy based on current progress",
+                    "budget_allocation": {
+                        "proposal": 120.0,
+                        "coding": 180.0,
+                        "running": 60.0,
+                        "feedback": 60.0,
+                    },
                 }
             )
 
@@ -342,6 +348,8 @@ class LLMAdapter:
 
     @staticmethod
     def _is_optional_field(field_type: Any) -> bool:
+        if isinstance(field_type, str):
+            return "None" in field_type or "Optional" in field_type
         origin = get_origin(field_type)
         if origin is None:
             return False

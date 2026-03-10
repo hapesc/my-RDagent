@@ -31,7 +31,6 @@ from service_contracts import StepOverrideConfig, resolve_step_override_config
 
 from .costeer import CoSTEEREvolver
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +72,7 @@ class StepExecutor:
         costeer_max_rounds: int = 1,
         llm_adapter=None,
         memory_service=None,
-        debug_config: Optional[DebugConfig] = None,
+        debug_config: DebugConfig | None = None,
     ) -> None:
         self._plugin_bundle = plugin_bundle
         self._evaluation_service = evaluation_service
@@ -343,10 +342,7 @@ class StepExecutor:
     def _resolve_step_config(self, run_session: RunSession, plan: Plan) -> tuple[StepOverrideConfig, str]:
         config_snapshot = run_session.config_snapshot
 
-        if (
-            "step_overrides" in config_snapshot
-            and config_snapshot.get("requested_step_overrides") is None
-        ):
+        if "step_overrides" in config_snapshot and config_snapshot.get("requested_step_overrides") is None:
             effective = resolve_step_override_config(
                 self._plugin_bundle.default_step_overrides,
                 StepOverrideConfig.from_dict(config_snapshot["step_overrides"]),
@@ -372,7 +368,7 @@ class StepExecutor:
         self._log_timeout_source("running", effective.running.timeout_sec, timeout_source)
         return effective, timeout_source
 
-    def _coerce_plan_timeout(self, plan: Plan, step_name: str) -> Optional[int]:
+    def _coerce_plan_timeout(self, plan: Plan, step_name: str) -> int | None:
         raw_timeout = (plan.budget_allocation or {}).get(step_name)
         if raw_timeout is None:
             return None
@@ -382,7 +378,7 @@ class StepExecutor:
             return None
         return timeout_sec if timeout_sec > 0 else None
 
-    def _log_timeout_source(self, step_name: str, timeout_sec: Optional[int], source: str) -> None:
+    def _log_timeout_source(self, step_name: str, timeout_sec: int | None, source: str) -> None:
         if timeout_sec is None:
             logger.debug("Step '%s' timeout unset (source: %s)", step_name, source)
             return

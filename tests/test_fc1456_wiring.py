@@ -286,5 +286,6 @@ class TestFC1456Wiring(unittest.TestCase):
         self.assertEqual(manifest["train_ids"], ["d1", "d2", "d3"])
         self.assertEqual(manifest["test_ids"], ["d4"])
 
+
 if __name__ == "__main__":
     unittest.main()

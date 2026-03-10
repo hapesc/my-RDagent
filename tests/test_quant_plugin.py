@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -139,6 +140,80 @@ class TestQuantCoder:
         artifact = coder.develop(node, proposal, scenario_ctx)
         assert isinstance(artifact, CodeArtifact)
         assert artifact.location
+
+    def test_develop_rejects_placeholder_output_from_llm(self, proposal, scenario_ctx, tmp_workspace):
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"placeholder","location":"factor.py"}\n'
+            "```python\n# TODO: implement factor\npass\n```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-003", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r3", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        with pytest.raises(ValueError):
+            coder.develop(node, proposal, scenario_ctx)
+
+    def test_develop_extracts_real_code_from_llm_response(self, proposal, scenario_ctx, tmp_workspace):
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"momentum factor","location":"factor.py"}\n'
+            "```python\n"
+            "import pandas as pd\n"
+            "def compute_factor(df):\n"
+            "    result = df[['date', 'stock_id']].copy()\n"
+            "    result['factor_value'] = df.groupby('stock_id')['close'].pct_change(5)\n"
+            "    return result[['date', 'stock_id', 'factor_value']]\n"
+            "```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-004", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r4", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        artifact = coder.develop(node, proposal, scenario_ctx)
+        factor_text = (Path(artifact.location) / "factor.py").read_text(encoding="utf-8")
+        assert "pct_change(5)" in factor_text
+        assert "pct_change(20)" not in factor_text
+
+    def test_develop_runs_quality_gate_before_returning(self, proposal, scenario_ctx, tmp_workspace):
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"momentum factor","location":"factor.py"}\n'
+            "```python\nimport pandas as pd\ndef compute_factor(df):\n    return df\n```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-005", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r5", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        with patch("scenarios.quant.plugin.CodegenQualityGate.evaluate") as evaluate:
+            from llm.codegen.quality_gate import QualityResult
+
+            evaluate.return_value = QualityResult(
+                passed=True,
+                reasons=[],
+                extracted_code="import pandas as pd\ndef compute_factor(df):\n    return df\n",
+                metadata={"artifact_id": "artifact-llm", "description": "momentum factor", "location": "factor.py"},
+            )
+            coder.develop(node, proposal, scenario_ctx)
+            evaluate.assert_called_once()
 
 
 class TestQuantRunner:

@@ -74,6 +74,7 @@ class MockLLMProvider:
         is_proposal = "proposal:" in prompt or "`virtual_score`" in prompt
         is_coding = "coding:" in prompt or "`artifact_id`" in prompt
         is_feedback = "feedback:" in prompt or "`acceptable`" in prompt
+        is_quant_factor_prompt = "factor hypothesis" in prompt_lower and "compute_factor" in prompt
 
         if is_proposal:
             summary = self._extract_section(prompt, "proposal:", "## Task\n") or "mock-proposal"
@@ -84,6 +85,18 @@ class MockLLMProvider:
                     "constraints": constraints,
                     "virtual_score": 0.5,
                 }
+            )
+        if is_quant_factor_prompt:
+            return (
+                '{"artifact_id":"artifact-llm","description":"mock factor","location":"factor.py"}\n'
+                "```python\n"
+                "import pandas as pd\n"
+                "\n"
+                "def compute_factor(df):\n"
+                "    result = df[['date', 'stock_id']].copy()\n"
+                "    result['factor_value'] = df.groupby('stock_id')['close'].pct_change(5)\n"
+                "    return result[['date', 'stock_id', 'factor_value']]\n"
+                "```"
             )
         if is_coding:
             summary = self._extract_section(prompt, "coding:", "## Research Proposal\n") or "mock-code"

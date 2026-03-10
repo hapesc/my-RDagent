@@ -25,6 +25,9 @@ from data_models import (
     Score,
     StepState,
 )
+from llm.codegen.quality_gate import QualityResult
+from llm.codegen.quality_gate import CodegenQualityGate
+from llm.codegen.validators import compile_check, has_forbidden_import, has_placeholder, has_required_signature
 from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     LLMAdapter,
@@ -50,6 +53,7 @@ from .constants import METRIC_THRESHOLDS
 from .data_provider import QuantDataProvider
 from .prompts import (
     DATA_SCHEMA_DESCRIPTION,
+    FACTOR_CODE_EXAMPLE,
     FACTOR_CODE_SYSTEM_PROMPT,
     FACTOR_CODE_USER_TEMPLATE,
     FACTOR_PROPOSAL_SYSTEM_PROMPT,
@@ -59,6 +63,21 @@ from .prompts import (
 
 if TYPE_CHECKING:
     pass
+
+
+def evaluate_quant_quality(code: str, backtest_metrics: dict[str, object] | None) -> QualityResult:
+    reasons: list[str] = []
+    if not has_required_signature(code, "compute_factor"):
+        reasons.append("missing required signature: compute_factor")
+    if has_forbidden_import(code, ["os", "subprocess", "requests", "sys"]):
+        reasons.append("forbidden import detected")
+    if has_placeholder(code) or code.strip() == FACTOR_CODE_EXAMPLE.strip():
+        reasons.append("template or placeholder factor code detected")
+    if not compile_check(code):
+        reasons.append("factor code does not compile")
+    if not isinstance(backtest_metrics, dict) or not backtest_metrics:
+        reasons.append("missing backtest metrics")
+    return QualityResult(passed=not reasons, reasons=reasons, extracted_code=code, metadata=backtest_metrics or {})
 
 
 def default_quant_step_overrides(timeout_sec: int = 60) -> StepOverrideConfig:
@@ -400,6 +419,7 @@ class QuantCoder(Coder):
             if (not candidate_code or not candidate_code.strip()) and desc.strip():
                 candidate_code = desc
 
+            # --- PR #12 CoSTEER validation pipeline ---
             compile_result = validate_compile(candidate_code)
             placeholder_result = detect_placeholders(candidate_code)
             content_result = validate_content(candidate_code, ["def compute_factor"])
@@ -421,6 +441,21 @@ class QuantCoder(Coder):
                     {
                         **event_metadata,
                         "errors": errors,
+                    },
+                )
+                return _DEFAULT_FACTOR_CODE
+
+            # --- Single-round quality gate (supplementary) ---
+            quality_result = CodegenQualityGate("quant").evaluate(candidate_code)
+            if not quality_result.passed:
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+                emit_code_source_event(
+                    CODE_SOURCE_FAILED,
+                    "quant",
+                    {
+                        **event_metadata,
+                        "errors": quality_result.reasons,
                     },
                 )
                 return _DEFAULT_FACTOR_CODE

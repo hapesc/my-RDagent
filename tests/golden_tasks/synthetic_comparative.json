@@ -1,0 +1,13 @@
+{
+  "task_id": "synthetic_comparative",
+  "scenario": "synthetic_research",
+  "task_summary": "Compare three optimization algorithms (SGD, Adam, RMSProp) on a synthetic quadratic loss surface. Report convergence speed, final loss, and sensitivity to learning rate. Present structured findings.",
+  "artifact_type": "structured_text",
+  "expected_properties": {
+    "no_placeholder": true,
+    "min_length_chars": 300,
+    "has_structure": true,
+    "contains_any_keyword": ["convergence", "learning rate", "comparison", "finding"]
+  },
+  "difficulty": "medium"
+}

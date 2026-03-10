@@ -1,0 +1,13 @@
+{
+  "task_id": "ds_feature_engineering",
+  "scenario": "data_science",
+  "task_summary": "Build a pipeline that loads a tabular CSV, engineers at least 3 new features, trains a logistic regression, and outputs accuracy and AUC to metrics.json.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "no_placeholder": true,
+    "contains_all_keywords": ["metrics.json"],
+    "contains_any_keyword": ["feature", "transform", "fit", "accuracy", "auc"]
+  },
+  "difficulty": "medium"
+}

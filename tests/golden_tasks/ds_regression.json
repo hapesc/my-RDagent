@@ -1,0 +1,13 @@
+{
+  "task_id": "ds_regression",
+  "scenario": "data_science",
+  "task_summary": "Build a regression pipeline for a housing price dataset. Load the CSV, handle missing values, train a gradient boosting regressor, and output RMSE and R-squared to metrics.json.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "no_placeholder": true,
+    "contains_all_keywords": ["metrics.json"],
+    "contains_any_keyword": ["rmse", "r2", "mean_squared_error", "GradientBoosting", "XGB"]
+  },
+  "difficulty": "medium"
+}

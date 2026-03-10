@@ -1,0 +1,14 @@
+{
+  "task_id": "quant_momentum",
+  "scenario": "quant",
+  "task_summary": "Implement a 5-day price momentum factor. Compute the percentage change in closing price over the last 5 trading days for each stock.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "has_signature": "compute_factor",
+    "forbidden_imports_absent": ["os", "subprocess", "requests", "sys"],
+    "no_placeholder": true,
+    "contains_any_keyword": ["pct_change", "shift", "diff"]
+  },
+  "difficulty": "easy"
+}

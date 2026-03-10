@@ -1,0 +1,14 @@
+{
+  "task_id": "quant_volatility",
+  "scenario": "quant",
+  "task_summary": "Implement a 20-day rolling volatility factor. Compute the standard deviation of daily returns over a 20-day window for each stock.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "has_signature": "compute_factor",
+    "forbidden_imports_absent": ["os", "subprocess", "requests", "sys"],
+    "no_placeholder": true,
+    "contains_any_keyword": ["rolling", "std"]
+  },
+  "difficulty": "medium"
+}

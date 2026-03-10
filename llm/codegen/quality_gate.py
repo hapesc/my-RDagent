@@ -122,7 +122,7 @@ class CodegenQualityGate:
         if not has_structural_markers(text, config.required_structural_markers):
             reasons.append("structured text missing required structure")
         if _looks_like_task_restatement(text):
-            reasons.append("structured text restates the task without findings")
+            reasons.append("structured text is a task restatement without findings")
 
         quantitative_claims = count_quantitative_claims(text)
         if quantitative_claims < config.min_quantitative_claims:

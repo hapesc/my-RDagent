@@ -19,6 +19,16 @@ class _CodegenReadyMockProvider(MockLLMProvider):
                 "print(json.dumps(metrics))\n"
                 "```\n"
             )
+        if "## research proposal" in prompt_lower and "scenario: synthetic_research" in prompt_lower:
+            return (
+                "## Findings\n"
+                "1. Model accuracy improved by 15% after adding retrieval reranking.\n"
+                "2. Latency increased by 8%, which remained within the operating budget.\n\n"
+                "## Methodology\n"
+                "- Compared baseline and reranked runs on the same benchmark split.\n\n"
+                "## Conclusion\n"
+                "- The reranked pipeline improved quality enough to justify the extra latency.\n"
+            )
         return super().complete(prompt, model_config=model_config)
 
 
@@ -27,4 +37,4 @@ def make_mock_llm_adapter() -> LLMAdapter:
 
 
 def patch_runtime_llm_provider():
-    return patch("app.runtime._create_llm_provider", return_value=MockLLMProvider())
+    return patch("app.runtime._create_llm_provider", return_value=_CodegenReadyMockProvider())

@@ -16,7 +16,7 @@ from app.runtime import build_run_service, build_runtime
 from data_models import ExecutionResult, StopConditions
 from plugins import build_default_registry
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
-from scenarios.synthetic_research.plugin import build_synthetic_research_bundle
+from scenarios.synthetic_research.plugin import SyntheticResearchCoder, build_synthetic_research_bundle
 from tests._llm_test_utils import make_mock_llm_adapter, patch_runtime_llm_provider
 
 
@@ -211,6 +211,21 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         self.assertTrue(outcome.usefulness_eligible)
         self.assertEqual(signal.stage, "utility")
         self.assertEqual(signal.reason, "eligible")
+
+    def test_coder_rejects_placeholder_output_from_llm(self) -> None:
+        from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
+        from data_models import ExperimentNode, Proposal
+
+        raw = "## Findings\n1. TODO: fill in results\n2. TBD"
+        coder = SyntheticResearchCoder(
+            llm_adapter=LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        )
+        experiment = ExperimentNode(node_id="node-1", run_id="run-1", branch_id="main", workspace_ref=self._tmpdir.name)
+        proposal = Proposal(proposal_id="p-1", summary="synthetic task", constraints=[])
+        scenario = ScenarioContext(run_id="run-1", scenario_name="synthetic_research", input_payload={}, task_summary="synthetic task")
+
+        with self.assertRaises(ValueError):
+            coder.develop(experiment, proposal, scenario)
 
 
 if __name__ == "__main__":

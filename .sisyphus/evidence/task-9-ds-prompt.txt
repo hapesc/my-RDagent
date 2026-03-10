@@ -1,0 +1,30 @@
+[92m18:38:57 - LiteLLM:WARNING[0m: get_model_cost_map.py:213 - LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: Using SOCKS proxy, but the 'socksio' package is not installed. Make sure to install httpx using `pip install httpx[socks]`.. Falling back to local backup.
+You are a research engineer translating a proposal into an executable experiment design.
+
+## Research Proposal
+classify iris
+
+## Known Risks
+  (none)
+
+## Experiment Context
+- Scenario: data_science
+- Node ID: node-unknown
+- Workspace: /tmp
+
+## Output Fields
+- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).
+- `description`: 2-3 sentences covering: (1) what runs, (2) what it measures, (3) what output files are produced.
+- `location`: Use the workspace path provided above.
+- `code`: Full executable Python program in ONE fenced code block using this exact format:
+  ```python
+  # executable code here
+  ```
+
+## Data Science Coding Requirements
+1. Write runnable Python code, not pseudocode.
+2. Read input data from a variable named `data_source` (exact name required).
+3. Write evaluation outputs to `metrics.json` and serialize metrics via `json.dumps({'metric': value})`.
+4. Use only safe, standard data-science imports (e.g., pandas, numpy, sklearn, scipy, json, pathlib).
+5. Do NOT use TODO, placeholder, or template patterns.
+

@@ -146,27 +146,35 @@ def planning_strategy_prompt(
 
 
 def coding_prompt(
-    proposal_summary: str,
-    constraints: list[str],
-    experiment_node_id: str,
-    workspace_ref: str,
-    scenario_name: str,
+    proposal_summary: str | None = None,
+    constraints: list[str] | None = None,
+    experiment_node_id: str | None = None,
+    workspace_ref: str | None = None,
+    scenario_name: str | None = None,
+    scenario_type: str | None = None,
+    task_desc: str | None = None,
+    workspace: str | None = None,
 ) -> str:
-    constraints_block = "\n".join(f"  - {c}" for c in constraints) if constraints else "  (none)"
+    constraints_list = constraints or []
+    normalized_summary = proposal_summary if proposal_summary is not None else (task_desc or "")
+    normalized_node_id = experiment_node_id or "node-unknown"
+    normalized_workspace = workspace_ref or workspace or "/tmp/rd_agent_workspace"
+    normalized_scenario = scenario_name or scenario_type or "unknown"
+    constraints_block = "\n".join(f"  - {c}" for c in constraints_list) if constraints_list else "  (none)"
 
-    return (
+    base_prompt = (
         f"You are a research engineer translating a proposal into an executable experiment design.\n"
         f"\n"
         f"## Research Proposal\n"
-        f"{proposal_summary}\n"
+        f"{normalized_summary}\n"
         f"\n"
         f"## Known Risks\n"
         f"{constraints_block}\n"
         f"\n"
         f"## Experiment Context\n"
-        f"- Scenario: {scenario_name}\n"
-        f"- Node ID: {experiment_node_id}\n"
-        f"- Workspace: {workspace_ref}\n"
+        f"- Scenario: {normalized_scenario}\n"
+        f"- Node ID: {normalized_node_id}\n"
+        f"- Workspace: {normalized_workspace}\n"
         f"\n"
         f"## Output Fields\n"
         f"- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).\n"
@@ -174,6 +182,48 @@ def coding_prompt(
         f"(3) what output files are produced.\n"
         f"- `location`: Use the workspace path provided above.\n"
     )
+
+    if scenario_type is None:
+        return base_prompt
+
+    if scenario_type == "data_science":
+        return (
+            f"{base_prompt}"
+            f"- `code`: Full executable Python program in ONE fenced code block using this exact format:\n"
+            f"  ```python\n"
+            f"  # executable code here\n"
+            f"  ```\n"
+            f"\n"
+            f"## Data Science Coding Requirements\n"
+            f"1. Write runnable Python code, not pseudocode.\n"
+            f"2. Read input data from a variable named `data_source` (exact name required).\n"
+            f"3. Write evaluation outputs to `metrics.json` and serialize metrics via `json.dumps({{'metric': value}})`.\n"
+            f"4. Use only safe, standard data-science imports (e.g., pandas, numpy, sklearn, scipy, json, pathlib).\n"
+            f"5. Do NOT use TODO, placeholder, or template patterns.\n"
+        )
+
+    if scenario_type == "quant":
+        return (
+            f"{base_prompt}"
+            f"- `code`: Python factor-computation implementation in ONE fenced `python` code block, "
+            f"including signal construction and metric calculation.\n"
+            f"\n"
+            f"## Quant Coding Requirements\n"
+            f"1. Implement a concrete, executable factor computation pipeline.\n"
+            f"2. Include clear input assumptions and produced metrics/output artifacts.\n"
+            f"3. Avoid placeholder logic.\n"
+        )
+
+    if scenario_type == "synthetic_research":
+        return (
+            f"{base_prompt}"
+            f"\n"
+            f"## Synthetic Research Requirements\n"
+            f"Provide structured explanatory text only. Do NOT return executable code.\n"
+            f"Focus on concise, evidence-oriented research notes and expected findings.\n"
+        )
+
+    return base_prompt
 
 
 def feedback_prompt(

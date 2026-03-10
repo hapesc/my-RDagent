@@ -216,3 +216,13 @@ class TestCodingPrompt:
         )
         assert "do not wrap the report in json" in prompt.lower() or "return only the markdown artifact" in prompt.lower()
         assert "markdown only" in prompt.lower() or "no json wrapper" in prompt.lower()
+
+    def test_coding_prompt_stays_compact_enough_for_single_round_codegen(self):
+        prompt = coding_prompt(
+            proposal_summary="build a feature engineering pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert len(prompt) < 3200

@@ -284,7 +284,9 @@ def _render_few_shot_examples(scenario_name: str) -> str:
         return "## Reference Implementation\nNo curated examples are available for this scenario."
 
     rendered_examples: list[str] = ["## Reference Implementation"]
-    for index, example in enumerate(examples[:2], start=1):
+    for index, example in enumerate(examples[:1], start=1):
+        artifact_lines = example["artifact"].splitlines()
+        preview = "\n".join(artifact_lines[:12]).strip()
         rendered_examples.extend(
             [
                 f"### Example {index}",
@@ -292,7 +294,7 @@ def _render_few_shot_examples(scenario_name: str) -> str:
                 f"Artifact type: {example['artifact_type']}",
                 "Artifact:",
                 "```",
-                example["artifact"],
+                preview,
                 "```",
             ]
         )

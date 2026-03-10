@@ -356,6 +356,15 @@ class QuantCoder(Coder):
         return hypothesis
 
     def _generate_factor_code(self, proposal: Proposal, scenario: ScenarioContext, experiment: ExperimentNode) -> str:
+        """Generate factor code via LLM with validation, falling back to a
+        default momentum factor on failure.
+
+        Unlike ``DataScienceCoder`` which raises on code-gen failure
+        (fail-fast), quant uses graceful degradation: a validation or
+        LLM error returns ``_DEFAULT_FACTOR_CODE`` so the backtest loop
+        can still produce metrics and actionable feedback for the next
+        CoSTEER round.
+        """
         if self._llm is None:
             return _DEFAULT_FACTOR_CODE
 

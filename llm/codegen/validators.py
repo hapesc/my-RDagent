@@ -4,7 +4,18 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
-from plugins.contracts import CommonUsefulnessGate
+DEFAULT_PLACEHOLDER_TOKENS: frozenset[str] = frozenset(
+    {
+        "todo",
+        "tbd",
+        "lorem ipsum",
+        "placeholder",
+        "fill in",
+        "insert here",
+        "{{",
+        "}}",
+    }
+)
 
 
 @dataclass
@@ -39,7 +50,7 @@ def validate_compile(code: str) -> ValidationResult:
 
 
 def detect_placeholders(code: str, tokens: set[str] | None = None) -> ValidationResult:
-    token_set = tokens or set(CommonUsefulnessGate._PLACEHOLDER_TOKENS)
+    token_set = tokens or DEFAULT_PLACEHOLDER_TOKENS
     normalized_code = code.lower()
 
     detected: list[str] = []

@@ -102,7 +102,8 @@ def test_develop_writes_llm_code_not_template(tmp_path: Path, monkeypatch) -> No
     coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
     pipeline_text = (workspace / "pipeline.py").read_text(encoding="utf-8")
 
-    assert pipeline_text == llm_code
+    assert pipeline_text.endswith(llm_code)
+    assert pipeline_text.startswith("data_source =")
     assert "import csv" not in pipeline_text
     assert "column_count" not in pipeline_text
 
@@ -115,7 +116,7 @@ def test_develop_code_is_executable(tmp_path: Path, monkeypatch) -> None:
     coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
     pipeline_text = (workspace / "pipeline.py").read_text(encoding="utf-8")
 
-    assert pipeline_text == llm_code
+    assert pipeline_text.endswith(llm_code)
     compile(pipeline_text, str(workspace / "pipeline.py"), "exec")
 
 

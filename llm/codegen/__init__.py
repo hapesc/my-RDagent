@@ -20,7 +20,7 @@ def emit_code_source_event(code_source: str, scenario: str, details: dict[str, A
 
     try:
         from data_models import Event, EventType
-    except Exception:
+    except (ImportError, AttributeError):
         logger.exception("Failed to import trace event dependencies for code_source event")
         logger.info(
             "code_source_event: source=%s scenario=%s details=%s",
@@ -47,7 +47,7 @@ def emit_code_source_event(code_source: str, scenario: str, details: dict[str, A
 
             TraceStore(TraceStoreConfig(storage_path=trace_storage_path)).append_event(event)
             return
-        except Exception:
+        except (ImportError, AttributeError, OSError):
             logger.exception("Failed to emit code_source event via TraceStore")
 
     sqlite_path = os.getenv("AGENTRD_SQLITE_PATH", "").strip()
@@ -57,7 +57,7 @@ def emit_code_source_event(code_source: str, scenario: str, details: dict[str, A
 
             SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path)).append_event(event)
             return
-        except Exception:
+        except (ImportError, AttributeError, OSError):
             logger.exception("Failed to emit code_source event via SQLiteMetadataStore")
 
     logger.info(

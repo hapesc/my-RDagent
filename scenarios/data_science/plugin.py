@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import csv
-import importlib.util
 import json
 import logging
-import os
 import re
-import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -208,14 +205,9 @@ def _resolve_split_seed(value: Any) -> int:
 
 
 def _load_validate_code_safety_func() -> Any:
-    module_path = Path(__file__).with_name("code_safety.py")
-    spec = importlib.util.spec_from_file_location("data_science_code_safety", module_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("Unable to load data science code safety module")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return getattr(module, "validate_code_safety")
+    from scenarios.data_science.code_safety import validate_code_safety
+
+    return validate_code_safety
 
 
 def _is_mock_llm_adapter(adapter: LLMAdapter) -> bool:
@@ -230,10 +222,13 @@ def _should_allow_metrics_open_write(safety_violations: list[str], code: str) ->
 
 
 def _ensure_data_source_binding(code: str, data_source: str) -> str:
+    """Prepend ``data_source = ...`` when the generated code lacks one.
+
+    LLM-generated code may omit a ``data_source`` assignment because the
+    prompt only asks the model to *use* the variable, not define it.  In
+    that case we inject the binding so the script is self-contained.
+    """
     if "data_source =" in code:
-        return code
-    pytest_current = os.getenv("PYTEST_CURRENT_TEST", "")
-    if "test_develop_code_has_data_source" not in pytest_current:
         return code
     return f"data_source = {data_source!r}\n" + code
 
@@ -387,6 +382,26 @@ class DataScienceExperimentGenerator(ExperimentGenerator):
         )
 
 
+def _emit_ds_code_source(
+    code_source: str,
+    experiment: ExperimentNode,
+    errors: list[str] | None = None,
+) -> None:
+    details: dict[str, Any] = {
+        "run_id": experiment.run_id,
+        "branch_id": experiment.branch_id,
+        "loop_index": experiment.loop_index,
+        "node_id": experiment.node_id,
+    }
+    if code_source != CODE_SOURCE_TEMPLATE:
+        details["round"] = experiment.loop_index
+    if errors:
+        details["errors"] = errors
+    if isinstance(experiment.hypothesis, dict):
+        experiment.hypothesis["_code_source"] = code_source
+    emit_code_source_event(code_source, "data_science", details)
+
+
 class DataScienceCoder(Coder):
     def __init__(self, llm_adapter: LLMAdapter | None = None) -> None:
         self._llm_adapter = llm_adapter
@@ -423,39 +438,14 @@ class DataScienceCoder(Coder):
                     model_config=scenario.step_config.coding,
                 )
             except Exception as exc:
-                errors = [f"generate_code failed: {exc}"]
-                if isinstance(experiment.hypothesis, dict):
-                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
-                emit_code_source_event(
-                    CODE_SOURCE_FAILED,
-                    "data_science",
-                    {
-                        "run_id": experiment.run_id,
-                        "branch_id": experiment.branch_id,
-                        "loop_index": experiment.loop_index,
-                        "node_id": experiment.node_id,
-                        "round": experiment.loop_index,
-                        "errors": errors,
-                    },
-                )
+                _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, [f"generate_code failed: {exc}"])
                 raise RuntimeError("data_science code generation failed") from exc
 
             if not generated_code:
                 if _is_mock_llm_adapter(self._llm_adapter):
                     pipeline_script = self._build_pipeline_script(data_source=data_source)
                     (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-                    if isinstance(experiment.hypothesis, dict):
-                        experiment.hypothesis["_code_source"] = "template"
-                    emit_code_source_event(
-                        CODE_SOURCE_TEMPLATE,
-                        "data_science",
-                        {
-                            "run_id": experiment.run_id,
-                            "branch_id": experiment.branch_id,
-                            "loop_index": experiment.loop_index,
-                            "node_id": experiment.node_id,
-                        },
-                    )
+                    _emit_ds_code_source(CODE_SOURCE_TEMPLATE, experiment)
                     readme_text = f"{code_draft.description}\n{pipeline_script}\n\ncode_source=template"
                     (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
                     return CodeArtifact(
@@ -463,21 +453,7 @@ class DataScienceCoder(Coder):
                         description=readme_text,
                         location=str(workspace),
                     )
-                errors = ["generate_code returned empty code"]
-                if isinstance(experiment.hypothesis, dict):
-                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
-                emit_code_source_event(
-                    CODE_SOURCE_FAILED,
-                    "data_science",
-                    {
-                        "run_id": experiment.run_id,
-                        "branch_id": experiment.branch_id,
-                        "loop_index": experiment.loop_index,
-                        "node_id": experiment.node_id,
-                        "round": experiment.loop_index,
-                        "errors": errors,
-                    },
-                )
+                _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, ["generate_code returned empty code"])
                 raise RuntimeError("data_science code generation returned empty code")
 
             generated_code = _ensure_data_source_binding(generated_code, data_source)
@@ -498,54 +474,18 @@ class DataScienceCoder(Coder):
                 errors.extend(content_result.errors)
 
             if errors:
-                if isinstance(experiment.hypothesis, dict):
-                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
-                emit_code_source_event(
-                    CODE_SOURCE_FAILED,
-                    "data_science",
-                    {
-                        "run_id": experiment.run_id,
-                        "branch_id": experiment.branch_id,
-                        "loop_index": experiment.loop_index,
-                        "node_id": experiment.node_id,
-                        "round": experiment.loop_index,
-                        "errors": errors,
-                    },
-                )
+                _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, errors)
                 raise RuntimeError(f"data_science code validation failed: {'; '.join(errors)}")
 
             artifact_id = code_draft.artifact_id
             pipeline_script = generated_code
             (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-            if isinstance(experiment.hypothesis, dict):
-                experiment.hypothesis["_code_source"] = CODE_SOURCE_LLM
-            emit_code_source_event(
-                CODE_SOURCE_LLM,
-                "data_science",
-                {
-                    "run_id": experiment.run_id,
-                    "branch_id": experiment.branch_id,
-                    "loop_index": experiment.loop_index,
-                    "node_id": experiment.node_id,
-                    "round": experiment.loop_index,
-                },
-            )
+            _emit_ds_code_source(CODE_SOURCE_LLM, experiment)
             readme_text = pipeline_script
         else:
             pipeline_script = self._build_pipeline_script(data_source=data_source)
             (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
-            if isinstance(experiment.hypothesis, dict):
-                experiment.hypothesis["_code_source"] = "template"
-            emit_code_source_event(
-                CODE_SOURCE_TEMPLATE,
-                "data_science",
-                {
-                    "run_id": experiment.run_id,
-                    "branch_id": experiment.branch_id,
-                    "loop_index": experiment.loop_index,
-                    "node_id": experiment.node_id,
-                },
-            )
+            _emit_ds_code_source(CODE_SOURCE_TEMPLATE, experiment)
             readme_text = f"{pipeline_script}\n\ncode_source=template"
         (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
 

@@ -2,7 +2,7 @@
 
 ## Runtime prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - SQLite is used implicitly through the stdlib
 - For HTTP serving: `fastapi` and `uvicorn`
 - For the UI: `streamlit`
@@ -11,7 +11,7 @@
 Example install:
 
 ```bash
-python3 -m pip install fastapi uvicorn streamlit
+python3.11 -m pip install fastapi uvicorn streamlit
 ```
 
 ## Configuration setup

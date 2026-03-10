@@ -156,6 +156,108 @@ class MemoryServiceTests(unittest.TestCase):
             self.assertEqual(context.highlights[0], "top ranked branch memory")
             self.assertEqual(len(context.scored_items), 2)
 
+    def test_json_extract_exact_match_single_key(self) -> None:
+        """Test json_extract matching with single key-value pair."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory("case 1", {"error_type": "timeout"})
+            service.write_memory("case 2", {"error_type": "oom"})
+
+            context = service.query_context({"error_type": "timeout"})
+
+            self.assertEqual(context.items, ["case 1"])
+
+    def test_json_extract_numeric_values(self) -> None:
+        """Test json_extract with numeric string values stored as JSON strings."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory("iteration 5 case", {"iteration": "5", "step": "coding"})
+            service.write_memory("iteration 3 case", {"iteration": "3", "step": "coding"})
+
+            context = service.query_context({"iteration": "5"})
+
+            self.assertEqual(context.items, ["iteration 5 case"])
+
+    def test_json_extract_multiple_keys_all_must_match(self) -> None:
+        """Test that json_extract AND clause requires ALL metadata keys to match."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory(
+                "both match",
+                {"error_type": "timeout", "step": "coding"},
+            )
+            service.write_memory(
+                "only error matches",
+                {"error_type": "timeout", "step": "running"},
+            )
+            service.write_memory(
+                "only step matches",
+                {"error_type": "oom", "step": "coding"},
+            )
+
+            context = service.query_context({"error_type": "timeout", "step": "coding"})
+
+            self.assertEqual(context.items, ["both match"])
+
+    def test_json_extract_key_order_independence(self) -> None:
+        """Test that json_extract matches regardless of JSON key order."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            # write_memory uses sort_keys=True, so stored JSON always has sorted keys
+            service.write_memory("test case", {"scenario": "data_science", "error_type": "timeout"})
+
+            # Query with different order should still match
+            context = service.query_context({"error_type": "timeout", "scenario": "data_science"})
+
+            self.assertEqual(context.items, ["test case"])
+
+    def test_json_extract_special_characters_in_values(self) -> None:
+        """Test json_extract with special characters in metadata values."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory(
+                "special case",
+                {"error_msg": 'connection refused: "db" timeout'},
+            )
+
+            context = service.query_context({"error_msg": 'connection refused: "db" timeout'})
+
+            self.assertEqual(context.items, ["special case"])
+
+    def test_json_extract_substring_does_not_match(self) -> None:
+        """Test that json_extract requires exact match, not substring."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory("timeout case", {"error_type": "timeout_long"})
+
+            context = service.query_context({"error_type": "timeout"})
+
+            self.assertEqual(context.items, [])
+
+    def test_json_extract_no_false_positives_across_keys(self) -> None:
+        """Test that json_extract value in one key doesn't match different key."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "memory.db")
+            service = MemoryService(MemoryServiceConfig(db_path=db_path))
+
+            service.write_memory("case", {"type1": "timeout", "type2": "oom"})
+
+            context = service.query_context({"type2": "timeout"})
+
+            self.assertEqual(context.items, [])
+
 
 if __name__ == "__main__":
     unittest.main()

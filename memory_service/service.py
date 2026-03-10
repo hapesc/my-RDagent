@@ -234,8 +234,9 @@ class MemoryService:
         metadata_query = {key: value for key, value in query.items() if key not in _CONTEXT_QUERY_CONTROL_KEYS}
 
         for key, value in metadata_query.items():
-            clauses.append("metadata LIKE ?")
-            params.append(f'%"{key}": "{value}"%')
+            clauses.append(f"json_extract(metadata, ?) = ?")
+            params.append(f"$.{key}")
+            params.append(value)
 
         if clauses:
             sql = f"{sql} WHERE {' AND '.join(clauses)}"

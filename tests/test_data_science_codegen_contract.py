@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
+from data_models import CodeArtifact, DebugConfig
 from data_models import ExperimentNode, Proposal
 from llm import CodeDraft
 from plugins.contracts import ScenarioContext
@@ -183,3 +184,61 @@ def test_develop_artifact_description_has_code(tmp_path: Path, monkeypatch) -> N
 
     assert len(artifact.description) > 100
     assert "metrics.json" in artifact.description
+
+
+def test_debug_sampling_works_with_llm_code(tmp_path: Path) -> None:
+    plugin_path = Path(__file__).resolve().parents[1] / "scenarios" / "data_science" / "plugin.py"
+    module_name = "data_science_runner_plugin_under_test"
+    spec = importlib.util.spec_from_file_location(module_name, plugin_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+
+    class _BackendStub:
+        def execute(self, **kwargs):
+            return types.SimpleNamespace(
+                stdout="ok",
+                stderr="",
+                exit_code=0,
+                timed_out=False,
+                artifact_paths=[],
+                artifact_manifest={"paths": []},
+                outcome=None,
+                duration_sec=0.01,
+            )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    pipeline_path = workspace / "pipeline.py"
+    pipeline_path.write_text(
+        'data_source = "original_llm.csv"\n'
+        "import json\n"
+        "with open('metrics.json', 'w', encoding='utf-8') as f:\n"
+        "    json.dump({'ok': True}, f)\n",
+        encoding="utf-8",
+    )
+
+    real_data_source = tmp_path / "train.csv"
+    real_data_source.write_text("id,x,y\n1,10,1\n2,11,0\n3,12,1\n", encoding="utf-8")
+
+    runner = module.DataScienceRunner(backend=_BackendStub())
+    scenario = ScenarioContext(
+        run_id="run-debug-sampling",
+        scenario_name="data_science",
+        input_payload={"data_source": str(real_data_source), "command": "python3 pipeline.py"},
+        config={"debug_config": DebugConfig(debug_mode=True, sample_fraction=0.5, supports_debug_sampling=True)},
+    )
+    artifact = CodeArtifact(
+        artifact_id="artifact-debug-sampling",
+        description="llm generated",
+        location=str(workspace),
+    )
+
+    _ = runner.run(artifact=artifact, scenario=scenario)
+    updated_pipeline_text = pipeline_path.read_text(encoding="utf-8")
+    expected_sampled_path = real_data_source.with_name(f"{real_data_source.stem}.debug_sample{real_data_source.suffix}")
+
+    assert f"data_source = {str(expected_sampled_path)!r}" in updated_pipeline_text
+    assert 'data_source = "original_llm.csv"' not in updated_pipeline_text

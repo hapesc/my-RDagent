@@ -7,6 +7,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -617,10 +618,11 @@ class DataScienceRunner(Runner):
                         sampled_content = "\n".join([header, *rows[:sample_size]]) + "\n"
                         sampled_path.write_text(sampled_content, encoding="utf-8")
                         pipeline_text = pipeline_path.read_text(encoding="utf-8")
-                        pipeline_text = pipeline_text.replace(
-                            f"data_source = {data_source!r}",
+                        pipeline_text = re.sub(
+                            r"data_source\s*=\s*[^\n]+",
                             f"data_source = {str(sampled_path)!r}",
-                            1,
+                            pipeline_text,
+                            count=1,
                         )
                         pipeline_path.write_text(pipeline_text, encoding="utf-8")
                         logger.info(

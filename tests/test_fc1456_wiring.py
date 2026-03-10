@@ -208,20 +208,27 @@ class TestFC1456Wiring(unittest.TestCase):
 
         prompt = llm.generate_structured.call_args.args[0]
         prompt_lower = prompt.lower()
-        
+
         self.assertIn("prior context", prompt_lower)
         self.assertIn("recent failure: leakage", prompt)
         self.assertIn("strategic guidance", prompt_lower)
         self.assertIn("focus:refine", prompt)
         self.assertIn("parent branch continuity", prompt_lower)
-        
+
         score_match = cast(re.Match | None, re.search(r"cross-branch\s+idea\s*\(score=([0-9.]+)\)", prompt))
         self.assertIsNotNone(score_match)
         if score_match is not None:
             extracted_score = float(score_match.group(1))
             self.assertAlmostEqual(extracted_score, 0.91, places=2)
-        
-        parent_section = cast(re.Match | None, re.search(r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)", prompt, re.IGNORECASE))
+
+        parent_section = cast(
+            re.Match | None,
+            re.search(
+                r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)",
+                prompt,
+                re.IGNORECASE
+            )
+        )
         self.assertIsNotNone(parent_section)
         if parent_section is not None:
             parent_content = parent_section.group(1)
@@ -244,20 +251,27 @@ class TestFC1456Wiring(unittest.TestCase):
 
         prompt = llm.generate_structured.call_args.args[0]
         prompt_lower = prompt.lower()
-        
+
         self.assertIn("prior context", prompt_lower)
         self.assertIn("same branch memory", prompt)
         self.assertIn("strategic guidance", prompt_lower)
         self.assertIn("focus:novelty", prompt)
         self.assertIn("parent branch continuity", prompt_lower)
-        
+
         score_match = cast(re.Match | None, re.search(r"cross\s+branch\s+alpha\s*\(score=([0-9.]+)\)", prompt))
         self.assertIsNotNone(score_match)
         if score_match is not None:
             extracted_score = float(score_match.group(1))
             self.assertAlmostEqual(extracted_score, 0.88, places=2)
-        
-        parent_section = cast(re.Match | None, re.search(r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)", prompt, re.IGNORECASE))
+
+        parent_section = cast(
+            re.Match | None,
+            re.search(
+                r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)",
+                prompt,
+                re.IGNORECASE
+            )
+        )
         self.assertIsNotNone(parent_section)
         if parent_section is not None:
             parent_content = parent_section.group(1)
@@ -280,7 +294,7 @@ class TestFC1456Wiring(unittest.TestCase):
         self.assertIn("memory insight", proposal.summary)
         self.assertIn("strategic guidance", summary_lower)
         self.assertIn("parent branch continuity", summary_lower)
-        
+
         score_match = cast(re.Match | None, re.search(r"cross\s+branch\s+note\s*\(score=([0-9.]+)\)", proposal.summary))
         self.assertIsNotNone(score_match)
         if score_match is not None:

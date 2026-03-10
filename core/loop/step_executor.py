@@ -7,7 +7,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
@@ -47,7 +47,7 @@ class StepExecutionResult:
     artifact_id: str
     score: Score
     feedback: FeedbackRecord
-    execution_result: Optional["ExecutionResult"] = None
+    execution_result: ExecutionResult | None = None
     outcome: ExecutionOutcomeContract | None = None
     step_state: StepState = cast(StepState, StepState.RECORDED)
     failed_stage: str | None = None

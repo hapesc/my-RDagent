@@ -6,8 +6,8 @@ from unittest.mock import Mock
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutionResult
 from data_models import (
     ArtifactVerificationStatus,
-    ExecutionResult,
     ExecutionOutcomeContract,
+    ExecutionResult,
     ExperimentNode,
     FeedbackRecord,
     Plan,

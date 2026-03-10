@@ -59,6 +59,34 @@ class TestPlannerWithLLM(unittest.TestCase):
         self.assertGreaterEqual(plan.exploration_strength, 0.0)
         self.assertLessEqual(plan.exploration_strength, 1.0)
 
+    def test_generate_plan_prefers_valid_llm_budget_allocation(self):
+        ctx = PlanningContext(
+            loop_state=LoopState(loop_id="l1", iteration=2),
+            budget=BudgetLedger(total_time_budget=100.0, elapsed_time=50.0),
+        )
+        plan = self.planner.generate_plan(ctx)
+        self.assertEqual(set(plan.budget_allocation.keys()), {"proposal", "coding", "running", "feedback"})
+        self.assertEqual(
+            plan.budget_allocation,
+            {"proposal": 120.0, "coding": 180.0, "running": 60.0, "feedback": 60.0},
+        )
+        for seconds in plan.budget_allocation.values():
+            self.assertGreater(seconds, 0.0)
+
+    def test_generate_plan_includes_history_and_strategy_guidance(self):
+        ctx = PlanningContext(
+            loop_state=LoopState(loop_id="l1", iteration=2),
+            budget=BudgetLedger(total_time_budget=100.0, elapsed_time=50.0),
+            history_summary={"iteration_1": "improved baseline"},
+        )
+
+        plan = self.planner.generate_plan(ctx)
+
+        self.assertIn("history:available", plan.guidance)
+        self.assertIn("strategy:balanced_exploration", plan.guidance)
+        self.assertIn("method:targeted_improvement", plan.guidance)
+        self.assertIn("rationale:Mock planning strategy based on current progress", plan.guidance)
+
     def test_generate_plan_early_progress(self):
         ctx = PlanningContext(
             loop_state=LoopState(loop_id="l1", iteration=0),
@@ -112,3 +140,49 @@ class TestPlannerLLMFallback(unittest.TestCase):
         )
         strategy = planner.generate_strategy(ctx)
         self.assertIsNone(strategy)
+
+    def test_invalid_llm_budget_falls_back_to_equal_step_split(self):
+        class InvalidBudgetProvider:
+            def complete(self, prompt, model_config=None):
+                return json.dumps(
+                    {
+                        "strategy_name": "invalid_budget",
+                        "method_selection": "fallback",
+                        "exploration_weight": 0.4,
+                        "reasoning": "invalid budget payload",
+                        "budget_allocation": {"proposal": 10, "coding": 20},
+                    }
+                )
+
+        adapter = LLMAdapter(InvalidBudgetProvider())
+        planner = Planner(
+            PlannerConfig(use_llm_planning=True),
+            llm_adapter=adapter,
+        )
+        ctx = PlanningContext(
+            loop_state=LoopState(loop_id="l1", iteration=1),
+            budget=BudgetLedger(total_time_budget=100.0, elapsed_time=20.0),
+        )
+        plan = planner.generate_plan(ctx)
+        self.assertEqual(set(plan.budget_allocation.keys()), {"proposal", "coding", "running", "feedback"})
+        self.assertEqual(
+            plan.budget_allocation,
+            {"proposal": 20.0, "coding": 20.0, "running": 20.0, "feedback": 20.0},
+        )
+        self.assertTrue(all(seconds == 20.0 for seconds in plan.budget_allocation.values()))
+
+    def test_default_budget_allocation_uses_default_total_when_budget_invalid(self):
+        planner = Planner(PlannerConfig())
+        allocation = planner._build_budget_allocation(total_budget=0.0, elapsed_time=100.0)
+        self.assertEqual(
+            allocation,
+            {"proposal": 125.0, "coding": 125.0, "running": 125.0, "feedback": 125.0},
+        )
+
+    def test_default_budget_allocation_uses_minimum_when_remaining_depleted(self):
+        planner = Planner(PlannerConfig())
+        allocation = planner._build_budget_allocation(total_budget=100.0, elapsed_time=120.0)
+        self.assertEqual(
+            allocation,
+            {"proposal": 1.0, "coding": 1.0, "running": 1.0, "feedback": 1.0},
+        )

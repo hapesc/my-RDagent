@@ -169,6 +169,41 @@ class TestValidationSelector(unittest.TestCase):
         ranked = vs.rank_candidates([])
         self.assertEqual(len(ranked), 0)
 
+    def test_rank_candidates_scores_sorted_descending(self):
+        from evaluation_service.service import EvaluationService, EvaluationServiceConfig
+
+        ValidationSelector = import_module(
+            "evaluation_service.validation_selector"
+        ).ValidationSelector
+
+        es = EvaluationService(EvaluationServiceConfig(metric_name="fc6_metric"))
+        vs = ValidationSelector(es)
+        candidates = [
+            ExecutionResult(run_id="r-low", exit_code=1, logs_ref="", artifacts_ref=""),
+            ExecutionResult(run_id="r-mid", exit_code=0, logs_ref="trace", artifacts_ref=""),
+            ExecutionResult(run_id="r-high", exit_code=0, logs_ref="trace", artifacts_ref='["out.csv"]'),
+        ]
+
+        ranked = vs.rank_candidates(candidates)
+
+        self.assertEqual([candidate.run_id for candidate, _ in ranked], ["r-high", "r-mid", "r-low"])
+        self.assertGreater(ranked[0][1].value, ranked[1][1].value)
+        self.assertGreater(ranked[1][1].value, ranked[2][1].value)
+        self.assertTrue(all(score.metric_name == "fc6_metric" for _, score in ranked))
+
+    def test_select_best_raises_for_empty_candidates(self):
+        from evaluation_service.service import EvaluationService, EvaluationServiceConfig
+
+        ValidationSelector = import_module(
+            "evaluation_service.validation_selector"
+        ).ValidationSelector
+
+        es = EvaluationService(EvaluationServiceConfig())
+        vs = ValidationSelector(es)
+
+        with self.assertRaises(ValueError):
+            vs.select_best([])
+
 
 class TestAggregateBranchScores(unittest.TestCase):
     """aggregate_branch_scores returns weighted average."""
@@ -227,3 +262,40 @@ class TestGetLeaderboard(unittest.TestCase):
         es.evaluate_run(er)
         lb = es.get_leaderboard("default")
         self.assertIsInstance(lb, dict)
+
+    def test_leaderboard_records_metrics_schema_and_timestamp(self):
+        from evaluation_service.service import EvaluationService, EvaluationServiceConfig
+
+        es = EvaluationService(EvaluationServiceConfig(metric_name="fc6_metric"))
+        er = ExecutionResult(
+            run_id="r-schema",
+            exit_code=0,
+            logs_ref="trace logs",
+            artifacts_ref='["artifact.json"]',
+            artifact_manifest={"task_id": "task-fc6"},
+        )
+
+        eval_result = es.evaluate_run(er)
+        lb = es.get_leaderboard("task-fc6")
+
+        self.assertIn("r-schema", lb)
+        self.assertEqual(lb["r-schema"]["score"], eval_result.score.value)
+        self.assertEqual(lb["r-schema"]["metrics"]["metric_name"], "fc6_metric")
+        self.assertEqual(lb["r-schema"]["metrics"]["total"], eval_result.score.value)
+        self.assertIn("execution", lb["r-schema"]["metrics"])
+        self.assertIn("alignment", lb["r-schema"]["metrics"])
+        self.assertIn("debug_compliance", lb["r-schema"]["metrics"])
+        self.assertIn("authenticity", lb["r-schema"]["metrics"])
+        self.assertTrue(lb["r-schema"]["timestamp"])
+
+    def test_leaderboard_uses_default_task_when_manifest_missing(self):
+        from evaluation_service.service import EvaluationService, EvaluationServiceConfig
+
+        es = EvaluationService(EvaluationServiceConfig())
+        er = ExecutionResult(run_id="r-default", exit_code=0, logs_ref="logs", artifacts_ref='["a.txt"]')
+
+        es.evaluate_run(er)
+
+        lb = es.get_leaderboard("default")
+        self.assertIn("r-default", lb)
+        self.assertGreater(lb["r-default"]["score"], 0.0)

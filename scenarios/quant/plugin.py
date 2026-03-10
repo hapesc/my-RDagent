@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+
+import pandas as pd
 
 from data_models import (
     CodeArtifact,
     ContextPack,
+    DataSplitManifest,
     ExecutionResult,
     ExperimentNode,
     FeedbackRecord,
@@ -37,6 +41,7 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, ScenarioManifest, StepOverrideConfig
+from evaluation_service.stratified_splitter import StratifiedSplitter
 
 from .backtest import LightweightBacktester
 from .constants import METRIC_THRESHOLDS
@@ -80,14 +85,142 @@ class QuantConfig:
 
 
 class QuantScenarioPlugin(ScenarioPlugin):
-    def build_context(self, run_session: RunSession, input_payload: dict[str, Any]) -> ScenarioContext:
+    def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
+        split_manifest = _build_quant_split_manifest(input_payload)
         return ScenarioContext(
             run_id=run_session.run_id,
             scenario_name=run_session.scenario,
             input_payload=dict(input_payload),
+            config={"split_manifest": split_manifest},
             task_summary=str(input_payload.get("task_summary", "mine alpha factors")),
             step_config=StepOverrideConfig.from_dict(input_payload.get("step_config")),
         )
+
+
+def _build_quant_split_manifest(input_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    data_ids = _normalize_quant_ids(input_payload.get("data_ids"))
+    labels = _normalize_quant_labels(input_payload.get("labels"))
+    ordered_pairs = _extract_quant_ordered_pairs(input_payload)
+
+    if not data_ids and ordered_pairs:
+        data_ids = [data_id for _, data_id in ordered_pairs]
+
+    if not data_ids:
+        return None
+
+    splitter = StratifiedSplitter(
+        train_ratio=_resolve_quant_ratio(input_payload.get("train_ratio"), 0.9),
+        test_ratio=_resolve_quant_ratio(input_payload.get("test_ratio"), 0.1),
+        seed=_resolve_quant_seed(input_payload.get("split_seed", input_payload.get("seed", 42))),
+    )
+    if labels is not None and len(labels) == len(data_ids):
+        return asdict(splitter.split(data_ids, labels=labels))
+    if ordered_pairs:
+        ordered_ids = [data_id for _, data_id in ordered_pairs]
+        return asdict(_build_ordered_manifest(ordered_ids, splitter))
+    return asdict(splitter.split(data_ids, labels=None))
+
+
+def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[str, str]]:
+    direct_data_ids = _normalize_quant_ids(input_payload.get("data_ids"))
+    order_values = input_payload.get("timestamps")
+    if not isinstance(order_values, list):
+        order_values = input_payload.get("dates")
+    if isinstance(order_values, list) and len(order_values) == len(direct_data_ids):
+        return sorted(
+            [
+                (str(order_value), data_id)
+                for order_value, data_id in zip(order_values, direct_data_ids)
+                if str(data_id).strip()
+            ],
+            key=lambda item: item[0],
+        )
+
+    frame = _coerce_quant_frame(input_payload)
+    if frame is None or frame.empty:
+        return []
+
+    normalized = frame.copy()
+    id_column = _first_quant_column(normalized, ["id", "data_id", "row_id"])
+    if not id_column:
+        date_column = _first_quant_column(normalized, ["date", "datetime", "timestamp"])
+        stock_column = _first_quant_column(normalized, ["stock_id", "symbol", "ticker", "asset_id"])
+        if date_column and stock_column:
+            normalized["__split_id__"] = normalized[date_column].astype(str) + "|" + normalized[stock_column].astype(str)
+            id_column = "__split_id__"
+        elif date_column:
+            normalized["__split_id__"] = normalized[date_column].astype(str)
+            id_column = "__split_id__"
+        else:
+            normalized["__split_id__"] = normalized.index.astype(str)
+            id_column = "__split_id__"
+
+    order_column = _first_quant_column(normalized, ["date", "datetime", "timestamp"]) or id_column
+    normalized = normalized.sort_values(by=[order_column, id_column], kind="stable")
+    return [
+        (str(row[order_column]), str(row[id_column]))
+        for _, row in normalized.iterrows()
+    ]
+
+
+def _coerce_quant_frame(input_payload: Dict[str, Any]) -> Optional[pd.DataFrame]:
+    for key in ("ohlcv", "data_frame", "data", "records"):
+        value = input_payload.get(key)
+        if isinstance(value, pd.DataFrame):
+            return value
+        if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            return pd.DataFrame(value)
+    return None
+
+
+def _build_ordered_manifest(data_ids: List[str], splitter: StratifiedSplitter) -> DataSplitManifest:
+    if not data_ids:
+        return DataSplitManifest(seed=splitter._seed)
+
+    n = len(data_ids)
+    n_test = max(1, round(n * splitter._test_ratio)) if n > 1 else 0
+    n_train = n - n_test
+    return DataSplitManifest(
+        train_ids=list(data_ids[:n_train]),
+        val_ids=[],
+        test_ids=list(data_ids[n_train:]),
+        seed=splitter._seed,
+    )
+
+
+def _first_quant_column(frame: pd.DataFrame, candidates: List[str]) -> str:
+    for candidate in candidates:
+        if candidate in frame.columns:
+            return candidate
+    return ""
+
+
+def _normalize_quant_ids(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if str(item).strip()]
+
+
+def _normalize_quant_labels(value: Any) -> Optional[List[str]]:
+    if not isinstance(value, list):
+        return None
+    labels = [str(item) for item in value]
+    return labels if labels else None
+
+
+def _resolve_quant_ratio(value: Any, default: float) -> float:
+    try:
+        resolved = float(value)
+    except (TypeError, ValueError):
+        return default
+    return resolved if resolved > 0 else default
+
+
+def _resolve_quant_seed(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 42
 
 
 class QuantProposalEngine(ProposalEngine):
@@ -102,20 +235,50 @@ class QuantProposalEngine(ProposalEngine):
         plan: Plan,
         scenario: ScenarioContext,
     ) -> Proposal:
-        _ = context
-        _ = parent_ids
-        _ = plan
         iteration = int(scenario.input_payload.get("loop_index", 0))
         previous_results = scenario.input_payload.get("previous_results", [])
+        summary = task_summary or scenario.task_summary or "mine alpha factors"
+
+        highlights = list(getattr(context, "highlights", None) or [])
+        scored_items = list(getattr(context, "scored_items", None) or [])
+        context_lines: List[str] = [f"- {item}" for item in highlights if str(item).strip()]
+        for item, score in scored_items[:3]:
+            item_text = str(item).strip()
+            if not item_text:
+                continue
+            try:
+                score_text = f"{float(score):.3f}"
+            except (TypeError, ValueError):
+                score_text = "N/A"
+            context_lines.append(f"- {item_text} (score={score_text})")
+        if not context_lines:
+            context_lines = ["- None"]
+
+        guidance_items = list(getattr(plan, "guidance", None) or []) if plan is not None else []
+        guidance_text = (
+            "\n".join(f"- {str(item).strip()}" for item in guidance_items if str(item).strip())
+            or "No specific guidance"
+        )
+        parent_text = ", ".join(parent_ids) if parent_ids else "None"
+        context_text = "\n".join(context_lines)
+        enriched_context_block = (
+            "\n\nPrior Context:\n"
+            f"{context_text}\n\n"
+            "Strategic Guidance:\n"
+            f"{guidance_text}\n\n"
+            "Parent Branch Continuity:\n"
+            f"{parent_text}"
+        )
 
         prompt = (
             FACTOR_PROPOSAL_SYSTEM_PROMPT
             + "\n\n"
             + FACTOR_PROPOSAL_USER_TEMPLATE.format(
-                task_summary=task_summary or scenario.task_summary,
+                task_summary=summary,
                 previous_factors="\n".join(str(r) for r in previous_results) or "None yet",
                 feedback="No feedback yet." if not previous_results else "See previous results above.",
             )
+            + enriched_context_block
         )
         draft = self._llm.generate_structured(
             prompt,
@@ -172,7 +335,7 @@ class QuantCoder(Coder):
         workspace = Path(experiment.workspace_ref)
         workspace.mkdir(parents=True, exist_ok=True)
 
-        factor_code = self._generate_factor_code(proposal, scenario)
+        factor_code = self._generate_factor_code(proposal, scenario, experiment)
         (workspace / "factor.py").write_text(factor_code, encoding="utf-8")
         (workspace / "proposal.txt").write_text(proposal.summary, encoding="utf-8")
 
@@ -182,15 +345,25 @@ class QuantCoder(Coder):
             location=str(workspace),
         )
 
-    def _generate_factor_code(self, proposal: Proposal, scenario: ScenarioContext) -> str:
+    def _enrich_hypothesis_with_feedback(self, hypothesis: str, experiment: ExperimentNode) -> str:
+        feedback_text = None
+        if isinstance(experiment.hypothesis, dict):
+            feedback_text = experiment.hypothesis.get("_costeer_feedback")
+        
+        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
+            return f"{hypothesis}\n\nPrevious round feedback:\n{feedback_text}"
+        return hypothesis
+
+    def _generate_factor_code(self, proposal: Proposal, scenario: ScenarioContext, experiment: ExperimentNode) -> str:
         if self._llm is None:
             return _DEFAULT_FACTOR_CODE
 
+        factor_hypothesis = self._enrich_hypothesis_with_feedback(proposal.summary, experiment)
         prompt = (
             FACTOR_CODE_SYSTEM_PROMPT
             + "\n\n"
             + FACTOR_CODE_USER_TEMPLATE.format(
-                factor_hypothesis=proposal.summary,
+                factor_hypothesis=factor_hypothesis,
                 data_schema=DATA_SCHEMA_DESCRIPTION,
             )
         )
@@ -226,6 +399,7 @@ class QuantRunner(Runner):
         self._config = config or QuantConfig()
 
     def run(self, artifact: CodeArtifact, scenario: ScenarioContext) -> ExecutionResult:
+        logger = logging.getLogger(__name__)
         workspace = Path(artifact.location)
         factor_path = workspace / "factor.py"
 
@@ -247,7 +421,33 @@ class QuantRunner(Runner):
                 "Example: QuantConfig(data_provider=YFinanceDataProvider("
                 "tickers=[...], start='2023-01-01', end='2024-12-31'))"
             )
-        ohlcv = self._config.data_provider.load()
+        ohlcv: pd.DataFrame = self._config.data_provider.load()
+        debug_config = scenario.config.get("debug_config")
+        if (
+            debug_config
+            and getattr(debug_config, "debug_mode", False)
+            and getattr(debug_config, "supports_debug_sampling", False)
+        ):
+            sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
+            sample_fraction = max(0.0, min(sample_fraction, 1.0))
+            
+            if sample_fraction == 0.0:
+                logger.warning(
+                    "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 date, 1 stock)"
+                )
+            
+            logger.info("Debug mode active: sampling %.0f%% of data", sample_fraction * 100)
+            if not ohlcv.empty:
+                dates = sorted(ohlcv["date"].unique())
+                stocks = sorted(ohlcv["stock_id"].unique())
+                keep_dates = dates[: max(1, int(len(dates) * sample_fraction))]
+                keep_stocks = stocks[: max(1, int(len(stocks) * sample_fraction))]
+                ohlcv = cast(
+                    pd.DataFrame,
+                    ohlcv[
+                        ohlcv["date"].isin(keep_dates) & ohlcv["stock_id"].isin(keep_stocks)
+                    ].copy(),
+                )
         backtester = LightweightBacktester(config=self._config.backtest_config or None)
         bt_result = backtester.run(ohlcv, factor_code)
 

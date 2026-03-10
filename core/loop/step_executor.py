@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -11,6 +12,7 @@ from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
 from core.storage.interfaces import EventMetadataStore
 from data_models import (
+    DebugConfig,
     Event,
     EventType,
     ExecutionOutcomeContract,
@@ -28,6 +30,9 @@ from plugins.contracts import CommonUsefulnessGate, PluginBundle
 from service_contracts import StepOverrideConfig, resolve_step_override_config
 
 from .costeer import CoSTEEREvolver
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,6 +73,7 @@ class StepExecutor:
         costeer_max_rounds: int = 1,
         llm_adapter=None,
         memory_service=None,
+        debug_config: Optional[DebugConfig] = None,
     ) -> None:
         self._plugin_bundle = plugin_bundle
         self._evaluation_service = evaluation_service
@@ -78,6 +84,7 @@ class StepExecutor:
         self._llm_adapter = llm_adapter
         self._memory_service = memory_service
         self._usefulness_gate = CommonUsefulnessGate()
+        self._debug_config = debug_config or DebugConfig()
 
     def execute_iteration(
         self,
@@ -95,7 +102,7 @@ class StepExecutor:
             fork_parent_node_id = run_session.entry_input.pop("fork_parent_node_id", None)
             if isinstance(fork_parent_node_id, str) and fork_parent_node_id:
                 resolved_parent_ids = [fork_parent_node_id]
-        effective_step_config = self._resolve_step_config(run_session)
+        effective_step_config, running_timeout_source = self._resolve_step_config(run_session, plan)
         workspace_id = f"loop-{loop_state.iteration:04d}"
         workspace_path = self._workspace_manager.create_workspace(
             run_session.run_id,
@@ -121,6 +128,13 @@ class StepExecutor:
                 "step_config": effective_step_config.to_dict(),
             },
         )
+        scenario_debug_config = DebugConfig(
+            debug_mode=self._debug_config.debug_mode,
+            sample_fraction=self._debug_config.sample_fraction,
+            max_epochs=self._debug_config.max_epochs,
+            supports_debug_sampling=scenario_context.scenario_name != "synthetic_research",
+        )
+        scenario_context.config["debug_config"] = scenario_debug_config
 
         proposal_started_at = time.perf_counter()
         proposal = self._plugin_bundle.proposal_engine.propose(
@@ -243,6 +257,7 @@ class StepExecutor:
             payload={
                 "exit_code": execution_result.exit_code,
                 "timeout_sec": effective_step_config.running.timeout_sec,
+                "timeout_source": running_timeout_source,
                 "process_status": execution_outcome.process_status.value,
                 "artifact_status": execution_outcome.artifact_status.value,
                 "usefulness_status": execution_outcome.usefulness_status.value,
@@ -325,20 +340,53 @@ class StepExecutor:
             checkpoint_ids=checkpoint_ids,
         )
 
-    def _resolve_step_config(self, run_session: RunSession) -> StepOverrideConfig:
+    def _resolve_step_config(self, run_session: RunSession, plan: Plan) -> tuple[StepOverrideConfig, str]:
         config_snapshot = run_session.config_snapshot
-        if "step_overrides" in config_snapshot:
+
+        if (
+            "step_overrides" in config_snapshot
+            and config_snapshot.get("requested_step_overrides") is None
+        ):
             effective = resolve_step_override_config(
                 self._plugin_bundle.default_step_overrides,
                 StepOverrideConfig.from_dict(config_snapshot["step_overrides"]),
             )
             config_snapshot["step_overrides"] = effective.to_dict()
-            return effective
+            timeout_source = "override"
+            self._log_timeout_source("running", effective.running.timeout_sec, timeout_source)
+            return effective, timeout_source
 
         requested = StepOverrideConfig.from_dict(config_snapshot.get("requested_step_overrides"))
         effective = resolve_step_override_config(self._plugin_bundle.default_step_overrides, requested)
         config_snapshot["step_overrides"] = effective.to_dict()
-        return effective
+
+        timeout_source = "override"
+        if requested.running.timeout_sec is None:
+            plan_timeout_sec = self._coerce_plan_timeout(plan, "running")
+            if plan_timeout_sec is not None:
+                effective.running.timeout_sec = plan_timeout_sec
+                timeout_source = "plan"
+            else:
+                timeout_source = "default"
+
+        self._log_timeout_source("running", effective.running.timeout_sec, timeout_source)
+        return effective, timeout_source
+
+    def _coerce_plan_timeout(self, plan: Plan, step_name: str) -> Optional[int]:
+        raw_timeout = (plan.budget_allocation or {}).get(step_name)
+        if raw_timeout is None:
+            return None
+        try:
+            timeout_sec = max(1, int(round(float(raw_timeout))))
+        except (TypeError, ValueError):
+            return None
+        return timeout_sec if timeout_sec > 0 else None
+
+    def _log_timeout_source(self, step_name: str, timeout_sec: Optional[int], source: str) -> None:
+        if timeout_sec is None:
+            logger.debug("Step '%s' timeout unset (source: %s)", step_name, source)
+            return
+        logger.debug("Step '%s' timeout: %ds (source: %s)", step_name, timeout_sec, source)
 
     def _append_event(
         self,

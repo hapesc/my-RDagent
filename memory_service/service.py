@@ -11,11 +11,14 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from data_models import ContextPack
+from memory_service.hypothesis_selector import rank_by_kernel
 from memory_service.interaction_kernel import HypothesisRecord
 
 logger = logging.getLogger(__name__)
+_CONTEXT_QUERY_CONTROL_KEYS = {"branch_id"}
 
 
 @dataclass
@@ -119,7 +122,100 @@ class MemoryService:
                 (item, payload),
             )
 
-    def query_context(self, query: dict[str, str]) -> ContextPack:
+    @staticmethod
+    def _parse_int(value: object, default: int) -> int:
+        try:
+            return int(str(value))
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _summarize_text(text: str, max_chars: int = 160) -> str:
+        normalized = " ".join(text.split())
+        if len(normalized) <= max_chars:
+            return normalized
+        return f"{normalized[: max_chars - 3]}..."
+
+    def _build_context_items(self, query: Dict[str, str], items: List[str]) -> List[str]:
+        if items:
+            return items
+
+        context_items = []
+        for key, value in query.items():
+            if key in _CONTEXT_QUERY_CONTROL_KEYS:
+                continue
+            context_items.append(f"{key}: {value}")
+        return context_items
+
+    def _select_reference_hypothesis(
+        self,
+        query: Dict[str, str],
+        items: List[str],
+        candidates: List[HypothesisRecord],
+    ) -> HypothesisRecord:
+        if not candidates:
+            raise ValueError("candidates list must not be empty")
+
+        if self._hypothesis_selector is None:
+            return max(candidates, key=lambda hypothesis: hypothesis.score)
+
+        context_items = self._build_context_items(query, items)
+        iteration = self._parse_int(query.get("iteration"), default=1)
+        max_iterations = self._parse_int(query.get("max_iterations"), default=max(1, iteration))
+        task_summary = str(query.get("task_summary", ""))
+        scenario_name = str(query.get("scenario_name", query.get("scenario", "memory")))
+
+        adaptive_select = getattr(self._hypothesis_selector, "adaptive_select", None)
+        if callable(adaptive_select):
+            selected = adaptive_select(
+                candidates,
+                iteration,
+                max_iterations,
+                context_items,
+                task_summary,
+                scenario_name,
+            )
+            selected_text = str(getattr(selected, "modified_hypothesis", "") or "")
+            if selected_text:
+                matched = next((candidate for candidate in candidates if candidate.text == selected_text), None)
+                if matched is not None:
+                    return matched
+                return HypothesisRecord(
+                    text=selected_text,
+                    score=max(candidate.score for candidate in candidates),
+                    timestamp=time.time(),
+                    branch_id=str(query.get("branch_id", "") or candidates[0].branch_id),
+                )
+
+        select_hypothesis = getattr(self._hypothesis_selector, "select_hypothesis", None)
+        if callable(select_hypothesis):
+            selected_hypothesis = select_hypothesis(candidates, "\n".join(context_items))
+            if isinstance(selected_hypothesis, HypothesisRecord):
+                return selected_hypothesis
+
+        return max(candidates, key=lambda hypothesis: hypothesis.score)
+
+    def _rank_hypothesis_candidates(
+        self,
+        query: Dict[str, str],
+        items: List[str],
+        candidates: List[HypothesisRecord],
+    ) -> List[Tuple[str, float]]:
+        if not candidates:
+            return []
+
+        if self._interaction_kernel is None:
+            return [(candidate.text, candidate.score) for candidate in candidates]
+
+        reference = self._select_reference_hypothesis(query, items, candidates)
+        ranked = rank_by_kernel(reference, candidates, self._interaction_kernel)
+        return [(candidate.text, score) for candidate, score in ranked]
+
+    def _build_highlights(self, scored_items: List[Tuple[str, float]]) -> List[str]:
+        top_k = min(3, self._config.max_context_items, len(scored_items))
+        return [self._summarize_text(text) for text, _ in scored_items[:top_k]]
+
+    def query_context(self, query: Dict[str, str]) -> ContextPack:
         """Retrieve a context pack for reasoning.
 
         Responsibility:
@@ -136,7 +232,9 @@ class MemoryService:
         clauses = []
         params = []
 
-        for key, value in query.items():
+        metadata_query = {key: value for key, value in query.items() if key not in _CONTEXT_QUERY_CONTROL_KEYS}
+
+        for key, value in metadata_query.items():
             clauses.append("metadata LIKE ?")
             params.append(f'%"{key}": "{value}"%')
 
@@ -150,14 +248,48 @@ class MemoryService:
             rows = conn.execute(sql, tuple(params)).fetchall()
 
         items = [str(row["item"]) for row in rows]
-        highlights = list(query.keys()) if items else []
+        highlights = list(metadata_query.keys()) if items else []
 
-        scored_items: list[tuple[str, float]] = []
+        scored_items = []  # type: List[tuple]
+        branch_id = query.get("branch_id")
+        source_type = None  # type: Optional[str]
         if self._config.enable_hypothesis_storage:
-            hyps = self.query_hypotheses(limit=self._config.max_context_items)
-            scored_items = [(h.text, h.score) for h in hyps]
+            same_branch_hypotheses = []  # type: List[HypothesisRecord]
+            cross_branch_hypotheses = []  # type: List[HypothesisRecord]
 
-        return ContextPack(items=items, highlights=highlights, scored_items=scored_items)
+            cross_branch_hypotheses: List[HypothesisRecord] = []
+            if branch_id:
+                same_branch_hypotheses = self.query_hypotheses(
+                    branch_id=str(branch_id),
+                    limit=self._config.max_context_items,
+                )
+                cross_branch_hypotheses = self.get_cross_branch_hypotheses(
+                    str(branch_id),
+                    limit=self._config.max_context_items,
+                )
+            else:
+                same_branch_hypotheses = self.query_hypotheses(limit=self._config.max_context_items)
+
+            candidates = same_branch_hypotheses + cross_branch_hypotheses
+            if candidates:
+                source_type = "memory"
+                try:
+                    scored_items = self._rank_hypothesis_candidates(query, items, candidates)
+                except Exception:
+                    logger.warning(
+                        "query_context hypothesis ranking failed; using stored hypothesis ordering",
+                        exc_info=True,
+                    )
+                    scored_items = [(candidate.text, candidate.score) for candidate in candidates]
+                highlights = self._build_highlights(scored_items) or highlights
+
+        return ContextPack(
+            items=items,
+            highlights=highlights,
+            scored_items=scored_items,
+            branch_id=str(branch_id) if branch_id is not None else None,
+            source_type=source_type,
+        )
 
     def get_memory_stats(self) -> dict[str, int]:
         """Return basic memory statistics.

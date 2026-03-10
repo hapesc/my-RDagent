@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 from data_models import Plan, PlanningContext
 from llm.prompts import planning_strategy_prompt
 from llm.schemas import PlanningStrategy
 
 logger = logging.getLogger(__name__)
+
+PLANNER_STEP_KEYS = ("proposal", "coding", "running", "feedback")
+DEFAULT_TOTAL_TIME_BUDGET = 600.0
+MINIMUM_STEP_TIME_BUDGET = 1.0
 
 
 @dataclass
@@ -76,18 +81,23 @@ class Planner:
             Planner -> generate_plan
         """
 
+        strategy = self.generate_strategy(context)
+
         loop_state = context.loop_state
         budget = context.budget
         progress = self._compute_progress(budget.total_time_budget, budget.elapsed_time)
         stage = self._stage_from_progress(progress)
-
-        strategy = self.generate_strategy(context)
         if strategy is not None:
             exploration_strength = max(0.0, min(1.0, strategy.exploration_weight))
         else:
             exploration_strength = max(0.0, self._config.max_exploration_strength * (1.0 - progress))
 
-        budget_allocation = self._build_budget_allocation(progress)
+        budget_allocation = self._coerce_strategy_budget_allocation(strategy)
+        if budget_allocation is None:
+            budget_allocation = self._build_budget_allocation(
+                budget.total_time_budget,
+                budget.elapsed_time,
+            )
         guidance = self._build_guidance(stage, progress, context.history_summary)
         if strategy is not None:
             guidance.append(f"strategy:{strategy.strategy_name}")
@@ -142,14 +152,44 @@ class Planner:
             return "mid"
         return "late"
 
-    def _build_budget_allocation(self, progress: float) -> dict[str, float]:
-        base_allocation = self._config.default_budget_allocation or {}
-        allocation = dict(base_allocation)
-        if "exploration" not in allocation:
-            allocation["exploration"] = 1.0 - progress
-        if "exploitation" not in allocation:
-            allocation["exploitation"] = progress
-        return allocation
+    def _coerce_strategy_budget_allocation(
+        self,
+        strategy: Optional[PlanningStrategy],
+    ) -> Optional[Dict[str, float]]:
+        if strategy is None or strategy.budget_allocation is None:
+            return None
+
+        allocation = strategy.budget_allocation
+        if set(allocation.keys()) != set(PLANNER_STEP_KEYS):
+            return None
+
+        normalized: Dict[str, float] = {}
+        for step in PLANNER_STEP_KEYS:
+            value = allocation.get(step)
+            if value is None:
+                return None
+
+            try:
+                seconds = float(value)
+            except (TypeError, ValueError):
+                return None
+
+            if seconds <= 0:
+                return None
+
+            normalized[step] = seconds
+
+        return normalized
+
+    def _build_budget_allocation(self, total_budget: float, elapsed_time: float) -> Dict[str, float]:
+        effective_total_budget = total_budget if total_budget > 0 else DEFAULT_TOTAL_TIME_BUDGET
+        remaining_budget = max(0.0, effective_total_budget - elapsed_time)
+
+        if remaining_budget <= 0:
+            return {step: MINIMUM_STEP_TIME_BUDGET for step in PLANNER_STEP_KEYS}
+
+        step_budget = remaining_budget / len(PLANNER_STEP_KEYS)
+        return {step: step_budget for step in PLANNER_STEP_KEYS}
 
     def _build_guidance(
         self,

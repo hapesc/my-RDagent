@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+import time
+from typing import TYPE_CHECKING, Optional
 
 from data_models import CodeArtifact, ExperimentNode, FeedbackRecord, Proposal, Score
 from plugins.contracts import Coder, FeedbackAnalyzer, Runner, ScenarioContext
@@ -48,6 +49,50 @@ class CoSTEEREvolver:
         )
         return self._llm_adapter.generate_structured(prompt, StructuredFeedback)
 
+    def _get_debug_sample_fraction(self, scenario: ScenarioContext) -> Optional[float]:
+        debug_config = scenario.config.get("debug_config")
+        if debug_config is None or not getattr(debug_config, "debug_mode", False):
+            return None
+
+        try:
+            sample_fraction = float(getattr(debug_config, "sample_fraction", 0.0))
+        except (TypeError, ValueError):
+            _log.debug(
+                "Skipping CoSTEER timing extrapolation due to invalid sample_fraction=%r",
+                getattr(debug_config, "sample_fraction", None),
+            )
+            return None
+
+        if sample_fraction <= 0.0 or sample_fraction > 1.0:
+            _log.debug(
+                "Skipping CoSTEER timing extrapolation because sample_fraction must be within (0, 1], got %.6f",
+                sample_fraction,
+            )
+            return None
+
+        return sample_fraction
+
+    def _record_debug_timing(
+        self,
+        experiment: ExperimentNode,
+        scenario: ScenarioContext,
+        round_idx: int,
+        debug_time_sec: float,
+    ) -> None:
+        sample_fraction = self._get_debug_sample_fraction(scenario)
+        if sample_fraction is None or not isinstance(experiment.hypothesis, dict):
+            return
+
+        estimated_full_time_sec = debug_time_sec / sample_fraction
+        experiment.hypothesis["estimated_full_time_sec"] = estimated_full_time_sec
+        _log.debug(
+            "CoSTEER debug timing recorded for round %s: debug_time_sec=%.6f sample_fraction=%.6f estimated_full_time_sec=%.6f",
+            round_idx,
+            debug_time_sec,
+            sample_fraction,
+            estimated_full_time_sec,
+        )
+
     def evolve(
         self,
         experiment: ExperimentNode,
@@ -60,7 +105,10 @@ class CoSTEEREvolver:
             return artifact
 
         for round_idx in range(1, self._max_rounds):
+            round_started_at = time.monotonic()
             execution_result = self._runner.run(artifact, scenario)
+            round_elapsed_sec = time.monotonic() - round_started_at
+            self._record_debug_timing(experiment, scenario, round_idx, round_elapsed_sec)
             feedback = self._feedback_analyzer.summarize(
                 experiment=experiment,
                 result=execution_result,

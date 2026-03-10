@@ -15,6 +15,9 @@ from data_models import (
     Score,
     StopConditions,
 )
+from scenarios.data_science.plugin import DataScienceProposalEngine, DataScienceScenarioPlugin
+from scenarios.quant.plugin import QuantProposalEngine, QuantScenarioPlugin
+from scenarios.synthetic_research.plugin import SyntheticResearchProposalEngine, SyntheticResearchScenarioPlugin
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -58,10 +61,14 @@ class TestFC1456Wiring(unittest.TestCase):
             mock_result.experiment = MagicMock()
             mock_result.experiment.node_id = f"node-{idx}"
             mock_result.experiment.parent_node_id = None
+            mock_result.experiment.hypothesis = {"hypothesis": f"hypothesis-{idx}"}
             mock_result.proposal = MagicMock()
             mock_result.proposal.proposal_id = f"proposal-{idx}"
+            mock_result.proposal.summary = f"summary-{idx}"
             mock_result.artifact_id = f"artifact-{idx}"
             mock_result.score = Score(score_id=f"score-{idx}", value=0.5, metric_name="mock")
+            mock_result.feedback = MagicMock()
+            mock_result.feedback.decision = True
             return mock_result
 
         mock_step.execute_iteration.side_effect = _execute_iteration
@@ -155,6 +162,129 @@ class TestFC1456Wiring(unittest.TestCase):
         self.assertEqual(len(ctx.budget.iteration_durations), 3)
         self.assertEqual(ctx.budget.estimated_remaining, 0.0)
 
+    def test_loop_engine_passes_iteration_history_to_planner_context(self):
+        captured_history = []
+
+        def _plan_side_effect(context):
+            captured_history.append(context.history_summary)
+            return Plan(
+                plan_id=f"plan-{context.loop_state.iteration}",
+                exploration_strength=0.5,
+                budget_allocation={},
+                guidance=[],
+            )
+
+        planner = MagicMock()
+        planner.generate_plan.side_effect = _plan_side_effect
+        engine = self._make_engine(max_loops=3, planner=planner)
+        session = self._make_run_session(max_loops=3)
+
+        engine.run(session, task_summary="test")
+
+        self.assertEqual(captured_history[0], {})
+        self.assertIn("iteration_0", captured_history[1])
+        self.assertEqual(captured_history[1]["iteration_0"]["hypothesis"], "summary-1")
+        self.assertEqual(captured_history[1]["iteration_0"]["outcome"], "accepted")
+        self.assertIsInstance(captured_history[1]["iteration_0"]["score"], float)
+        self.assertIn("iteration_1", captured_history[2])
+
+    def test_data_science_proposal_prompt_includes_context_guidance_and_parents(self):
+        llm = MagicMock()
+        llm.generate_structured.return_value = MagicMock(summary="proposal", constraints=["risk"], virtual_score=0.4)
+        engine = DataScienceProposalEngine(llm)
+        scenario = DataScienceScenarioPlugin().build_context(
+            self._make_run_session(),
+            {"task_summary": "predict churn", "loop_index": 2},
+        )
+        context = ContextPack(
+            highlights=["recent failure: leakage"],
+            scored_items=[("cross-branch idea", 0.91), ("same-branch retry", 0.75)],
+        )
+        plan = Plan(plan_id="p1", guidance=["focus:refine", "budget:moderate"])
+
+        engine.propose("predict churn", context, ["node-a", "node-b"], plan, scenario)
+
+        prompt = llm.generate_structured.call_args.args[0]
+        self.assertIn("Prior Context:", prompt)
+        self.assertIn("recent failure: leakage", prompt)
+        self.assertIn("cross-branch idea (score=0.910)", prompt)
+        self.assertIn("Strategic Guidance:", prompt)
+        self.assertIn("- focus:refine", prompt)
+        self.assertIn("Parent Branch Continuity:", prompt)
+        self.assertIn("node-a, node-b", prompt)
+
+    def test_quant_proposal_prompt_includes_context_guidance_and_parents(self):
+        llm = MagicMock()
+        llm.generate_structured.return_value = MagicMock(summary="factor", constraints=["risk"], virtual_score=0.6)
+        engine = QuantProposalEngine(llm)
+        scenario = QuantScenarioPlugin().build_context(
+            self._make_run_session(),
+            {"task_summary": "mine alpha", "loop_index": 1, "previous_results": ["factor-a"]},
+        )
+        context = ContextPack(highlights=["same branch memory"], scored_items=[("cross branch alpha", 0.88)])
+        plan = Plan(plan_id="p1", guidance=["focus:novelty"])
+
+        engine.propose("mine alpha", context, ["quant-parent"], plan, scenario)
+
+        prompt = llm.generate_structured.call_args.args[0]
+        self.assertIn("Prior Context:", prompt)
+        self.assertIn("same branch memory", prompt)
+        self.assertIn("cross branch alpha (score=0.880)", prompt)
+        self.assertIn("Strategic Guidance:", prompt)
+        self.assertIn("- focus:novelty", prompt)
+        self.assertIn("Parent Branch Continuity:", prompt)
+        self.assertIn("quant-parent", prompt)
+
+    def test_synthetic_proposal_placeholder_keeps_context_visible(self):
+        engine = SyntheticResearchProposalEngine(llm_adapter=None)
+        scenario = SyntheticResearchScenarioPlugin().build_context(
+            self._make_run_session(),
+            {"task_summary": "survey agents", "loop_index": 0},
+        )
+        context = ContextPack(highlights=["memory insight"], scored_items=[("cross branch note", 0.5)])
+        plan = Plan(plan_id="p1", guidance=["focus:balance"])
+
+        proposal = engine.propose("survey agents", context, ["root-parent"], plan, scenario)
+
+        self.assertIn("Prior Context:", proposal.summary)
+        self.assertIn("memory insight", proposal.summary)
+        self.assertIn("cross branch note (score=0.500)", proposal.summary)
+        self.assertIn("Strategic Guidance:", proposal.summary)
+        self.assertIn("Parent Branch Continuity:", proposal.summary)
+
+    def test_data_science_build_context_populates_split_manifest(self):
+        scenario = DataScienceScenarioPlugin().build_context(
+            self._make_run_session(),
+            {
+                "task_summary": "predict churn",
+                "data_ids": [f"id-{idx}" for idx in range(10)],
+                "labels": ["A"] * 6 + ["B"] * 4,
+                "split_seed": 7,
+            },
+        )
+
+        manifest = scenario.config["split_manifest"]
+        self.assertIsNotNone(manifest)
+        self.assertEqual(manifest["seed"], 7)
+        self.assertEqual(len(manifest["train_ids"]) + len(manifest["test_ids"]), 10)
+        self.assertEqual(set(manifest["train_ids"]) | set(manifest["test_ids"]), {f"id-{idx}" for idx in range(10)})
+
+    def test_quant_build_context_prefers_ordered_split_when_labels_missing(self):
+        scenario = QuantScenarioPlugin().build_context(
+            self._make_run_session(),
+            {
+                "task_summary": "mine alpha",
+                "data_ids": ["d3", "d1", "d2", "d4"],
+                "timestamps": ["2024-01-03", "2024-01-01", "2024-01-02", "2024-01-04"],
+                "test_ratio": 0.25,
+                "split_seed": 11,
+            },
+        )
+
+        manifest = scenario.config["split_manifest"]
+        self.assertEqual(manifest["seed"], 11)
+        self.assertEqual(manifest["train_ids"], ["d1", "d2", "d3"])
+        self.assertEqual(manifest["test_ids"], ["d4"])
 
 if __name__ == "__main__":
     unittest.main()

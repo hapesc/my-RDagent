@@ -237,6 +237,8 @@ python -m pytest tests -q
 ./scripts/run_task17_acceptance.sh
 ```
 
+CI validates this test suite on Python 3.11 and Python 3.12.
+
 ### End-to-End Tests (Real LLM)
 
 These scripts run a full loop-engine cycle with a real LLM backend (Gemini). They require `GEMINI_API_KEY` to be set.

@@ -10,7 +10,14 @@ from unittest.mock import MagicMock
 from core.storage import SQLiteMetadataStore, SQLiteStoreConfig
 from data_models import Event, EventType, RunSession, RunStatus, StopConditions
 from service_contracts import RunControlResponse
-from ui.trace_ui import build_timeline_rows, list_artifacts, load_events, load_run_ids, load_run_summary, perform_control_action
+from ui.trace_ui import (
+    build_timeline_rows,
+    list_artifacts,
+    load_events,
+    load_run_ids,
+    load_run_summary,
+    perform_control_action,
+)
 
 
 class TraceUIHelperTests(unittest.TestCase):
@@ -75,9 +82,9 @@ class TraceUIHelperTests(unittest.TestCase):
             status="PAUSED",
             message="paused",
         )
-        
+
         result = perform_control_action(mock_client, "run-123", "pause")
-        
+
         mock_client.pause_run.assert_called_once_with("run-123")
         mock_client.post.assert_not_called()
         self.assertEqual(result.run_id, "run-123")
@@ -93,14 +100,14 @@ class TraceUIHelperTests(unittest.TestCase):
             "status": "RUNNING",
             "message": "resumed",
         }
-        
+
         mock_client = MagicMock()
         mock_client.post.return_value = mock_response
         # Simulate missing pause_run method
         delattr(mock_client, "pause_run")
-        
+
         result = perform_control_action(mock_client, "run-456", "pause")
-        
+
         mock_client.post.assert_called_once_with("/runs/run-456/pause", json={})
         self.assertEqual(result.run_id, "run-456")
         self.assertEqual(result.action, "resume")
@@ -115,13 +122,13 @@ class TraceUIHelperTests(unittest.TestCase):
             "status": "STOPPED",
             "message": "stopped",
         }
-        
+
         mock_client = MagicMock()
         mock_client.stop_run = "not-callable"
         mock_client.post.return_value = mock_response
-        
+
         result = perform_control_action(mock_client, "run-789", "stop")
-        
+
         mock_client.post.assert_called_once_with("/runs/run-789/stop", json={})
         self.assertEqual(result.run_id, "run-789")
 

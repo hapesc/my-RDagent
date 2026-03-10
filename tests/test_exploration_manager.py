@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from core.reasoning.virtual_eval import VirtualEvaluator
-from data_models import BranchState, ExplorationGraph, GraphEdge, NodeRecord
+from data_models import ExplorationGraph, NodeRecord
 from exploration_manager.scheduler import MCTSScheduler
 from exploration_manager.service import ExplorationManager, ExplorationManagerConfig
 
@@ -64,12 +64,8 @@ class TestGetNodeDepth(unittest.TestCase):
         self.manager = ExplorationManager(self.config, scheduler=MCTSScheduler())
         self.graph = ExplorationGraph()
         self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="root"))
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="a", parent_ids=["root"])
-        )
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="b", parent_ids=["a"])
-        )
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="a", parent_ids=["root"]))
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="b", parent_ids=["a"]))
 
     def test_root_depth_is_zero(self) -> None:
         self.assertEqual(self.manager.get_node_depth(self.graph, "root"), 0)
@@ -92,15 +88,9 @@ class TestGetChildren(unittest.TestCase):
         self.manager = ExplorationManager(self.config, scheduler=MCTSScheduler())
         self.graph = ExplorationGraph()
         self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="root"))
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="c1", parent_ids=["root"])
-        )
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="c2", parent_ids=["root"])
-        )
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="gc1", parent_ids=["c1"])
-        )
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="c1", parent_ids=["root"]))
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="c2", parent_ids=["root"]))
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="gc1", parent_ids=["c1"]))
 
     def test_root_has_two_children(self) -> None:
         children = self.manager.get_children(self.graph, "root")
@@ -123,12 +113,8 @@ class TestGetPathToRoot(unittest.TestCase):
         self.manager = ExplorationManager(self.config, scheduler=MCTSScheduler())
         self.graph = ExplorationGraph()
         self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="root"))
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="A", parent_ids=["root"])
-        )
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="B", parent_ids=["A"])
-        )
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="A", parent_ids=["root"]))
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="B", parent_ids=["A"]))
 
     def test_leaf_path_to_root(self) -> None:
         path = self.manager.get_path_to_root(self.graph, "B")
@@ -152,9 +138,7 @@ class TestObserveFeedback(unittest.TestCase):
         self.manager = ExplorationManager(self.config, scheduler=self.scheduler)
         self.graph = ExplorationGraph()
         self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="root"))
-        self.graph = self.manager.register_node(
-            self.graph, NodeRecord(node_id="child", parent_ids=["root"])
-        )
+        self.graph = self.manager.register_node(self.graph, NodeRecord(node_id="child", parent_ids=["root"]))
 
     def test_observe_feedback_updates_visits(self) -> None:
         self.manager.observe_feedback(self.graph, "child", score=0.7, decision=True)

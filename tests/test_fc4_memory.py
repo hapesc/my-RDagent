@@ -113,9 +113,7 @@ class TestFC4Memory(unittest.TestCase):
         service = MemoryService(MemoryServiceConfig(enable_hypothesis_storage=False))
 
         with service._managed_connection() as conn:
-            row = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='hypotheses'"
-            ).fetchone()
+            row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hypotheses'").fetchone()
 
         self.assertIsNone(row)
 
@@ -126,9 +124,7 @@ class TestFC4Memory(unittest.TestCase):
         service.write_hypothesis("h-meta", 0.42, "b1", metadata=metadata)
 
         with service._managed_connection() as conn:
-            row = conn.execute(
-                "SELECT metadata FROM hypotheses ORDER BY id DESC LIMIT 1"
-            ).fetchone()
+            row = conn.execute("SELECT metadata FROM hypotheses ORDER BY id DESC LIMIT 1").fetchone()
 
         self.assertIsNotNone(row)
         self.assertEqual(json.loads(str(row["metadata"])), metadata)

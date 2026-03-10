@@ -71,18 +71,9 @@ def _make_pipeline() -> ReasoningPipeline:
 def test_pipeline_returns_experiment_design() -> None:
     provider = MockLLMProvider(
         responses=[
-            (
-                '{"strengths":["s1"],"weaknesses":["w1"],'
-                '"current_performance":"stable","key_observations":"obs"}'
-            ),
-            (
-                '{"problem":"p1","severity":"high",'
-                '"evidence":"e1","affected_component":"optimizer"}'
-            ),
-            (
-                '{"hypothesis":"h1","mechanism":"m1",'
-                '"expected_improvement":"+3%","testable_prediction":"tp1"}'
-            ),
+            ('{"strengths":["s1"],"weaknesses":["w1"],"current_performance":"stable","key_observations":"obs"}'),
+            ('{"problem":"p1","severity":"high","evidence":"e1","affected_component":"optimizer"}'),
+            ('{"hypothesis":"h1","mechanism":"m1","expected_improvement":"+3%","testable_prediction":"tp1"}'),
             (
                 '{"summary":"exp design","constraints":["c1"],'
                 '"virtual_score":0.8,"implementation_steps":["step1","step2"]}'

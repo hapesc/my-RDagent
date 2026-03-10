@@ -8,15 +8,23 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from unittest.mock import Mock, patch
 
-from agentrd_cli import ExitCode, main as cli_main
+from agentrd_cli import ExitCode
+from agentrd_cli import main as cli_main
 from app.runtime import build_run_service, build_runtime
 from core.loop.costeer import CoSTEEREvolver
-from data_models import CodeArtifact, EventType, ExecutionResult, ExperimentNode, FeedbackRecord, Proposal, StopConditions
+from data_models import (
+    CodeArtifact,
+    EventType,
+    ExecutionResult,
+    ExperimentNode,
+    FeedbackRecord,
+    Proposal,
+    StopConditions,
+)
 from llm.adapter import MockLLMProvider
 from llm.providers.litellm_provider import LiteLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
 from plugins.contracts import ScenarioContext
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -182,7 +190,11 @@ class FullLoopIntegrationTests(unittest.TestCase):
         ):
             out = StringIO()
             err = StringIO()
-            with patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()), redirect_stdout(out), redirect_stderr(err):
+            with (
+                patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()),
+                redirect_stdout(out),
+                redirect_stderr(err),
+            ):
                 code = cli_main(
                     [
                         "run",
@@ -251,7 +263,11 @@ class FullLoopIntegrationTests(unittest.TestCase):
         ):
             out = StringIO()
             err = StringIO()
-            with patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()), redirect_stdout(out), redirect_stderr(err):
+            with (
+                patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()),
+                redirect_stdout(out),
+                redirect_stderr(err),
+            ):
                 code = cli_main(
                     [
                         "run",

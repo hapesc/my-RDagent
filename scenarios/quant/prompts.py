@@ -54,9 +54,7 @@ FACTOR_CODE_SYSTEM_PROMPT: str = (
     "REQUIRED function signature:\n"
     "  def compute_factor(df: pd.DataFrame) -> pd.DataFrame:\n"
     "\n"
-    "Input:\n"
-    + DATA_SCHEMA_DESCRIPTION
-    + "\n"
+    "Input:\n" + DATA_SCHEMA_DESCRIPTION + "\n"
     "\n"
     "Output:\n"
     "  DataFrame with exactly three columns: date, stock_id, factor_value\n"
@@ -96,7 +94,8 @@ FACTOR_CODE_USER_TEMPLATE: str = (
     "\n"
     "RULES:\n"
     "- The JSON 'description' is a SHORT text summary, NOT code.\n"
-    "- The Python code block must define `compute_factor(df)` returning a DataFrame with [date, stock_id, factor_value].\n"
+    "- The Python code block must define `compute_factor(df)` returning a DataFrame "
+    "with [date, stock_id, factor_value].\n"
     "- Return BOTH the JSON and the code block. Nothing else."
 )
 

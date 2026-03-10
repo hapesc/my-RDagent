@@ -35,7 +35,7 @@ class CoSTEEREvolver:
         feedback_record: FeedbackRecord,
         code: str,
         execution_output: str,
-    ) -> "StructuredFeedback":
+    ) -> StructuredFeedback:
         if self._llm_adapter is None:
             raise RuntimeError("Structured feedback requires llm_adapter")
 

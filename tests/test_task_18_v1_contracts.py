@@ -16,9 +16,8 @@ from app.runtime import build_runtime
 from core.storage import SQLiteMetadataStore, SQLiteStoreConfig
 from data_models import RunSession, RunStatus, StopConditions
 from service_contracts import RunCreateRequest, ServiceContractError
-from ui.trace_ui import load_scenario_manifests
-
 from tests._llm_test_utils import patch_runtime_llm_provider
+from ui.trace_ui import load_scenario_manifests
 
 
 class Task18V1ContractTests(unittest.TestCase):
@@ -141,7 +140,10 @@ class Task18V1ContractTests(unittest.TestCase):
             scenario="data_science",
             status=RunStatus.CREATED,
             stop_conditions=StopConditions(max_loops=1, max_duration_sec=60),
-            config_snapshot={"runtime": {"sandbox_timeout_sec": 300}, "step_overrides": {"running": {"timeout_sec": 10}}},
+            config_snapshot={
+                "runtime": {"sandbox_timeout_sec": 300},
+                "step_overrides": {"running": {"timeout_sec": 10}},
+            },
         )
 
         store.create_run(run)

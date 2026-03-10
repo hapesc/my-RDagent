@@ -1,6 +1,5 @@
 """Test extended data models for FC-2 DAG and FC-3 reasoning traces."""
 
-import pytest
 from data_models import (
     BranchState,
     ExplorationGraph,
@@ -121,9 +120,7 @@ class TestExplorationGraphSerialization:
 
     def test_serialization_branch_states_enum(self):
         """Branch states enum values should serialize to strings."""
-        graph = ExplorationGraph(
-            branch_states={"b1": BranchState.ACTIVE, "b2": BranchState.PRUNED}
-        )
+        graph = ExplorationGraph(branch_states={"b1": BranchState.ACTIVE, "b2": BranchState.PRUNED})
         serialized = model_to_dict(graph)
         assert serialized["branch_states"]["b1"] == "ACTIVE"
         assert serialized["branch_states"]["b2"] == "PRUNED"

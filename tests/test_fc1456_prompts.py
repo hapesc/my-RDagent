@@ -1,7 +1,6 @@
 """Tests for planning_strategy_prompt and hypothesis_modification_prompt functions."""
 
-import pytest
-from llm.prompts import planning_strategy_prompt, hypothesis_modification_prompt
+from llm.prompts import hypothesis_modification_prompt, planning_strategy_prompt
 
 
 class TestPlanningStrategyPrompt:

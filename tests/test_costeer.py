@@ -276,17 +276,17 @@ class CoSTEEREvolverTests(unittest.TestCase):
         )
         experiment, proposal, scenario = self._base_inputs()
 
-        result = evolver.evolve(experiment, proposal, scenario)
+        evolver.evolve(experiment, proposal, scenario)
 
         self.assertEqual(memory_service.write_memory.call_count, 1)
         call_args = memory_service.write_memory.call_args
         self.assertIsNotNone(call_args)
-        
+
         item = call_args.kwargs.get("item")
         self.assertIsNotNone(item)
         self.assertIsInstance(item, str)
         self.assertGreater(len(item), 0)
-        
+
         metadata = call_args.kwargs.get("metadata")
         self.assertIsNotNone(metadata)
         self.assertIsInstance(metadata, dict)
@@ -327,7 +327,7 @@ class CoSTEEREvolverTests(unittest.TestCase):
         )
         experiment, proposal, scenario = self._base_inputs()
 
-        result = evolver.evolve(experiment, proposal, scenario)
+        evolver.evolve(experiment, proposal, scenario)
 
         memory_service.write_memory.assert_not_called()
 
@@ -436,8 +436,11 @@ class CoSTEEREvolverTests(unittest.TestCase):
         llm_adapter.generate_structured.return_value = mock_structured
 
         evolver = CoSTEEREvolver(
-            coder=coder, runner=runner, feedback_analyzer=feedback_analyzer,
-            max_rounds=3, llm_adapter=llm_adapter,
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=3,
+            llm_adapter=llm_adapter,
         )
         experiment, proposal, scenario = self._base_inputs()
         evolver.evolve(experiment, proposal, scenario)
@@ -474,8 +477,11 @@ class CoSTEEREvolverTests(unittest.TestCase):
         llm_adapter.generate_structured.return_value = mock_sf
 
         evolver = CoSTEEREvolver(
-            coder=coder, runner=runner, feedback_analyzer=feedback_analyzer,
-            max_rounds=2, llm_adapter=llm_adapter,
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+            llm_adapter=llm_adapter,
         )
         experiment, proposal, scenario = self._base_inputs()
         evolver.evolve(experiment, proposal, scenario)
@@ -502,8 +508,11 @@ class CoSTEEREvolverTests(unittest.TestCase):
         feedback_analyzer.summarize.side_effect = [feedback_bad, feedback_good]
 
         evolver = CoSTEEREvolver(
-            coder=coder, runner=runner, feedback_analyzer=feedback_analyzer,
-            max_rounds=3, llm_adapter=None,
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=3,
+            llm_adapter=None,
         )
         experiment, proposal, scenario = self._base_inputs()
         evolver.evolve(experiment, proposal, scenario)
@@ -525,7 +534,9 @@ class CoSTEEREvolverTests(unittest.TestCase):
         llm_adapter.generate_structured.return_value = mock_sf
 
         evolver = CoSTEEREvolver(
-            coder=coder, runner=runner, feedback_analyzer=feedback_analyzer,
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
             llm_adapter=llm_adapter,
         )
 

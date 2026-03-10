@@ -7,16 +7,15 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
 from core.storage.interfaces import EventMetadataStore
 from data_models import (
     DebugConfig,
-    ExecutionOutcomeContract,
     Event,
     EventType,
+    ExecutionOutcomeContract,
     ExperimentNode,
     FeedbackRecord,
     LoopState,
@@ -45,11 +44,11 @@ class StepExecutionResult:
     artifact_id: str
     score: Score
     feedback: FeedbackRecord
-    outcome: Optional[ExecutionOutcomeContract] = None
+    outcome: ExecutionOutcomeContract | None = None
     step_state: StepState = StepState.RECORDED
-    failed_stage: Optional[str] = None
-    error_message: Optional[str] = None
-    checkpoint_ids: List[str] = field(default_factory=list)
+    failed_stage: str | None = None
+    error_message: str | None = None
+    checkpoint_ids: list[str] = field(default_factory=list)
 
 
 class StepExecutor:
@@ -70,7 +69,7 @@ class StepExecutor:
         evaluation_service: EvaluationService,
         workspace_manager: WorkspaceManager,
         event_store: EventMetadataStore,
-        branch_store: Optional[BranchTraceStore] = None,
+        branch_store: BranchTraceStore | None = None,
         costeer_max_rounds: int = 1,
         llm_adapter=None,
         memory_service=None,
@@ -93,9 +92,9 @@ class StepExecutor:
         loop_state: LoopState,
         task_summary: str,
         plan: Plan,
-        parent_ids: List[str],
+        parent_ids: list[str],
         context_pack,
-        source_workspace: Optional[str] = None,
+        source_workspace: str | None = None,
     ) -> StepExecutionResult:
         branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
         resolved_parent_ids = list(parent_ids)
@@ -110,7 +109,7 @@ class StepExecutor:
             workspace_id,
             source_path=source_workspace,
         )
-        checkpoint_ids: List[str] = []
+        checkpoint_ids: list[str] = []
 
         def elapsed_ms(started_at: float) -> int:
             return int((time.perf_counter() - started_at) * 1000)
@@ -308,9 +307,7 @@ class StepExecutor:
         )
 
         checkpoint("record")
-        terminal_step_state = (
-            StepState.RECORDED if execution_outcome.process_succeeded else StepState.FAILED
-        )
+        terminal_step_state = StepState.RECORDED if execution_outcome.process_succeeded else StepState.FAILED
         failed_stage = None if terminal_step_state == StepState.RECORDED else "running"
         experiment.step_state = terminal_step_state
         experiment.result_ref = execution_result.artifacts_ref

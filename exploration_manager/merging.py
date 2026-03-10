@@ -1,8 +1,9 @@
 """FC-2 trace merging: LLM-guided synthesis of multiple reasoning paths."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from llm.adapter import LLMAdapter
 from llm.prompts import merge_traces_prompt
@@ -18,10 +19,10 @@ class TraceMerger:
 
     def merge(
         self,
-        traces: List[Dict[str, Any]],
+        traces: list[dict[str, Any]],
         task_summary: str,
         scenario_name: str,
-        model_config: Optional[ModelSelectorConfig] = None,
+        model_config: ModelSelectorConfig | None = None,
     ) -> ExperimentDesign:
         if not traces:
             raise ValueError("Cannot merge empty traces list")
@@ -48,7 +49,7 @@ class TraceMerger:
         return result
 
     @staticmethod
-    def _format_trace(trace: Dict[str, Any], index: int) -> str:
+    def _format_trace(trace: dict[str, Any], index: int) -> str:
         parts = []
         if "analysis" in trace:
             analysis = trace["analysis"]

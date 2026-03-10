@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from data_models import (
     CodeArtifact,
@@ -25,7 +25,6 @@ from llm import (
     CodeDraft,
     FeedbackDraft,
     LLMAdapter,
-    LLMAdapterConfig,
     ProposalDraft,
     coding_prompt,
     feedback_prompt,
@@ -68,13 +67,11 @@ class SyntheticResearchConfig:
     """Configuration for the formal synthetic research scenario."""
 
     workspace_root: str = "/tmp/rd_agent_workspace"
-    default_step_overrides: StepOverrideConfig = field(
-        default_factory=default_synthetic_research_step_overrides
-    )
+    default_step_overrides: StepOverrideConfig = field(default_factory=default_synthetic_research_step_overrides)
 
 
 class SyntheticResearchScenarioPlugin(ScenarioPlugin):
-    def build_context(self, run_session: RunSession, input_payload: Dict[str, Any]) -> ScenarioContext:
+    def build_context(self, run_session: RunSession, input_payload: dict[str, Any]) -> ScenarioContext:
         return ScenarioContext(
             run_id=run_session.run_id,
             scenario_name=run_session.scenario,
@@ -88,9 +85,9 @@ class SyntheticResearchScenarioPlugin(ScenarioPlugin):
 class SyntheticResearchProposalEngine(ProposalEngine):
     def __init__(
         self,
-        llm_adapter: Optional[LLMAdapter] = None,
-        reasoning_pipeline: Optional["ReasoningPipeline"] = None,
-        virtual_evaluator: Optional["VirtualEvaluator"] = None,
+        llm_adapter: LLMAdapter | None = None,
+        reasoning_pipeline: ReasoningPipeline | None = None,
+        virtual_evaluator: VirtualEvaluator | None = None,
         fallback_policy: str = "synthetic_research_pipeline",
     ) -> None:
         self._llm_adapter = llm_adapter
@@ -102,7 +99,7 @@ class SyntheticResearchProposalEngine(ProposalEngine):
         self,
         task_summary: str,
         context: ContextPack,
-        parent_ids: List[str],
+        parent_ids: list[str],
         plan: Plan,
         scenario: ScenarioContext,
     ) -> Proposal:
@@ -142,12 +139,8 @@ class SyntheticResearchProposalEngine(ProposalEngine):
 
             evaluator = self._virtual_evaluator
             if isinstance(evaluator, VirtualEvaluator):
-                previous_results = [
-                    str(result) for result in scenario.input_payload.get("previous_results", [])
-                ]
-                current_scores = [
-                    float(score) for score in scenario.input_payload.get("current_scores", [])
-                ]
+                previous_results = [str(result) for result in scenario.input_payload.get("previous_results", [])]
+                current_scores = [float(score) for score in scenario.input_payload.get("current_scores", [])]
                 designs = evaluator.evaluate(
                     task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
@@ -173,12 +166,8 @@ class SyntheticResearchProposalEngine(ProposalEngine):
 
             pipeline = self._reasoning_pipeline
             if isinstance(pipeline, ReasoningPipeline):
-                previous_results = [
-                    str(result) for result in scenario.input_payload.get("previous_results", [])
-                ]
-                current_scores = [
-                    float(score) for score in scenario.input_payload.get("current_scores", [])
-                ]
+                previous_results = [str(result) for result in scenario.input_payload.get("previous_results", [])]
+                current_scores = [float(score) for score in scenario.input_payload.get("current_scores", [])]
                 design = pipeline.reason(
                     task_summary=enriched_summary,
                     scenario_name=scenario.scenario_name,
@@ -231,10 +220,10 @@ class SyntheticResearchExperimentGenerator(ExperimentGenerator):
         proposal: Proposal,
         run_session: RunSession,
         loop_state: LoopState,
-        parent_ids: List[str],
+        parent_ids: list[str],
     ) -> ExperimentNode:
         branch_id = run_session.active_branch_ids[0] if run_session.active_branch_ids else "main"
-        parent_node_id: Optional[str] = parent_ids[0] if parent_ids else None
+        parent_node_id: str | None = parent_ids[0] if parent_ids else None
         node_id = f"node-{run_session.run_id}-{branch_id}-{loop_state.iteration}"
         workspace_ref = self._workspace_root / run_session.run_id / node_id
         return ExperimentNode(
@@ -252,7 +241,7 @@ class SyntheticResearchExperimentGenerator(ExperimentGenerator):
 
 
 class SyntheticResearchCoder(Coder):
-    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+    def __init__(self, llm_adapter: LLMAdapter | None = None) -> None:
         self._llm_adapter = llm_adapter
 
     def _enrich_proposal_with_feedback(self, proposal: Proposal, experiment: ExperimentNode) -> str:
@@ -273,7 +262,7 @@ class SyntheticResearchCoder(Coder):
         workspace = Path(experiment.workspace_ref)
         workspace.mkdir(parents=True, exist_ok=True)
         brief_lines = [
-            f"# Synthetic Research Brief",
+            "# Synthetic Research Brief",
             "",
             f"Task: {proposal.summary}",
         ]
@@ -353,14 +342,14 @@ class SyntheticResearchRunner(Runner):
 
 
 class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
-    def __init__(self, llm_adapter: Optional[LLMAdapter] = None) -> None:
+    def __init__(self, llm_adapter: LLMAdapter | None = None) -> None:
         self._llm_adapter = llm_adapter
 
     def summarize(
         self,
         experiment: ExperimentNode,
         result: ExecutionResult,
-        score: Optional[Score] = None,
+        score: Score | None = None,
     ) -> FeedbackRecord:
         if self._llm_adapter is not None:
             score_text = "none" if score is None else f"{score.metric_name}:{score.value:.4f}"
@@ -371,9 +360,7 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
             )
             iteration = experiment.loop_index
             feedback_config = ModelSelectorConfig.from_dict(
-                experiment.hypothesis.get("_feedback_model_config")
-                if isinstance(experiment.hypothesis, dict)
-                else None
+                experiment.hypothesis.get("_feedback_model_config") if isinstance(experiment.hypothesis, dict) else None
             )
             prompt = feedback_prompt(
                 hypothesis_text=hypothesis_text,
@@ -406,14 +393,14 @@ class SyntheticResearchFeedbackAnalyzer(FeedbackAnalyzer):
         )
 
 
-def _validate_synthetic_research_usefulness(gate_input: UsefulnessGateInput) -> Optional[str]:
+def _validate_synthetic_research_usefulness(gate_input: UsefulnessGateInput) -> str | None:
     payload = gate_input.structured_payload
     if not isinstance(payload, dict):
         return "missing structured payload"
     required_fields = ("task_summary", "artifact_id", "topic_count")
-    for field in required_fields:
-        if field not in payload:
-            return f"missing key field: {field}"
+    for field_name in required_fields:
+        if field_name not in payload:
+            return f"missing key field: {field_name}"
     task_summary = str(payload.get("task_summary", "")).strip().lower()
     if task_summary in {"", "todo", "tbd", "placeholder"}:
         return "template-only task_summary"
@@ -511,13 +498,15 @@ def _is_prompt_echo(candidate: str, normalized_task_summary: str) -> bool:
         return True
     if cleaned == normalized_task_summary:
         return True
-    if normalized_task_summary and cleaned in {
-        f"task: {normalized_task_summary}",
-        f"task summary: {normalized_task_summary}",
-        f"research task: {normalized_task_summary}",
-    }:
-        return True
-    return False
+    return bool(
+        normalized_task_summary
+        and cleaned
+        in {
+            f"task: {normalized_task_summary}",
+            f"task summary: {normalized_task_summary}",
+            f"research task: {normalized_task_summary}",
+        }
+    )
 
 
 def _tokenize_significant(text: str) -> set[str]:
@@ -527,8 +516,8 @@ def _tokenize_significant(text: str) -> set[str]:
 
 def _has_task_specific_synthesis(
     normalized_task_summary: str,
-    payload: Dict[str, Any],
-    normalized_findings: List[str],
+    payload: dict[str, Any],
+    normalized_findings: list[str],
 ) -> bool:
     topic_tokens: set[str] = set()
     topics = payload.get("topics")
@@ -545,10 +534,10 @@ def _has_task_specific_synthesis(
 
 
 def build_synthetic_research_bundle(
-    config: Optional[SyntheticResearchConfig] = None,
-    llm_adapter: Optional[LLMAdapter] = None,
-    reasoning_pipeline: Optional["ReasoningPipeline"] = None,
-    virtual_evaluator: Optional["VirtualEvaluator"] = None,
+    config: SyntheticResearchConfig | None = None,
+    llm_adapter: LLMAdapter | None = None,
+    reasoning_pipeline: ReasoningPipeline | None = None,
+    virtual_evaluator: VirtualEvaluator | None = None,
 ) -> PluginBundle:
     """Build the formal synthetic research plugin bundle."""
 
@@ -557,7 +546,9 @@ def build_synthetic_research_bundle(
         raise RuntimeError(
             "llm_adapter is required for build_synthetic_research_bundle(). "
             "Configure a real LLM provider, e.g.: "
-            "LLMAdapter(provider=LiteLLMProvider(api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'), config=LLMAdapterConfig(max_retries=2))"
+            "LLMAdapter(provider=LiteLLMProvider("
+            "api_key=os.environ['OPENAI_API_KEY'], model='gpt-4o-mini'"
+            "), config=LLMAdapterConfig(max_retries=2))"
         )
     adapter = llm_adapter
     return PluginBundle(

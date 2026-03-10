@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple, Type, cast
+from typing import Any, cast
 
 import litellm
-from litellm.exceptions import AuthenticationError as LiteLLMAuthError
 from litellm.exceptions import APIConnectionError as LiteLLMAPIConnectionError
+from litellm.exceptions import AuthenticationError as LiteLLMAuthError
 from litellm.exceptions import RateLimitError as LiteLLMRateLimitError
 from litellm.exceptions import ServiceUnavailableError as LiteLLMServiceUnavailableError
 from litellm.exceptions import Timeout as LiteLLMTimeout
@@ -20,7 +20,7 @@ _DEFAULT_THINKING_MAX_TOKENS = 16384
 _DEFAULT_TIMEOUT_SEC = 60
 _DEFAULT_THINKING_TIMEOUT_SEC = 180
 _TRANSIENT_RETRY_DELAYS_SEC = (0.5, 1.0, 2.0)
-_RETRYABLE_TRANSIENT_ERRORS: Tuple[Type[Exception], ...] = (
+_RETRYABLE_TRANSIENT_ERRORS: tuple[type[Exception], ...] = (
     LiteLLMAPIConnectionError,
     LiteLLMServiceUnavailableError,
 )
@@ -31,19 +31,19 @@ class LiteLLMProvider:
         self,
         api_key: str,
         model: str = "gpt-4o-mini",
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._base_url = base_url
-        self._temperature: Optional[float] = None
-        self._max_tokens: Optional[int] = None
+        self._temperature: float | None = None
+        self._max_tokens: int | None = None
 
     @staticmethod
     def _is_thinking_model(model: str) -> bool:
         return any(model.startswith(p) for p in _THINKING_MODEL_PREFIXES)
 
-    def complete(self, prompt: str, model_config: Optional[ModelSelectorConfig] = None) -> str:
+    def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
         model = self._model
         temperature = self._temperature
         max_tokens = self._max_tokens
@@ -63,7 +63,7 @@ class LiteLLMProvider:
 
         timeout = _DEFAULT_THINKING_TIMEOUT_SEC if is_thinking else _DEFAULT_TIMEOUT_SEC
 
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
         }
@@ -110,13 +110,14 @@ class LiteLLMProvider:
         content = message.content
 
         # For thinking models, content may be empty while reasoning_content has the answer
-        if (content is None or (isinstance(content, str) and not content.strip())):
+        if content is None or (isinstance(content, str) and not content.strip()):
             reasoning = getattr(message, "reasoning_content", None)
             if reasoning and isinstance(reasoning, str) and reasoning.strip():
                 _log.warning(
                     "Model '%s' returned empty content but has reasoning_content (%d chars). "
                     "Using reasoning_content as fallback.",
-                    model, len(reasoning),
+                    model,
+                    len(reasoning),
                 )
                 content = reasoning
 

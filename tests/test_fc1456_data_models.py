@@ -1,7 +1,5 @@
 """Tests for FC-1/4/5/6 dataclass extensions (TDD: RED phase)."""
 
-import pytest
-
 from data_models import (
     ArtifactVerificationStatus,
     BudgetLedger,
@@ -25,11 +23,7 @@ class TestBudgetLedger:
 
     def test_budget_ledger_with_new_fields(self):
         """Test BudgetLedger with iteration_durations and estimated_remaining."""
-        budget = BudgetLedger(
-            total_time_budget=100,
-            iteration_durations=[10.0, 12.0],
-            estimated_remaining=78.0
-        )
+        budget = BudgetLedger(total_time_budget=100, iteration_durations=[10.0, 12.0], estimated_remaining=78.0)
         assert budget.total_time_budget == 100
         assert budget.iteration_durations == [10.0, 12.0]
         assert budget.estimated_remaining == 78.0
@@ -58,12 +52,7 @@ class TestExecutionResult:
 
     def test_execution_result_default_construction(self):
         """Test backward compatibility: ExecutionResult minimal args."""
-        result = ExecutionResult(
-            run_id="r1",
-            exit_code=0,
-            logs_ref="l",
-            artifacts_ref="a"
-        )
+        result = ExecutionResult(run_id="r1", exit_code=0, logs_ref="l", artifacts_ref="a")
         assert result.run_id == "r1"
         assert result.exit_code == 0
         assert result.logs_ref == "l"
@@ -74,12 +63,7 @@ class TestExecutionResult:
     def test_execution_result_with_new_fields(self):
         """Test ExecutionResult with duration_sec and timed_out."""
         result = ExecutionResult(
-            run_id="r1",
-            exit_code=0,
-            logs_ref="l",
-            artifacts_ref="a",
-            duration_sec=12.5,
-            timed_out=True
+            run_id="r1", exit_code=0, logs_ref="l", artifacts_ref="a", duration_sec=12.5, timed_out=True
         )
         assert result.duration_sec == 12.5
         assert result.timed_out is True

@@ -1,7 +1,8 @@
 """Quant data providers: protocol + YFinance + Mock (test-only)."""
+
 from __future__ import annotations
 
-from typing import List, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
@@ -21,7 +22,7 @@ class YFinanceDataProvider:
     Fetches real OHLCV data from Yahoo Finance.
     """
 
-    def __init__(self, tickers: List[str], start: str, end: str) -> None:
+    def __init__(self, tickers: list[str], start: str, end: str) -> None:
         self._tickers = tickers
         self._start = start
         self._end = end
@@ -31,8 +32,7 @@ class YFinanceDataProvider:
             import yfinance as yf
         except ImportError as exc:
             raise ImportError(
-                "yfinance is required for YFinanceDataProvider. "
-                "Install with: pip install yfinance"
+                "yfinance is required for YFinanceDataProvider. Install with: pip install yfinance"
             ) from exc
 
         raw = yf.download(

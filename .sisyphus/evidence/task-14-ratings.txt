@@ -1,9 +1,0 @@
-60:### Gap Rating: **MAJOR**
-103:### Gap Rating: **SIGNIFICANT**
-160:### Gap Rating: **MINOR**
-218:### Gap Rating: **MAJOR**
-267:### Gap Rating: **SIGNIFICANT**
-318:### Gap Rating: **SIGNIFICANT**
---- Verification ---
-FC-1=MAJOR (unchanged), FC-2=SIGNIFICANT (was CRITICAL), FC-3=MINOR (was MAJOR), FC-4=MAJOR (unchanged), FC-5=SIGNIFICANT (unchanged), FC-6=SIGNIFICANT (unchanged)
-PASS

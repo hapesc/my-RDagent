@@ -105,15 +105,14 @@ def main() -> None:
     # 3. 构建 QuantConfig + plugin registry（直接注入，绕过 build_runtime env
     #    依赖，保持脚本自包含）
     # ---------------------------------------------------------------------- #
-    from scenarios.quant.plugin import QuantConfig, build_quant_bundle
-    from scenarios.quant.data_provider import YFinanceDataProvider
     from plugins import PluginRegistry
+    from scenarios.quant.data_provider import YFinanceDataProvider
+    from scenarios.quant.plugin import QuantConfig, build_quant_bundle
 
     RUN_ID = f"quant-e2e-{uuid.uuid4().hex[:8]}"
     WORKSPACE_ROOT = f"/tmp/rd_agent_quant_e2e/{RUN_ID}"
     ARTIFACT_ROOT = f"/tmp/rd_agent_quant_e2e_artifacts/{RUN_ID}"
     SQLITE_PATH = f"/tmp/rd_agent_quant_e2e_{RUN_ID}.db"
-    TRACE_PATH = f"/tmp/rd_agent_quant_e2e_trace_{RUN_ID}.jsonl"
 
     log.info("[3/5] Building quant plugin bundle...")
     quant_config = QuantConfig(
@@ -161,9 +160,7 @@ def main() -> None:
 
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=SQLITE_PATH))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=SQLITE_PATH))
-    checkpoint_store = FileCheckpointStore(
-        CheckpointStoreConfig(root_dir=f"{ARTIFACT_ROOT}/checkpoints")
-    )
+    checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=f"{ARTIFACT_ROOT}/checkpoints"))
     workspace_manager = WorkspaceManager(
         WorkspaceManagerConfig(root_dir=WORKSPACE_ROOT),
         checkpoint_store=checkpoint_store,

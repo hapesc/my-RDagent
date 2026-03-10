@@ -18,7 +18,6 @@ from plugins import (
 )
 from plugins.examples import build_minimal_data_science_bundle
 from plugins.registry import PluginRegistry
-
 from tests._llm_test_utils import make_mock_llm_adapter
 
 

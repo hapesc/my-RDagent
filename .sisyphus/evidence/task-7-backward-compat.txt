@@ -1,7 +1,0 @@
-Wave 2 - Task 7: CoSTEER backward compatibility evidence
-
-test_no_llm_adapter_falls_back_to_plain_feedback PASSED
-- CoSTEEREvolver created with llm_adapter=None
-- On failure round, plain feedback.reason injected into hypothesis["_costeer_feedback"]
-- No _costeer_feedback_execution, _costeer_feedback_code, _costeer_feedback_return keys
-- Behavior identical to pre-T7 implementation

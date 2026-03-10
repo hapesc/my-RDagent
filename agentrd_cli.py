@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, NoReturn, Optional
+from typing import Any, NoReturn
 
 from app.config import REAL_PROVIDER_SAFE_PROFILE
 from app.runtime import build_run_service, build_runtime, resolve_scenario_runtime_profile
@@ -24,7 +25,6 @@ from service_contracts import (
     RunEventPageResponse,
     RunSummaryResponse,
     ServiceContractError,
-    resolve_step_override_config,
 )
 from trace_store import TraceTimelineView
 
@@ -39,7 +39,7 @@ class ExitCode(IntEnum):
     INTERNAL_ERROR = 5
 
 
-def _infer_field_from_text(message: str) -> Optional[str]:
+def _infer_field_from_text(message: str) -> str | None:
     for token in message.replace(",", " ").split():
         if token.startswith("--"):
             return token[2:].replace("-", "_")
@@ -139,8 +139,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _load_json_input(raw: str) -> Dict[str, Any]:
-    path: Optional[Path] = None
+def _load_json_input(raw: str) -> dict[str, Any]:
+    path: Path | None = None
     try:
         candidate = Path(raw)
         if candidate.exists():
@@ -181,11 +181,11 @@ def _load_json_input(raw: str) -> Dict[str, Any]:
     return payload
 
 
-def _print_json(payload: Dict[str, Any], stream=None) -> None:
+def _print_json(payload: dict[str, Any], stream=None) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=stream or sys.stdout)
 
 
-def _print_error(code: str, message: str, field: Optional[str] = None) -> None:
+def _print_error(code: str, message: str, field: str | None = None) -> None:
     _print_json(
         ErrorResponse.from_error(ServiceContractError(code=code, message=message, field=field)).to_dict(),
         stream=sys.stderr,
@@ -205,7 +205,7 @@ _RUN_REQUEST_RESERVED_KEYS = {
 }
 
 
-def _build_entry_input(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _build_entry_input(payload: dict[str, Any]) -> dict[str, Any]:
     explicit_entry_input = dict(payload.get("entry_input", {}))
     passthrough = {key: value for key, value in payload.items() if key not in _RUN_REQUEST_RESERVED_KEYS}
     return {**explicit_entry_input, **passthrough}
@@ -228,7 +228,7 @@ def _require_scenario_manifest(runtime, scenario: str):
     return manifest
 
 
-def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
+def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> dict[str, Any]:
     profile = resolve_scenario_runtime_profile(
         runtime.config,
         manifest.default_step_overrides,
@@ -253,7 +253,7 @@ def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict
     }
 
 
-def _emit_guardrail_warnings(config_snapshot: Dict[str, Any]) -> None:
+def _emit_guardrail_warnings(config_snapshot: dict[str, Any]) -> None:
     runtime_snapshot = config_snapshot.get("runtime", {})
     for warning in runtime_snapshot.get("guardrail_warnings", []):
         print(f"WARNING: {warning}", file=sys.stderr)
@@ -277,8 +277,8 @@ def _branch_list_response(runtime, run_id: str) -> BranchListResponse:
     )
 
 
-def _list_run_artifacts(runtime, run_id: str) -> List[str]:
-    artifact_paths: List[str] = []
+def _list_run_artifacts(runtime, run_id: str) -> list[str]:
+    artifact_paths: list[str] = []
     roots = [
         Path(runtime.config.workspace_root) / run_id,
         Path(runtime.config.artifact_root) / run_id,
@@ -390,7 +390,14 @@ def _handle_pause(args: argparse.Namespace) -> int:
         status=paused.status.value,
         message="run paused",
     )
-    _print_json({"command": "pause", "run_id": args.run_id, "status": paused.status.value, "control": control.to_dict()})
+    _print_json(
+        {
+            "command": "pause",
+            "run_id": args.run_id,
+            "status": paused.status.value,
+            "control": control.to_dict(),
+        }
+    )
     return int(ExitCode.OK)
 
 
@@ -408,7 +415,14 @@ def _handle_stop(args: argparse.Namespace) -> int:
         status=stopped.status.value,
         message="run stopped",
     )
-    _print_json({"command": "stop", "run_id": args.run_id, "status": stopped.status.value, "control": control.to_dict()})
+    _print_json(
+        {
+            "command": "stop",
+            "run_id": args.run_id,
+            "status": stopped.status.value,
+            "control": control.to_dict(),
+        }
+    )
     return int(ExitCode.OK)
 
 
@@ -429,9 +443,7 @@ def _handle_trace(args: argparse.Namespace) -> int:
         rows = TraceTimelineView().build_rows(events)
         print("timestamp\tevent_type\tbranch_id\tstep_name\tevent_id")
         for row in rows:
-            print(
-                f"{row['timestamp']}\t{row['event_type']}\t{row['branch_id']}\t{row['step_name']}\t{row['event_id']}"
-            )
+            print(f"{row['timestamp']}\t{row['event_type']}\t{row['branch_id']}\t{row['step_name']}\t{row['event_id']}")
         return int(ExitCode.OK)
 
     _print_json(
@@ -491,7 +503,7 @@ def _handle_health_check(args: argparse.Namespace) -> int:
     return int(ExitCode.OK)
 
 
-def _dispatch_table() -> Dict[str, Callable[[argparse.Namespace], int]]:
+def _dispatch_table() -> dict[str, Callable[[argparse.Namespace], int]]:
     return {
         "run": _handle_run,
         "resume": _handle_resume,
@@ -503,7 +515,7 @@ def _dispatch_table() -> Dict[str, Callable[[argparse.Namespace], int]]:
     }
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     try:
         args = parser.parse_args(argv)

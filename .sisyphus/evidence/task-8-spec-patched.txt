@@ -1,6 +1,0 @@
-T8 Evidence: Spec document patched with Implementation Mapping
-
-Implementation Mapping matches: 1
-Code path references (step_executor/coder.develop/LoopEngine/engine.py): 4
-LLM references (MockLLMProvider/LiteLLM/litellm): 4
-All paths in Implementation Mapping verified to exist in codebase.

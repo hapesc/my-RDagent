@@ -6,7 +6,7 @@ import pytest
 
 from app.config import load_config
 from app.runtime import build_runtime
-from llm import LLMAdapter, MockLLMProvider
+from llm import LLMAdapter
 from llm.providers.litellm_provider import LiteLLMProvider
 
 
@@ -22,12 +22,12 @@ def test_litellm_provider_created_with_config(monkeypatch):
     monkeypatch.setenv("RD_AGENT_LLM_API_KEY", "test-api-key-12345")
     monkeypatch.setenv("RD_AGENT_LLM_MODEL", "gpt-4-turbo")
     monkeypatch.setenv("RD_AGENT_LLM_BASE_URL", "https://custom.api.com")
-    
+
     runtime = build_runtime()
-    
+
     assert isinstance(runtime.llm_adapter, LLMAdapter)
     assert isinstance(runtime.llm_adapter._provider, LiteLLMProvider)
-    
+
     provider = runtime.llm_adapter._provider
     assert provider._api_key == "test-api-key-12345"
     assert provider._model == "gpt-4-turbo"
@@ -38,9 +38,9 @@ def test_litellm_provider_with_minimal_config(monkeypatch):
     """LiteLLM with only provider and api_key set should use defaults."""
     monkeypatch.setenv("RD_AGENT_LLM_PROVIDER", "litellm")
     monkeypatch.setenv("RD_AGENT_LLM_API_KEY", "test-key")
-    
+
     runtime = build_runtime()
-    
+
     assert isinstance(runtime.llm_adapter._provider, LiteLLMProvider)
     provider = runtime.llm_adapter._provider
     assert provider._api_key == "test-key"
@@ -64,7 +64,7 @@ def test_real_provider_minimal_config_uses_conservative_runtime_defaults(monkeyp
 
 def test_unknown_provider_raises_runtime_error(monkeypatch):
     monkeypatch.setenv("RD_AGENT_LLM_PROVIDER", "openai")
-    
+
     with pytest.raises(RuntimeError, match="Unknown or missing LLM provider"):
         build_runtime()
 

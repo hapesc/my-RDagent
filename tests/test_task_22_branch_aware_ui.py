@@ -15,6 +15,7 @@ from app.run_supervisor import RunSupervisor, RunSupervisorConfig
 from app.runtime import build_runtime
 from core.storage import SQLiteMetadataStore, SQLiteStoreConfig
 from data_models import Event, EventType, ExperimentNode, RunSession, RunStatus, StepState, StopConditions
+from tests._llm_test_utils import patch_runtime_llm_provider
 from ui.trace_ui import (
     build_branch_compare_summary,
     load_artifact_manifest,
@@ -23,8 +24,6 @@ from ui.trace_ui import (
     load_events,
     perform_control_action,
 )
-
-from tests._llm_test_utils import patch_runtime_llm_provider
 
 
 class Task22BranchAwareUITests(unittest.TestCase):
@@ -208,9 +207,7 @@ class Task22BranchAwareUITests(unittest.TestCase):
             json={
                 "scenario": "data_science",
                 "task_summary": "task-22 ui control",
-                "entry_input": {
-                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
-                },
+                "entry_input": {"command": 'python3 pipeline.py && python3 -c "import time; time.sleep(0.2)"'},
                 "stop_conditions": {"max_loops": 4, "max_duration_sec": 60},
             },
         )

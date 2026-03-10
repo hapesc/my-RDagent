@@ -17,7 +17,6 @@ from data_models import ExecutionResult, StopConditions
 from plugins import build_default_registry
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.synthetic_research.plugin import build_synthetic_research_bundle
-
 from tests._llm_test_utils import make_mock_llm_adapter, patch_runtime_llm_provider
 
 
@@ -108,12 +107,7 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         self.assertEqual(context.run_session.status.value, "COMPLETED")
         events = runtime.sqlite_store.query_events(run_id=run.run_id)
         self.assertGreaterEqual(len(events), 6)
-        summary_path = (
-            Path(os.environ["AGENTRD_WORKSPACE_ROOT"])
-            / run.run_id
-            / "loop-0000"
-            / "research_summary.json"
-        )
+        summary_path = Path(os.environ["AGENTRD_WORKSPACE_ROOT"]) / run.run_id / "loop-0000" / "research_summary.json"
         self.assertTrue(summary_path.exists())
 
     def test_cli_run_supports_synthetic_research(self) -> None:
@@ -197,10 +191,19 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
                 "artifact_id": "artifact-3",
                 "topic_count": 2,
                 "topics": ["retrieval depth", "rerank quality"],
-                "synthesized_summary": "Compared retrieval depth against rerank quality because latency and precision move in opposite directions.",
+                "synthesized_summary": (
+                    "Compared retrieval depth against rerank quality because latency "
+                    "and precision move in opposite directions."
+                ),
                 "synthesized_findings": [
-                    "Compared retrieval depth options, precision gains plateau after top-20 context while latency keeps increasing.",
-                    "However, rerank quality improves evidence relevance, so a depth-10 plus rerank trade-off reduces risk under tight budgets.",
+                    (
+                        "Compared retrieval depth options, precision gains plateau "
+                        "after top-20 context while latency keeps increasing."
+                    ),
+                    (
+                        "However, rerank quality improves evidence relevance, so a "
+                        "depth-10 plus rerank trade-off reduces risk under tight budgets."
+                    ),
                 ],
             }
         )

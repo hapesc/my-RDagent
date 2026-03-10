@@ -107,9 +107,7 @@ class SyntheticReasonPositiveAnalyzer:
 class LoopEngineTests(unittest.TestCase):
     def _build_services(self, tmpdir: str):
         sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=str(Path(tmpdir) / "meta.db")))
-        checkpoint_store = FileCheckpointStore(
-            CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))
-        )
+        checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints")))
         workspace_manager = WorkspaceManager(
             WorkspaceManagerConfig(root_dir=str(Path(tmpdir) / "workspaces")),
             checkpoint_store=checkpoint_store,

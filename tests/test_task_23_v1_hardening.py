@@ -14,6 +14,7 @@ from app.control_plane_client import ControlPlaneClient
 from app.fastapi_compat import TestClient
 from app.run_supervisor import RunSupervisor, RunSupervisorConfig
 from service_contracts import ErrorCode, RunCreateRequest, ServiceContractError
+from tests._llm_test_utils import patch_runtime_llm_provider
 from ui.trace_ui import (
     build_timeline_rows,
     load_artifact_manifest,
@@ -22,8 +23,6 @@ from ui.trace_ui import (
     load_run_ids,
     load_run_summary,
 )
-
-from tests._llm_test_utils import patch_runtime_llm_provider
 
 
 class Task23V1HardeningTests(unittest.TestCase):
@@ -58,9 +57,7 @@ class Task23V1HardeningTests(unittest.TestCase):
             {
                 "scenario": "data_science",
                 "task_summary": "task-23 remote control",
-                "entry_input": {
-                    "command": "python3 pipeline.py && python3 -c \"import time; time.sleep(0.2)\""
-                },
+                "entry_input": {"command": 'python3 pipeline.py && python3 -c "import time; time.sleep(0.2)"'},
                 "stop_conditions": {"max_loops": 4, "max_duration_sec": 60},
             }
         )

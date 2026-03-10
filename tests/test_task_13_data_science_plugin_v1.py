@@ -11,15 +11,13 @@ from pathlib import Path
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutor
 from core.storage import CheckpointStoreConfig, FileCheckpointStore, SQLiteMetadataStore, SQLiteStoreConfig
-from data_models import ExecutionResult
-from data_models import EventType, LoopState, Proposal, RunSession, RunStatus, StopConditions
+from data_models import EventType, ExecutionResult, LoopState, Proposal, RunSession, RunStatus, StopConditions
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
-
 from tests._llm_test_utils import make_mock_llm_adapter
 
 
@@ -50,9 +48,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             self._write_csv(data_path)
 
             sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=str(tmp_path / "meta.db")))
-            checkpoint_store = FileCheckpointStore(
-                CheckpointStoreConfig(root_dir=str(tmp_path / "checkpoints"))
-            )
+            checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(tmp_path / "checkpoints")))
             workspace_manager = WorkspaceManager(
                 WorkspaceManagerConfig(root_dir=str(tmp_path / "workspaces")),
                 checkpoint_store=checkpoint_store,

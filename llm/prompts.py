@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import Dict, List, Optional
 
-from llm.schemas import ExperimentDesign, PlanningStrategy, HypothesisModification
+from llm.schemas import ExperimentDesign, HypothesisModification, PlanningStrategy
 
 
 def _build_schema_hint(schema_cls: type) -> str:
@@ -60,11 +59,11 @@ def proposal_prompt(
     task_summary: str,
     scenario_name: str,
     iteration: int,
-    previous_proposals: Optional[List[str]] = None,
+    previous_proposals: list[str] | None = None,
 ) -> str:
     history_block = ""
     if previous_proposals:
-        items = "\n".join(f"  {i+1}. {p}" for i, p in enumerate(previous_proposals[-3:]))
+        items = "\n".join(f"  {i + 1}. {p}" for i, p in enumerate(previous_proposals[-3:]))
         history_block = (
             f"\n## Previous Proposals\n{items}\n"
             f"You MUST differentiate from these. Either refine a promising direction "
@@ -102,16 +101,16 @@ def planning_strategy_prompt(
     progress: float,
     stage: str,
     iteration: int,
-    history_summary: Dict[str, str],
+    history_summary: dict[str, str],
     budget_remaining: float,
 ) -> str:
     schema_hint = _build_schema_hint(PlanningStrategy)
-    
+
     history_block = ""
     if history_summary:
         items = "\n".join(f"  - {k}: {v}" for k, v in history_summary.items())
         history_block = f"\n## Exploration History\n{items}\n"
-    
+
     return (
         f"You are a research strategist planning the next exploration direction in an iterative R&D loop.\n"
         f"\n"
@@ -146,10 +145,9 @@ def planning_strategy_prompt(
     )
 
 
-
 def coding_prompt(
     proposal_summary: str,
-    constraints: List[str],
+    constraints: list[str],
     experiment_node_id: str,
     workspace_ref: str,
     scenario_name: str,
@@ -221,21 +219,17 @@ def reasoning_analysis_prompt(
     task_summary: str,
     scenario_name: str,
     iteration: int,
-    previous_results: List[str],
-    current_scores: List[float],
+    previous_results: list[str],
+    current_scores: list[float],
 ) -> str:
     strategy = _iteration_strategy(iteration)
-    
+
     previous_block = ""
     if previous_results:
-        items = "\n".join(f"  {i+1}. {result}" for i, result in enumerate(previous_results[-3:]))
+        items = "\n".join(f"  {i + 1}. {result}" for i, result in enumerate(previous_results[-3:]))
         scores_text = ", ".join(f"{s:.3f}" for s in current_scores[-3:]) if current_scores else "N/A"
-        previous_block = (
-            f"\n## Previous Results\n"
-            f"{items}\n"
-            f"Performance scores: {scores_text}\n"
-        )
-    
+        previous_block = f"\n## Previous Results\n{items}\nPerformance scores: {scores_text}\n"
+
     return (
         f"You are a research scientist analyzing the current state of an iterative R&D exploration.\n"
         f"\n"
@@ -350,7 +344,7 @@ def reasoning_design_prompt(
     iteration: int,
 ) -> str:
     strategy = _iteration_strategy(iteration)
-    
+
     return (
         f"You are a research engineer designing a concrete experiment to test a hypothesis.\n"
         f"\n"
@@ -395,21 +389,18 @@ def reasoning_design_prompt(
 
 
 def virtual_eval_prompt(
-    candidates: List,
+    candidates: list,
     task_summary: str,
     scenario_name: str,
     evaluation_criteria: str,
 ) -> str:
     candidates_block = ""
     if candidates:
-        items = "\n".join(
-            f"  Candidate {i}: {c.get('summary', '(no summary)')}"
-            for i, c in enumerate(candidates)
-        )
+        items = "\n".join(f"  Candidate {i}: {c.get('summary', '(no summary)')}" for i, c in enumerate(candidates))
         candidates_block = f"\n## Candidates\n{items}\n"
     else:
         candidates_block = "\n## Candidates\n  (no candidates provided)\n"
-    
+
     return (
         f"You are a research scientist evaluating and ranking candidate proposals by expected performance.\n"
         f"\n"
@@ -441,21 +432,19 @@ def virtual_eval_prompt(
 
 
 def merge_traces_prompt(
-    trace_summaries: List[str],
+    trace_summaries: list[str],
     task_summary: str,
     scenario_name: str,
 ) -> str:
-    traces_text = "\n\n".join(
-        f"### Trace {i + 1}\n{summary}" for i, summary in enumerate(trace_summaries)
-    )
+    traces_text = "\n\n".join(f"### Trace {i + 1}\n{summary}" for i, summary in enumerate(trace_summaries))
     schema_hint = _build_schema_hint(ExperimentDesign)
     return (
-        "You are an expert research synthesizer specializing in {scenario_name} experiments.\n\n"
+        f"You are an expert research synthesizer specializing in {scenario_name} experiments.\n\n"
         "## Context\n"
-        "A multi-branch exploration produced {n} completed research traces for the task:\n"
-        "**Task**: {task_summary}\n\n"
+        f"A multi-branch exploration produced {len(trace_summaries)} completed research traces for the task:\n"
+        f"**Task**: {task_summary}\n\n"
         "## Completed Traces\n"
-        "{traces_text}\n\n"
+        f"{traces_text}\n\n"
         "## Instruction\n"
         "Synthesize the BEST elements from all traces into ONE unified experiment design.\n"
         "- Combine strengths from different traces\n"
@@ -468,30 +457,24 @@ def merge_traces_prompt(
         "- `virtual_score`: Estimated quality score (0.0-1.0)\n"
         "- `implementation_steps`: Ordered list of concrete implementation steps\n\n"
         "## Schema\n"
-        "```json\n{schema_hint}\n```"
-    ).format(
-        scenario_name=scenario_name,
-        n=len(trace_summaries),
-        task_summary=task_summary,
-        traces_text=traces_text,
-        schema_hint=schema_hint,
+        f"```json\n{schema_hint}\n```"
     )
 
 
 def hypothesis_modification_prompt(
     source_hypothesis: str,
     action: str,
-    context_items: List[str],
+    context_items: list[str],
     task_summary: str,
     scenario_name: str,
 ) -> str:
     schema_hint = _build_schema_hint(HypothesisModification)
-    
+
     context_block = ""
     if context_items:
         items = "\n".join(f"  - {item}" for item in context_items)
         context_block = f"\n## Context Items\n{items}\n"
-    
+
     return (
         f"You are a research scientist refining hypotheses in an iterative exploration.\n"
         f"\n"
@@ -592,4 +575,3 @@ def knowledge_extraction_prompt(
         f"transferable insight from this experiment. Focus on actionable knowledge "
         f"that would help in future {scenario} experiments.\n"
     )
-

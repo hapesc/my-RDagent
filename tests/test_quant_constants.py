@@ -1,6 +1,5 @@
 """Tests for quant scenario constants (TDD: RED -> GREEN -> REFACTOR)."""
 
-import pytest
 from scenarios.quant.constants import (
     BACKTEST_CONFIG,
     BLOCKED_IMPORTS,
@@ -42,6 +41,7 @@ class TestBacktestConfig:
 
     def test_train_test_split_order(self):
         from datetime import date
+
         train_end = date.fromisoformat(BACKTEST_CONFIG["train_end"])
         test_start = date.fromisoformat(BACKTEST_CONFIG["test_start"])
         assert test_start > train_end, "test_start must be after train_end"

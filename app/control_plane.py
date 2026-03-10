@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.config import REAL_PROVIDER_SAFE_PROFILE
 from app.query_services import (
@@ -25,17 +25,44 @@ from service_contracts import (
     StructuredError,
 )
 
-from .fastapi_compat import FastAPI, HTTPException, Query, status
+from .fastapi_compat import FASTAPI_AVAILABLE, FastAPI, HTTPException, Query, status
 from .run_supervisor import RunSupervisor
 from .runtime import resolve_scenario_runtime_profile
 
 
-def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
+def build_control_plane_app(supervisor: RunSupervisor | None = None) -> Any:
     app = FastAPI(title="AgentRD Control Plane")
     app.state.supervisor = supervisor or RunSupervisor()
 
+    # When running with real FastAPI, register custom exception handlers so that
+    # structured error responses match the format expected by ControlPlaneClient
+    # and all tests (i.e. ``{"error": {"code": ..., "message": ..., "field": ...}}``
+    # at the top level, not wrapped inside ``{"detail": ...}``).
+    if FASTAPI_AVAILABLE:
+        from fastapi.exceptions import RequestValidationError
+        from starlette.responses import JSONResponse
+
+        @app.exception_handler(HTTPException)
+        async def _http_exception_handler(_request: Any, exc: HTTPException) -> JSONResponse:
+            return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+        @app.exception_handler(RequestValidationError)
+        async def _validation_exception_handler(_request: Any, exc: RequestValidationError) -> JSONResponse:
+            errors = exc.errors()
+            field_name = str(errors[0]["loc"][-1]) if errors else None
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=ErrorResponse(
+                    error=StructuredError(
+                        code=ErrorCode.INVALID_REQUEST,
+                        message=str(exc),
+                        field=field_name,
+                    ),
+                ).to_dict(),
+            )
+
     @app.post("/runs")
-    def create_run(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_run(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             runtime = build_runtime()
             request = RunCreateRequest.from_dict(payload)
@@ -46,10 +73,10 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
             )
             return RunSummaryResponse.from_run_session(run_session).to_dict()
         except ServiceContractError as exc:
-            raise _http_error(exc.code, str(exc), field=exc.field)
+            raise _http_error(exc.code, str(exc), field=exc.field) from exc
 
     @app.get("/runs/{run_id}")
-    def get_run(run_id: str) -> Dict[str, Any]:
+    def get_run(run_id: str) -> dict[str, Any]:
         runtime = build_runtime()
         summary = load_run_summary(runtime.config.sqlite_path, run_id)
         if summary is None:
@@ -57,7 +84,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
         return summary.to_dict()
 
     @app.post("/runs/{run_id}/pause")
-    def pause_run(run_id: str) -> Dict[str, Any]:
+    def pause_run(run_id: str) -> dict[str, Any]:
         try:
             run_session = app.state.supervisor.pause_run(run_id)
             return RunControlResponse(
@@ -67,12 +94,12 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
                 message="pause requested",
             ).to_dict()
         except KeyError as exc:
-            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc))
+            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc)) from exc
         except ServiceContractError as exc:
-            raise _http_error(exc.code, str(exc), field=exc.field)
+            raise _http_error(exc.code, str(exc), field=exc.field) from exc
 
     @app.post("/runs/{run_id}/resume")
-    def resume_run(run_id: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def resume_run(run_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         _ = payload
         try:
             run_session = app.state.supervisor.resume_run(run_id)
@@ -83,12 +110,12 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
                 message="resume scheduled",
             ).to_dict()
         except KeyError as exc:
-            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc))
+            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc)) from exc
         except ServiceContractError as exc:
-            raise _http_error(exc.code, str(exc), field=exc.field)
+            raise _http_error(exc.code, str(exc), field=exc.field) from exc
 
     @app.post("/runs/{run_id}/stop")
-    def stop_run(run_id: str) -> Dict[str, Any]:
+    def stop_run(run_id: str) -> dict[str, Any]:
         try:
             run_session = app.state.supervisor.stop_run(run_id)
             return RunControlResponse(
@@ -98,17 +125,17 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
                 message="stop requested",
             ).to_dict()
         except KeyError as exc:
-            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc))
+            raise _http_error(ErrorCode.NOT_FOUND, exc.args[0] if exc.args else str(exc)) from exc
         except ServiceContractError as exc:
-            raise _http_error(exc.code, str(exc), field=exc.field)
+            raise _http_error(exc.code, str(exc), field=exc.field) from exc
 
     @app.get("/runs/{run_id}/events")
     def list_events(
         run_id: str,
-        cursor: Optional[str] = Query(default=None),
-        limit: int = Query(default=50),
-        branch_id: Optional[str] = Query(default=None),
-    ) -> Dict[str, Any]:
+        cursor: str | None = Query(default=None),
+        limit: str = Query(default="50"),
+        branch_id: str | None = Query(default=None),
+    ) -> dict[str, Any]:
         try:
             runtime = build_runtime()
             summary = load_run_summary(runtime.config.sqlite_path, run_id)
@@ -122,13 +149,13 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
                 limit=limit,
             ).to_dict()
         except ServiceContractError as exc:
-            raise _http_error(exc.code, str(exc), field=exc.field)
+            raise _http_error(exc.code, str(exc), field=exc.field) from exc
 
     @app.get("/runs/{run_id}/artifacts")
     def list_artifacts(
         run_id: str,
-        branch_id: Optional[str] = Query(default=None),
-    ) -> Dict[str, Any]:
+        branch_id: str | None = Query(default=None),
+    ) -> dict[str, Any]:
         runtime = build_runtime()
         summary = load_run_summary(runtime.config.sqlite_path, run_id)
         if summary is None:
@@ -142,7 +169,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
         ).to_dict()
 
     @app.get("/runs/{run_id}/branches")
-    def list_branches(run_id: str) -> Dict[str, Any]:
+    def list_branches(run_id: str) -> dict[str, Any]:
         runtime = build_runtime()
         summary = load_run_summary(runtime.config.sqlite_path, run_id)
         if summary is None:
@@ -150,12 +177,12 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
         return load_branch_page(runtime.config.sqlite_path, run_id).to_dict()
 
     @app.get("/scenarios")
-    def list_scenarios() -> Dict[str, Any]:
+    def list_scenarios() -> dict[str, Any]:
         runtime = build_runtime()
         return {"items": [manifest.to_dict() for manifest in runtime.plugin_registry.list_manifests()]}
 
     @app.get("/health")
-    def health() -> Dict[str, Any]:
+    def health() -> dict[str, Any]:
         runtime = build_runtime()
         sqlite_ok = Path(runtime.config.sqlite_path).exists()
         artifact_root = Path(runtime.config.artifact_root)
@@ -171,9 +198,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
         }
         return {
             "status": (
-                "ok"
-                if sqlite_ok and artifact_root.exists() and llm_adapter_ok and execution_backend_ok
-                else "degraded"
+                "ok" if sqlite_ok and artifact_root.exists() and llm_adapter_ok and execution_backend_ok else "degraded"
             ),
             "checks": checks,
             "details": {
@@ -186,7 +211,7 @@ def build_control_plane_app(supervisor: Optional[RunSupervisor] = None) -> Any:
     return app
 
 
-def _http_error(code: str, message: str, field: Optional[str] = None) -> Any:
+def _http_error(code: str, message: str, field: str | None = None) -> Any:
     status_code = status.HTTP_400_BAD_REQUEST
     if code == ErrorCode.NOT_FOUND:
         status_code = status.HTTP_404_NOT_FOUND
@@ -207,7 +232,7 @@ def _require_scenario_manifest(runtime, scenario: str):
     return manifest
 
 
-def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> Dict[str, Any]:
+def _build_config_snapshot(runtime, request: RunCreateRequest, manifest) -> dict[str, Any]:
     profile = resolve_scenario_runtime_profile(
         runtime.config,
         manifest.default_step_overrides,

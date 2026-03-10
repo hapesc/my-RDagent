@@ -4,7 +4,6 @@ import math
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from scenarios.quant.metrics import (
     compute_all_metrics,

@@ -6,15 +6,21 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from app.control_plane_client import ControlPlaneClient
 from app.control_plane import build_control_plane_app
+from app.control_plane_client import ControlPlaneClient
 from app.fastapi_compat import TestClient
 from app.query_services import (
     load_artifact_page as query_load_artifact_page,
+)
+from app.query_services import (
     load_branch_page as query_load_branch_page,
+)
+from app.query_services import (
     load_event_page as query_load_event_page,
+)
+from app.query_services import (
     load_run_summary as query_load_run_summary,
 )
 from app.runtime import build_runtime
@@ -33,7 +39,7 @@ from trace_store import TraceTimelineView
 logger = logging.getLogger(__name__)
 
 
-def load_run_ids(sqlite_path: str) -> List[str]:
+def load_run_ids(sqlite_path: str) -> list[str]:
     store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     return [run.run_id for run in store.list_runs()]
 
@@ -45,9 +51,9 @@ def build_local_control_plane_client() -> ControlPlaneClient:
 def load_event_page(
     sqlite_path: str,
     run_id: str,
-    branch_id: Optional[str] = None,
+    branch_id: str | None = None,
     *,
-    cursor: Optional[str] = None,
+    cursor: str | None = None,
     limit: int = 50,
 ) -> RunEventPageResponse:
     return query_load_event_page(
@@ -62,12 +68,12 @@ def load_event_page(
 def load_events(
     sqlite_path: str,
     run_id: str,
-    branch_id: Optional[str] = None,
+    branch_id: str | None = None,
     *,
     page_limit: int = 50,
-) -> List[Event]:
-    events: List[Event] = []
-    cursor: Optional[str] = None
+) -> list[Event]:
+    events: list[Event] = []
+    cursor: str | None = None
     while True:
         page = load_event_page(
             sqlite_path=sqlite_path,
@@ -83,7 +89,7 @@ def load_events(
     return events
 
 
-def load_run_summary(sqlite_path: str, run_id: str) -> Optional[RunSummaryResponse]:
+def load_run_summary(sqlite_path: str, run_id: str) -> RunSummaryResponse | None:
     return query_load_run_summary(sqlite_path, run_id)
 
 
@@ -91,11 +97,11 @@ def load_branches(sqlite_path: str, run_id: str) -> BranchListResponse:
     return query_load_branch_page(sqlite_path, run_id)
 
 
-def load_scenario_manifests() -> List[ScenarioManifest]:
+def load_scenario_manifests() -> list[ScenarioManifest]:
     return build_runtime().plugin_registry.list_manifests()
 
 
-def build_timeline_rows(events: List[Event]) -> List[Dict[str, Any]]:
+def build_timeline_rows(events: list[Event]) -> list[dict[str, Any]]:
     return TraceTimelineView().build_rows(events)
 
 
@@ -104,7 +110,7 @@ def load_artifact_manifest(
     workspace_root: str,
     artifact_root: str,
     run_id: str,
-    branch_id: Optional[str] = None,
+    branch_id: str | None = None,
 ) -> ArtifactListResponse:
     return query_load_artifact_page(
         sqlite_path,
@@ -120,8 +126,8 @@ def list_artifacts(
     workspace_root: str,
     artifact_root: str,
     run_id: str,
-    branch_id: Optional[str] = None,
-) -> List[str]:
+    branch_id: str | None = None,
+) -> list[str]:
     return [
         descriptor.path
         for descriptor in load_artifact_manifest(
@@ -137,13 +143,13 @@ def list_artifacts(
 def perform_control_action(client: Any, run_id: str, action: str) -> RunControlResponse:
     if action not in {"pause", "resume", "stop"}:
         raise ValueError(f"unsupported control action: {action}")
-    
+
     # Try the direct method call if it exists and is callable
     method_name = f"{action}_run"
     method = getattr(client, method_name, None)
     if callable(method):
         return method(run_id)  # type: ignore
-    
+
     # Fall back to HTTP POST if method doesn't exist
     response = client.post(f"/runs/{run_id}/{action}", json={})
     payload = response.json()
@@ -163,10 +169,10 @@ def build_branch_compare_summary(
     workspace_root: str,
     artifact_root: str,
     run_id: str,
-    selected_branch_id: Optional[str],
+    selected_branch_id: str | None,
     *,
     baseline_branch_id: str = "main",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     branches = load_branches(sqlite_path, run_id)
     branch_heads = {item.branch_id: item.head_node_id for item in branches.items}
     if not selected_branch_id:
@@ -204,15 +210,15 @@ def build_branch_compare_summary(
     }
 
 
-def _extract_metrics(artifact_paths: List[str]) -> Dict[str, Any]:
-     for path in artifact_paths:
-         if path.endswith("metrics.json"):
-             try:
-                 return json.loads(Path(path).read_text(encoding="utf-8"))
-             except Exception as e:
-                 logger.exception(f"Failed to parse metrics.json from {path}")
-                 return {"error": "failed to parse metrics.json"}
-     return {}
+def _extract_metrics(artifact_paths: list[str]) -> dict[str, Any]:
+    for path in artifact_paths:
+        if path.endswith("metrics.json"):
+            try:
+                return json.loads(Path(path).read_text(encoding="utf-8"))
+            except Exception:
+                logger.exception(f"Failed to parse metrics.json from {path}")
+                return {"error": "failed to parse metrics.json"}
+    return {}
 
 
 def run_app() -> None:
@@ -279,7 +285,7 @@ def run_app() -> None:
 
     control_columns = st.columns(3)
     control_actions = [("Pause", "pause"), ("Resume", "resume"), ("Stop", "stop")]
-    for column, (label, action) in zip(control_columns, control_actions):
+    for column, (label, action) in zip(control_columns, control_actions, strict=False):
         with column:
             if st.button(label):
                 try:

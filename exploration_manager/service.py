@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from data_models import BranchState, ExplorationGraph, GraphEdge, NodeRecord, Plan
 from exploration_manager.merging import TraceMerger
@@ -49,13 +49,13 @@ class VirtualEvaluatorLike(Protocol):
         task_summary: str,
         scenario_name: str,
         iteration: int,
-        previous_results: List[str],
-        current_scores: List[float],
+        previous_results: list[str],
+        current_scores: list[float],
         evaluation_criteria: str = "feasibility, novelty, expected performance gain",
-        model_config: Optional[Any] = None,
-        n_candidates: Optional[int] = None,
-        k_forward: Optional[int] = None,
-    ) -> List[Any]: ...
+        model_config: Any | None = None,
+        n_candidates: int | None = None,
+        k_forward: int | None = None,
+    ) -> list[Any]: ...
 
 
 def supports_diverse_roots(manager: object) -> bool:
@@ -74,11 +74,11 @@ class ExplorationManager:
     def __init__(
         self,
         config: ExplorationManagerConfig,
-        scheduler: Optional[MCTSScheduler] = None,
-        pruner: Optional[BranchPruner] = None,
-        merger: Optional[TraceMerger] = None,
-        llm_adapter: Optional[LLMAdapter] = None,
-        virtual_evaluator: Optional[VirtualEvaluatorLike] = None,
+        scheduler: MCTSScheduler | None = None,
+        pruner: BranchPruner | None = None,
+        merger: TraceMerger | None = None,
+        llm_adapter: LLMAdapter | None = None,
+        virtual_evaluator: VirtualEvaluatorLike | None = None,
     ) -> None:
         """Initialize exploration manager with selection settings."""
 
@@ -89,7 +89,7 @@ class ExplorationManager:
         self._llm_adapter = llm_adapter
         self._virtual_evaluator = virtual_evaluator
 
-    def select_parents(self, graph: ExplorationGraph, plan: Plan) -> List[str]:
+    def select_parents(self, graph: ExplorationGraph, plan: Plan) -> list[str]:
         """Select parent node identifiers for the next expansion.
 
         Responsibility:
@@ -130,7 +130,7 @@ class ExplorationManager:
             graph.edges.append(GraphEdge(parent_id=parent_id, child_id=node.node_id))
         return graph
 
-    def get_frontier(self, graph: ExplorationGraph, criteria: Dict[str, str]) -> List[str]:
+    def get_frontier(self, graph: ExplorationGraph, criteria: dict[str, str]) -> list[str]:
         """Return frontier nodes matching criteria.
 
         Responsibility:
@@ -162,14 +162,14 @@ class ExplorationManager:
             current = parent
         return depth
 
-    def get_children(self, graph: ExplorationGraph, node_id: str) -> List[str]:
+    def get_children(self, graph: ExplorationGraph, node_id: str) -> list[str]:
         return [e.child_id for e in graph.edges if e.parent_id == node_id]
 
-    def get_path_to_root(self, graph: ExplorationGraph, node_id: str) -> List[str]:
+    def get_path_to_root(self, graph: ExplorationGraph, node_id: str) -> list[str]:
         node_map = {n.node_id: n for n in graph.nodes}
         if node_id not in node_map:
             return []
-        path: List[str] = [node_id]
+        path: list[str] = [node_id]
         current = node_map[node_id]
         while current.parent_ids:
             parent_id = current.parent_ids[0]
@@ -184,8 +184,8 @@ class ExplorationManager:
         self,
         graph: ExplorationGraph,
         node_id: str,
-        score: Optional[float],
-        decision: Optional[bool],
+        score: float | None,
+        decision: bool | None,
     ) -> None:
         if self._scheduler is None:
             return

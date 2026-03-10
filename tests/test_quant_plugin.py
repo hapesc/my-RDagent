@@ -1,7 +1,6 @@
 """Tests for quant scenario plugin bundle (TDD)."""
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -14,23 +13,20 @@ from data_models import (
     Proposal,
     RunSession,
     RunStatus,
-    StepState,
 )
 from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from plugins import build_default_registry
+from plugins.contracts import ScenarioContext, UsefulnessGateInput
 from scenarios.quant.data_provider import MockDataProvider
 from scenarios.quant.plugin import (
-    QuantConfig,
     QuantCoder,
+    QuantConfig,
     QuantExperimentGenerator,
-    QuantFeedbackAnalyzer,
     QuantRunner,
     QuantScenarioPlugin,
     _validate_quant_usefulness,
     build_quant_bundle,
 )
-from plugins.contracts import ScenarioContext, UsefulnessGateInput
-from service_contracts import StepOverrideConfig
 
 
 @pytest.fixture
@@ -108,7 +104,12 @@ class TestQuantCoder:
         coder = QuantCoder(llm_adapter=None)
         gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
         loop_state = LoopState(loop_id="loop-001", iteration=0)
-        node = gen.generate(proposal, RunSession(run_id="r", scenario="quant", status=RunStatus.RUNNING), loop_state, [])
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
         artifact = coder.develop(node, proposal, scenario_ctx)
         factor_path = Path(artifact.location) / "factor.py"
         assert factor_path.exists()
@@ -117,7 +118,12 @@ class TestQuantCoder:
         coder = QuantCoder(llm_adapter=None)
         gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
         loop_state = LoopState(loop_id="loop-002", iteration=0)
-        node = gen.generate(proposal, RunSession(run_id="r2", scenario="quant", status=RunStatus.RUNNING), loop_state, [])
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r2", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
         artifact = coder.develop(node, proposal, scenario_ctx)
         assert isinstance(artifact, CodeArtifact)
         assert artifact.location
@@ -136,7 +142,9 @@ class TestQuantRunner:
         factor_dir = tmp_workspace / "factor_workspace"
         factor_dir.mkdir()
         (factor_dir / "factor.py").write_text(
-            "import pandas as pd\ndef compute_factor(df):\n    return df.groupby('stock_id')['close'].pct_change(5).fillna(0)\n"
+            "import pandas as pd\n"
+            "def compute_factor(df):\n"
+            "    return df.groupby('stock_id')['close'].pct_change(5).fillna(0)\n"
         )
         artifact = CodeArtifact(artifact_id="a1", description="test", location=str(factor_dir))
         result = runner.run(artifact, scenario_ctx)
@@ -154,13 +162,13 @@ class TestQuantRunner:
 class TestValidateQuantUsefulness:
     def _make_gate_input(self, payload):
         from data_models import ExecutionResult
+
         result = ExecutionResult(
             run_id="test",
             exit_code=0,
             logs_ref=json.dumps(payload),
             artifacts_ref=json.dumps([]),
         )
-        from plugins.contracts import ScenarioContext
         ctx = ScenarioContext(run_id="test", scenario_name="quant", input_payload={})
         return UsefulnessGateInput(
             scenario=ctx,

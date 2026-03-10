@@ -1,7 +1,6 @@
 """Tests for PlanningStrategy and HypothesisModification schemas."""
 
-import pytest
-from llm.schemas import PlanningStrategy, HypothesisModification
+from llm.schemas import HypothesisModification, PlanningStrategy
 
 
 class TestPlanningStrategy:
@@ -19,7 +18,7 @@ class TestPlanningStrategy:
             "strategy_name": "explore",
             "method_selection": "novelty",
             "exploration_weight": 0.8,
-            "reasoning": "early stage"
+            "reasoning": "early stage",
         }
         obj = PlanningStrategy.from_dict(data)
         assert obj.strategy_name == "explore"
@@ -43,7 +42,7 @@ class TestHypothesisModification:
             "modified_hypothesis": "test",
             "modification_type": "modify",
             "source_hypothesis": "orig",
-            "reasoning": "because"
+            "reasoning": "because",
         }
         obj = HypothesisModification.from_dict(data)
         assert obj.modified_hypothesis == "test"

@@ -14,7 +14,6 @@ from exploration_manager.pruning import BranchPruner
 from exploration_manager.scheduler import MCTSScheduler
 from llm.adapter import LLMAdapter, MockLLMProvider
 from llm.schemas import ExperimentDesign
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -197,9 +196,7 @@ class TestFC2FC3Integration(unittest.TestCase):
         self.assertGreaterEqual(len(captured_graphs), 1)
 
         final_graph = captured_graphs[-1]
-        updated_nodes = [
-            node for node in final_graph.nodes if node.visits > 0 and node.total_value > 0.0
-        ]
+        updated_nodes = [node for node in final_graph.nodes if node.visits > 0 and node.total_value > 0.0]
         self.assertGreaterEqual(len(updated_nodes), 1)
 
     def test_prune_then_merge_pipeline(self) -> None:
@@ -227,10 +224,7 @@ class TestFC2FC3Integration(unittest.TestCase):
         merger = TraceMerger(adapter)
 
         active_nodes = [node for node in graph.nodes if node.branch_state == BranchState.ACTIVE]
-        trace_dicts = [
-            {"node_id": n.node_id, "score": n.score, "proposal_id": n.proposal_id}
-            for n in active_nodes
-        ]
+        trace_dicts = [{"node_id": n.node_id, "score": n.score, "proposal_id": n.proposal_id} for n in active_nodes]
         result = merger.merge(trace_dicts, "classify iris", "data_science")
 
         self.assertIsInstance(result, ExperimentDesign)

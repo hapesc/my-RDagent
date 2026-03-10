@@ -102,9 +102,7 @@ def main() -> None:
 
     sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     branch_store = BranchTraceStore(BranchTraceStoreConfig(sqlite_path=sqlite_path))
-    checkpoint_store = FileCheckpointStore(
-        CheckpointStoreConfig(root_dir=f"{artifact_root}/checkpoints")
-    )
+    checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=f"{artifact_root}/checkpoints"))
     workspace_manager = WorkspaceManager(
         WorkspaceManagerConfig(root_dir=workspace_root),
         checkpoint_store=checkpoint_store,
@@ -212,9 +210,7 @@ def main() -> None:
     log.info("Iterations : %d", loop_ctx.loop_state.iteration if loop_ctx.loop_state else -1)
 
     workspace_path = Path(workspace_root) / run_id
-    summary_files = (
-        list(workspace_path.rglob("research_summary.json")) if workspace_path.exists() else []
-    )
+    summary_files = list(workspace_path.rglob("research_summary.json")) if workspace_path.exists() else []
     if summary_files:
         print()
         log.info("Generated research findings:")

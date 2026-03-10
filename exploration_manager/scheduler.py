@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Optional
+from typing import Any
 
 from data_models import BranchState, ExplorationGraph, NodeRecord
 from exploration_manager.reward import RewardCalculator
@@ -15,7 +15,7 @@ class MCTSScheduler:
     def __init__(
         self,
         c_puct: float = 1.41,
-        reward_calculator: Optional[RewardCalculator] = None,
+        reward_calculator: RewardCalculator | None = None,
         **legacy_kwargs: Any,
     ) -> None:
         if "exploration_weight" in legacy_kwargs:
@@ -27,7 +27,7 @@ class MCTSScheduler:
         self._c_puct = c_puct
         self._reward_calculator = reward_calculator or RewardCalculator()
 
-    def select_node(self, graph: ExplorationGraph) -> Optional[str]:
+    def select_node(self, graph: ExplorationGraph) -> str | None:
         """Select one ACTIVE node by paper-faithful PUCT."""
         active_nodes = [n for n in graph.nodes if n.branch_state == BranchState.ACTIVE]
         if not active_nodes:
@@ -44,7 +44,7 @@ class MCTSScheduler:
         total_visits = sum(n.visits for n in active_nodes)
         sqrt_total = math.sqrt(total_visits)
 
-        best_node_id: Optional[str] = None
+        best_node_id: str | None = None
         best_score = float("-inf")
         for node in active_nodes:
             score = node.avg_value + self._c_puct * priors[node.node_id] * sqrt_total / (1 + node.visits)
@@ -63,7 +63,7 @@ class MCTSScheduler:
         start.update_stats(reward)
 
         pending_parent_ids = list(start.parent_ids)
-        seen: "set[str]" = set()
+        seen: set[str] = set()
 
         while pending_parent_ids:
             parent_id = pending_parent_ids.pop()
@@ -82,14 +82,14 @@ class MCTSScheduler:
         self,
         graph: ExplorationGraph,
         node_id: str,
-        score: Optional[float],
-        decision: Optional[bool],
+        score: float | None,
+        decision: bool | None,
     ) -> None:
         """Convert feedback to reward and backpropagate."""
         reward = self._reward_calculator.calculate(score=score, decision=decision)
         self.backpropagate(graph, node_id, reward)
 
-    def get_all_scores(self, graph: ExplorationGraph) -> Dict[str, float]:
+    def get_all_scores(self, graph: ExplorationGraph) -> dict[str, float]:
         """Return PUCT score for every ACTIVE node."""
         active_nodes = [n for n in graph.nodes if n.branch_state == BranchState.ACTIVE]
         if not active_nodes:
@@ -99,7 +99,7 @@ class MCTSScheduler:
         total_visits = sum(n.visits for n in active_nodes)
         sqrt_total = math.sqrt(total_visits)
 
-        scores: Dict[str, float] = {}
+        scores: dict[str, float] = {}
         for node in active_nodes:
             if node.visits == 0:
                 scores[node.node_id] = float("inf")
@@ -110,12 +110,12 @@ class MCTSScheduler:
         return scores
 
     @staticmethod
-    def _compute_priors(active_nodes: "list[NodeRecord]") -> Dict[str, float]:
+    def _compute_priors(active_nodes: list[NodeRecord]) -> dict[str, float]:
         """Compute softmax prior probability over node potentials."""
         potentials = {n.node_id: (n.score if n.score is not None else 0.0) for n in active_nodes}
         max_p = max(potentials.values())
 
-        exp_values: Dict[str, float] = {}
+        exp_values: dict[str, float] = {}
         exp_sum = 0.0
         for node_id, potential in potentials.items():
             value = math.exp(potential - max_p)

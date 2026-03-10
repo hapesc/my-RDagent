@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import traceback
-from typing import Any, Optional
+from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from .code_safety import validate_code_safety
@@ -25,7 +24,7 @@ class LightweightBacktester:
     index as *df*, representing the factor signal for each (date, stock) row.
     """
 
-    def __init__(self, config: Optional[dict] = None) -> None:
+    def __init__(self, config: dict | None = None) -> None:
         self.config: dict = {**BACKTEST_CONFIG, **(config or {})}
 
     def run(self, ohlcv_data: pd.DataFrame, factor_code: str) -> dict[str, Any]:
@@ -74,7 +73,7 @@ class LightweightBacktester:
 
     def _run_backtest(self, ohlcv: pd.DataFrame, factor: pd.Series) -> dict[str, Any]:
         cfg = self.config
-        train_end = pd.Timestamp(cfg["train_end"])
+        pd.Timestamp(cfg["train_end"])
         test_start = pd.Timestamp(cfg["test_start"])
         top_k: int = cfg["top_k"]
         commission: float = cfg["commission_rate"]
@@ -89,7 +88,7 @@ class LightweightBacktester:
         ohlcv["factor"] = factor.values if len(factor) == len(ohlcv) else factor.reindex(ohlcv.index)
         ohlcv["next_return"] = ohlcv.groupby("stock_id")["close"].pct_change().shift(-1)
 
-        test_mask = (ohlcv["date"] >= test_start)
+        test_mask = ohlcv["date"] >= test_start
         test_df = ohlcv[test_mask].dropna(subset=["factor"])
 
         if test_df.empty:

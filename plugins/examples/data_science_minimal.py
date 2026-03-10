@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from plugins.contracts import PluginBundle
@@ -16,8 +15,8 @@ class MinimalDataSciencePluginConfig(SyntheticResearchConfig):
 
 
 def build_minimal_data_science_bundle(
-    config: Optional[MinimalDataSciencePluginConfig] = None,
-    llm_adapter: Optional[LLMAdapter] = None,
+    config: MinimalDataSciencePluginConfig | None = None,
+    llm_adapter: LLMAdapter | None = None,
 ) -> PluginBundle:
     """Build the legacy example bundle via the formal synthetic research implementation."""
 

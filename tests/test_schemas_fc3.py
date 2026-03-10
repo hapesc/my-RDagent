@@ -1,11 +1,10 @@
 """TDD tests for FC-3 reasoning schemas."""
 
-import pytest
 from llm.schemas import (
     AnalysisResult,
-    ProblemIdentification,
-    HypothesisFormulation,
     ExperimentDesign,
+    HypothesisFormulation,
+    ProblemIdentification,
     VirtualEvalResult,
 )
 

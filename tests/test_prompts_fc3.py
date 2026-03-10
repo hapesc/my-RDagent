@@ -14,12 +14,11 @@ Each must return a well-structured string with:
 - Output Fields section
 """
 
-import pytest
 from llm.prompts import (
     reasoning_analysis_prompt,
-    reasoning_identify_prompt,
-    reasoning_hypothesize_prompt,
     reasoning_design_prompt,
+    reasoning_hypothesize_prompt,
+    reasoning_identify_prompt,
     virtual_eval_prompt,
 )
 
@@ -34,7 +33,7 @@ class TestReasoningAnalysisPrompt:
             scenario_name="data_science",
             iteration=0,
             previous_results=[],
-            current_scores=[]
+            current_scores=[],
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -42,22 +41,14 @@ class TestReasoningAnalysisPrompt:
     def test_has_role_assignment(self):
         """Prompt includes role assignment."""
         result = reasoning_analysis_prompt(
-            task_summary="Test task",
-            scenario_name="test_scenario",
-            iteration=0,
-            previous_results=[],
-            current_scores=[]
+            task_summary="Test task", scenario_name="test_scenario", iteration=0, previous_results=[], current_scores=[]
         )
         assert "research scientist" in result.lower() or "scientist" in result.lower()
 
     def test_has_output_fields_section(self):
         """Prompt includes ## Output Fields section."""
         result = reasoning_analysis_prompt(
-            task_summary="Test task",
-            scenario_name="test_scenario",
-            iteration=0,
-            previous_results=[],
-            current_scores=[]
+            task_summary="Test task", scenario_name="test_scenario", iteration=0, previous_results=[], current_scores=[]
         )
         assert "## Output Fields" in result
 
@@ -68,7 +59,7 @@ class TestReasoningAnalysisPrompt:
             scenario_name="test_scenario",
             iteration=1,
             previous_results=["Result 1"],
-            current_scores=[0.75]
+            current_scores=[0.75],
         )
         # Should have at least Task section
         assert "## Task" in result or "Task" in result
@@ -83,7 +74,7 @@ class TestReasoningAnalysisPrompt:
             scenario_name="test_scenario",
             iteration=2,
             previous_results=previous,
-            current_scores=[0.8, 0.82]
+            current_scores=[0.8, 0.82],
         )
         # Should reference previous results somehow (exact format TBD by implementation)
         assert len(result) > 100  # Non-trivial prompt
@@ -97,7 +88,7 @@ class TestReasoningIdentifyPrompt:
         result = reasoning_identify_prompt(
             analysis_text="Current solution uses vanilla SGD with fixed learning rate.",
             task_summary="Optimize MNIST classifier accuracy.",
-            scenario_name="data_science"
+            scenario_name="data_science",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -105,18 +96,14 @@ class TestReasoningIdentifyPrompt:
     def test_has_role_assignment(self):
         """Prompt includes role assignment."""
         result = reasoning_identify_prompt(
-            analysis_text="Analysis text",
-            task_summary="Test task",
-            scenario_name="test_scenario"
+            analysis_text="Analysis text", task_summary="Test task", scenario_name="test_scenario"
         )
         assert "scientist" in result.lower() or "researcher" in result.lower()
 
     def test_has_output_fields_section(self):
         """Prompt includes ## Output Fields section."""
         result = reasoning_identify_prompt(
-            analysis_text="Analysis text",
-            task_summary="Test task",
-            scenario_name="test_scenario"
+            analysis_text="Analysis text", task_summary="Test task", scenario_name="test_scenario"
         )
         assert "## Output Fields" in result
 
@@ -124,9 +111,7 @@ class TestReasoningIdentifyPrompt:
         """Prompt includes analysis_text in context."""
         analysis = "Specific analysis about bottleneck"
         result = reasoning_identify_prompt(
-            analysis_text=analysis,
-            task_summary="Test task",
-            scenario_name="test_scenario"
+            analysis_text=analysis, task_summary="Test task", scenario_name="test_scenario"
         )
         assert analysis in result or "analysis" in result.lower()
 
@@ -140,7 +125,7 @@ class TestReasoningHypothesizePrompt:
             analysis_text="Current approach uses static learning rate.",
             problem_text="The optimizer converges too slowly in early iterations.",
             task_summary="Optimize MNIST classifier.",
-            scenario_name="data_science"
+            scenario_name="data_science",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -148,20 +133,14 @@ class TestReasoningHypothesizePrompt:
     def test_has_role_assignment(self):
         """Prompt includes role assignment."""
         result = reasoning_hypothesize_prompt(
-            analysis_text="Analysis",
-            problem_text="Problem",
-            task_summary="Task",
-            scenario_name="scenario"
+            analysis_text="Analysis", problem_text="Problem", task_summary="Task", scenario_name="scenario"
         )
         assert "scientist" in result.lower() or "researcher" in result.lower()
 
     def test_has_output_fields_section(self):
         """Prompt includes ## Output Fields section."""
         result = reasoning_hypothesize_prompt(
-            analysis_text="Analysis",
-            problem_text="Problem",
-            task_summary="Task",
-            scenario_name="scenario"
+            analysis_text="Analysis", problem_text="Problem", task_summary="Task", scenario_name="scenario"
         )
         assert "## Output Fields" in result
 
@@ -170,10 +149,7 @@ class TestReasoningHypothesizePrompt:
         problem = "Specific problem statement"
         analysis = "Specific analysis context"
         result = reasoning_hypothesize_prompt(
-            analysis_text=analysis,
-            problem_text=problem,
-            task_summary="Task",
-            scenario_name="scenario"
+            analysis_text=analysis, problem_text=problem, task_summary="Task", scenario_name="scenario"
         )
         # At least one should be mentioned
         assert problem in result or analysis in result or len(result) > 200
@@ -190,7 +166,7 @@ class TestReasoningDesignPrompt:
             hypothesis_text="Adaptive learning rate (Adam) will converge faster.",
             task_summary="Optimize MNIST classifier.",
             scenario_name="data_science",
-            iteration=1
+            iteration=1,
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -198,24 +174,14 @@ class TestReasoningDesignPrompt:
     def test_has_role_assignment(self):
         """Prompt includes role assignment."""
         result = reasoning_design_prompt(
-            analysis_text="A",
-            problem_text="P",
-            hypothesis_text="H",
-            task_summary="T",
-            scenario_name="S",
-            iteration=0
+            analysis_text="A", problem_text="P", hypothesis_text="H", task_summary="T", scenario_name="S", iteration=0
         )
         assert "engineer" in result.lower() or "scientist" in result.lower()
 
     def test_has_output_fields_section(self):
         """Prompt includes ## Output Fields section."""
         result = reasoning_design_prompt(
-            analysis_text="A",
-            problem_text="P",
-            hypothesis_text="H",
-            task_summary="T",
-            scenario_name="S",
-            iteration=0
+            analysis_text="A", problem_text="P", hypothesis_text="H", task_summary="T", scenario_name="S", iteration=0
         )
         assert "## Output Fields" in result
 
@@ -229,7 +195,7 @@ class TestReasoningDesignPrompt:
             hypothesis_text=hypothesis,
             task_summary="Task",
             scenario_name="scenario",
-            iteration=0
+            iteration=0,
         )
         # At least one should be clearly present
         assert hypothesis in result or analysis in result or len(result) > 200
@@ -237,20 +203,10 @@ class TestReasoningDesignPrompt:
     def test_iteration_strategy_applied(self):
         """Prompt uses iteration parameter for iteration-aware strategy."""
         result_iter0 = reasoning_design_prompt(
-            analysis_text="A",
-            problem_text="P",
-            hypothesis_text="H",
-            task_summary="T",
-            scenario_name="S",
-            iteration=0
+            analysis_text="A", problem_text="P", hypothesis_text="H", task_summary="T", scenario_name="S", iteration=0
         )
         result_iter2 = reasoning_design_prompt(
-            analysis_text="A",
-            problem_text="P",
-            hypothesis_text="H",
-            task_summary="T",
-            scenario_name="S",
-            iteration=2
+            analysis_text="A", problem_text="P", hypothesis_text="H", task_summary="T", scenario_name="S", iteration=2
         )
         # Both should be valid (exact content may differ by iteration strategy)
         assert len(result_iter0) > 0
@@ -265,13 +221,13 @@ class TestVirtualEvalPrompt:
         candidates = [
             {"summary": "Use Adam optimizer with LR=1e-3"},
             {"summary": "Use AdaGrad with LR=5e-4"},
-            {"summary": "Use SGD with learning rate schedule"}
+            {"summary": "Use SGD with learning rate schedule"},
         ]
         result = virtual_eval_prompt(
             candidates=candidates,
             task_summary="Optimize MNIST classifier.",
             scenario_name="data_science",
-            evaluation_criteria="accuracy, convergence speed"
+            evaluation_criteria="accuracy, convergence speed",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -280,10 +236,7 @@ class TestVirtualEvalPrompt:
         """Prompt includes role assignment."""
         candidates = [{"summary": "Candidate 1"}]
         result = virtual_eval_prompt(
-            candidates=candidates,
-            task_summary="Task",
-            scenario_name="scenario",
-            evaluation_criteria="criteria"
+            candidates=candidates, task_summary="Task", scenario_name="scenario", evaluation_criteria="criteria"
         )
         assert "scientist" in result.lower() or "evaluator" in result.lower() or "researcher" in result.lower()
 
@@ -291,42 +244,31 @@ class TestVirtualEvalPrompt:
         """Prompt includes ## Output Fields section."""
         candidates = [{"summary": "Candidate"}]
         result = virtual_eval_prompt(
-            candidates=candidates,
-            task_summary="Task",
-            scenario_name="scenario",
-            evaluation_criteria="criteria"
+            candidates=candidates, task_summary="Task", scenario_name="scenario", evaluation_criteria="criteria"
         )
         assert "## Output Fields" in result
 
     def test_includes_ranking_instruction(self):
         """Prompt includes instruction to rank candidates."""
-        candidates = [
-            {"summary": "Option A"},
-            {"summary": "Option B"}
-        ]
+        candidates = [{"summary": "Option A"}, {"summary": "Option B"}]
         result = virtual_eval_prompt(
-            candidates=candidates,
-            task_summary="Task",
-            scenario_name="scenario",
-            evaluation_criteria="accuracy"
+            candidates=candidates, task_summary="Task", scenario_name="scenario", evaluation_criteria="accuracy"
         )
         # Should mention ranking, sorting, or evaluation in some form
         result_lower = result.lower()
-        assert ("rank" in result_lower or "score" in result_lower or 
-                "best" in result_lower or "compare" in result_lower or
-                "evaluate" in result_lower)
+        assert (
+            "rank" in result_lower
+            or "score" in result_lower
+            or "best" in result_lower
+            or "compare" in result_lower
+            or "evaluate" in result_lower
+        )
 
     def test_includes_candidate_summaries(self):
         """Prompt formats candidate summaries."""
-        candidates = [
-            {"summary": "Unique candidate A"},
-            {"summary": "Unique candidate B"}
-        ]
+        candidates = [{"summary": "Unique candidate A"}, {"summary": "Unique candidate B"}]
         result = virtual_eval_prompt(
-            candidates=candidates,
-            task_summary="Task",
-            scenario_name="scenario",
-            evaluation_criteria="criteria"
+            candidates=candidates, task_summary="Task", scenario_name="scenario", evaluation_criteria="criteria"
         )
         # At least one candidate summary should appear
         assert "Unique candidate" in result or len(result) > 300
@@ -334,10 +276,7 @@ class TestVirtualEvalPrompt:
     def test_empty_candidates_list(self):
         """Prompt handles empty candidates list gracefully."""
         result = virtual_eval_prompt(
-            candidates=[],
-            task_summary="Task",
-            scenario_name="scenario",
-            evaluation_criteria="criteria"
+            candidates=[], task_summary="Task", scenario_name="scenario", evaluation_criteria="criteria"
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -348,22 +287,19 @@ class TestVirtualEvalPrompt:
             candidates=[{"summary": "Only option"}],
             task_summary="Task",
             scenario_name="scenario",
-            evaluation_criteria="criteria"
+            evaluation_criteria="criteria",
         )
         assert isinstance(result, str)
         assert len(result) > 0
 
     def test_many_candidates(self):
         """Prompt scales to multiple candidates."""
-        candidates = [
-            {"summary": f"Candidate {i}"}
-            for i in range(5)
-        ]
+        candidates = [{"summary": f"Candidate {i}"} for i in range(5)]
         result = virtual_eval_prompt(
             candidates=candidates,
             task_summary="Task",
             scenario_name="scenario",
-            evaluation_criteria="accuracy, speed, robustness"
+            evaluation_criteria="accuracy, speed, robustness",
         )
         assert isinstance(result, str)
         assert len(result) > 100
@@ -374,40 +310,30 @@ class TestStructuredFeedbackPrompt:
 
     def test_signature_and_return_type(self):
         from llm.prompts import structured_feedback_prompt
-        result = structured_feedback_prompt(
-            code="print(1)",
-            execution_output="1",
-            task_description="add two numbers"
-        )
+
+        result = structured_feedback_prompt(code="print(1)", execution_output="1", task_description="add two numbers")
         assert isinstance(result, str)
         assert len(result) > 50
 
     def test_has_output_fields_section(self):
         from llm.prompts import structured_feedback_prompt
-        result = structured_feedback_prompt(
-            code="x = 1",
-            execution_output="ok",
-            task_description="test"
-        )
+
+        result = structured_feedback_prompt(code="x = 1", execution_output="ok", task_description="test")
         assert "Output Fields" in result
 
     def test_includes_execution_field(self):
         from llm.prompts import structured_feedback_prompt
+
         result = structured_feedback_prompt(
-            code="print('hello')",
-            execution_output="hello",
-            task_description="print hello"
+            code="print('hello')", execution_output="hello", task_description="print hello"
         )
         assert "execution" in result.lower()
 
     def test_includes_three_dimensions(self):
         """Prompt should reference all 3 feedback dimensions: execution, return_checking, code."""
         from llm.prompts import structured_feedback_prompt
-        result = structured_feedback_prompt(
-            code="x = 1 + 2",
-            execution_output="3",
-            task_description="compute sum"
-        )
+
+        result = structured_feedback_prompt(code="x = 1 + 2", execution_output="3", task_description="compute sum")
         result_lower = result.lower()
         assert "execution" in result_lower
         assert "code" in result_lower
@@ -415,18 +341,16 @@ class TestStructuredFeedbackPrompt:
     def test_includes_code_context(self):
         """Prompt includes the provided code."""
         from llm.prompts import structured_feedback_prompt
+
         result = structured_feedback_prompt(
-            code="MY_UNIQUE_CODE_SNIPPET",
-            execution_output="output",
-            task_description="task"
+            code="MY_UNIQUE_CODE_SNIPPET", execution_output="output", task_description="task"
         )
         assert "MY_UNIQUE_CODE_SNIPPET" in result
 
     def test_has_role_assignment(self):
         from llm.prompts import structured_feedback_prompt
-        result = structured_feedback_prompt(
-            code="x=1", execution_output="1", task_description="test"
-        )
+
+        result = structured_feedback_prompt(code="x=1", execution_output="1", task_description="test")
         assert "you are" in result.lower() or "reviewer" in result.lower() or "evaluator" in result.lower()
 
 
@@ -435,34 +359,28 @@ class TestKnowledgeExtractionPrompt:
 
     def test_signature_and_return_type(self):
         from llm.prompts import knowledge_extraction_prompt
+
         result = knowledge_extraction_prompt(
-            trace_summary="experiment succeeded with feature X",
-            scenario="data_science"
+            trace_summary="experiment succeeded with feature X", scenario="data_science"
         )
         assert isinstance(result, str)
         assert len(result) > 50
 
     def test_includes_trace_summary(self):
         from llm.prompts import knowledge_extraction_prompt
-        result = knowledge_extraction_prompt(
-            trace_summary="UNIQUE_TRACE_SUMMARY_TEXT",
-            scenario="data_science"
-        )
+
+        result = knowledge_extraction_prompt(trace_summary="UNIQUE_TRACE_SUMMARY_TEXT", scenario="data_science")
         assert "UNIQUE_TRACE_SUMMARY_TEXT" in result
 
     def test_has_output_fields_or_instructions(self):
         from llm.prompts import knowledge_extraction_prompt
-        result = knowledge_extraction_prompt(
-            trace_summary="some results",
-            scenario="synthetic_research"
-        )
+
+        result = knowledge_extraction_prompt(trace_summary="some results", scenario="synthetic_research")
         # Should have some kind of structured output guidance
         assert "Output" in result or "knowledge" in result.lower() or "extract" in result.lower()
 
     def test_includes_scenario(self):
         from llm.prompts import knowledge_extraction_prompt
-        result = knowledge_extraction_prompt(
-            trace_summary="results",
-            scenario="MY_UNIQUE_SCENARIO"
-        )
+
+        result = knowledge_extraction_prompt(trace_summary="results", scenario="MY_UNIQUE_SCENARIO")
         assert "MY_UNIQUE_SCENARIO" in result

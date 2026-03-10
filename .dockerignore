@@ -1,0 +1,82 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+.uv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/_build/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Data directories (will be mounted as volumes)
+/tmp/rd_agent_artifacts/
+/tmp/rd_agent_workspace/
+/tmp/rd_agent_trace/
+*.sqlite3
+
+# Local configuration
+config.yaml
+config.local.yaml
+.env
+.env.local
+
+# CI/CD
+.github/
+.travis.yml
+.gitlab-ci.yml
+
+# Other
+*.md
+!README.md
+LICENSE
+*.pdf

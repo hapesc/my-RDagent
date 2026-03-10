@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import unittest
 import subprocess
 import sys
+import unittest
 from unittest.mock import MagicMock, patch
 
-from app.config import AppConfig, load_config
+from app.config import load_config
 from app.runtime import (
     RuntimeContext,
     build_real_provider_smoke_step_overrides,
@@ -18,9 +18,7 @@ from app.runtime import (
 from core.reasoning.virtual_eval import VirtualEvaluator
 from exploration_manager.reward import RewardCalculator
 from exploration_manager.scheduler import MCTSScheduler
-from llm import LLMAdapter
 from service_contracts import StepOverrideConfig
-
 from tests._llm_test_utils import patch_runtime_llm_provider
 
 
@@ -390,19 +388,22 @@ class TestRuntimeWiring(unittest.TestCase):
         self.assertEqual(runtime.virtual_evaluator._k_forward, 4)
 
     def test_build_run_service_wires_costeer_dependencies_into_step_executor(self):
-        with patch.dict(
-            "os.environ",
-            {
-                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-wiring",
-                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-wiring",
-                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-wiring/events.jsonl",
-                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-wiring/meta.db",
-                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
-                "RD_AGENT_LLM_PROVIDER": "mock",
-                "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
-            },
-            clear=False,
-        ), patch_runtime_llm_provider():
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-wiring",
+                    "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-wiring",
+                    "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-wiring/events.jsonl",
+                    "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-wiring/meta.db",
+                    "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                    "RD_AGENT_LLM_PROVIDER": "mock",
+                    "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
+                },
+                clear=False,
+            ),
+            patch_runtime_llm_provider(),
+        ):
             runtime = build_runtime()
             run_service = build_run_service(runtime, "data_science")
             step_executor = run_service._loop_engine._step_executor
@@ -412,20 +413,23 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertEqual(step_executor._costeer_max_rounds, 2)
 
     def test_build_run_service_wires_layer0_params_into_loop_engine(self):
-        with patch.dict(
-            "os.environ",
-            {
-                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-layer0",
-                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-layer0",
-                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-layer0/events.jsonl",
-                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-layer0/meta.db",
-                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
-                "RD_AGENT_LLM_PROVIDER": "mock",
-                "RD_AGENT_LAYER0_N_CANDIDATES": "11",
-                "RD_AGENT_LAYER0_K_FORWARD": "6",
-            },
-            clear=False,
-        ), patch_runtime_llm_provider():
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-layer0",
+                    "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-layer0",
+                    "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-layer0/events.jsonl",
+                    "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-layer0/meta.db",
+                    "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                    "RD_AGENT_LLM_PROVIDER": "mock",
+                    "RD_AGENT_LAYER0_N_CANDIDATES": "11",
+                    "RD_AGENT_LAYER0_K_FORWARD": "6",
+                },
+                clear=False,
+            ),
+            patch_runtime_llm_provider(),
+        ):
             runtime = build_runtime()
             run_service = build_run_service(runtime, "data_science")
             loop_engine_config = run_service._loop_engine._config
@@ -434,28 +438,43 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertEqual(loop_engine_config.layer0_k_forward, 6)
 
     def test_build_runtime_wires_fc3_proposal_components_into_registry(self):
-        with patch.dict(
-            "os.environ",
-            {
-                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-registry",
-                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-registry",
-                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-registry/events.jsonl",
-                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-registry/meta.db",
-                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
-                "RD_AGENT_LLM_PROVIDER": "mock",
-            },
-            clear=False,
-        ), patch_runtime_llm_provider():
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-registry",
+                    "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-registry",
+                    "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-registry/events.jsonl",
+                    "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-registry/meta.db",
+                    "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                    "RD_AGENT_LLM_PROVIDER": "mock",
+                },
+                clear=False,
+            ),
+            patch_runtime_llm_provider(),
+        ):
             runtime = build_runtime()
             data_science_bundle = runtime.plugin_registry.create_bundle("data_science")
             synthetic_bundle = runtime.plugin_registry.create_bundle("synthetic_research")
 
             self.assertIsNotNone(runtime.reasoning_pipeline)
             self.assertIsNotNone(runtime.virtual_evaluator)
-            self.assertIs(getattr(data_science_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
-            self.assertIs(getattr(data_science_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
-            self.assertIs(getattr(synthetic_bundle.proposal_engine, "_reasoning_pipeline"), runtime.reasoning_pipeline)
-            self.assertIs(getattr(synthetic_bundle.proposal_engine, "_virtual_evaluator"), runtime.virtual_evaluator)
+            self.assertIs(
+                getattr(data_science_bundle.proposal_engine, "_reasoning_pipeline", None),
+                runtime.reasoning_pipeline,
+            )
+            self.assertIs(
+                getattr(data_science_bundle.proposal_engine, "_virtual_evaluator", None),
+                runtime.virtual_evaluator,
+            )
+            self.assertIs(
+                getattr(synthetic_bundle.proposal_engine, "_reasoning_pipeline", None),
+                runtime.reasoning_pipeline,
+            )
+            self.assertIs(
+                getattr(synthetic_bundle.proposal_engine, "_virtual_evaluator", None),
+                runtime.virtual_evaluator,
+            )
 
     def test_build_runtime_uses_real_provider_safe_step_defaults(self):
         with patch.dict(
@@ -483,18 +502,21 @@ class TestRuntimeWiring(unittest.TestCase):
             self.assertEqual(manifest.default_step_overrides.running.timeout_sec, 120)
 
     def test_build_runtime_injects_virtual_evaluator_into_exploration_manager(self):
-        with patch.dict(
-            "os.environ",
-            {
-                "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-exploration",
-                "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-exploration",
-                "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-exploration/events.jsonl",
-                "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-exploration/meta.db",
-                "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
-                "RD_AGENT_LLM_PROVIDER": "mock",
-            },
-            clear=False,
-        ), patch_runtime_llm_provider():
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "AGENTRD_ARTIFACT_ROOT": "/tmp/rd-agent-artifacts-runtime-exploration",
+                    "AGENTRD_WORKSPACE_ROOT": "/tmp/rd-agent-workspace-runtime-exploration",
+                    "AGENTRD_TRACE_STORAGE_PATH": "/tmp/rd-agent-runtime-exploration/events.jsonl",
+                    "AGENTRD_SQLITE_PATH": "/tmp/rd-agent-runtime-exploration/meta.db",
+                    "AGENTRD_ALLOW_LOCAL_EXECUTION": "true",
+                    "RD_AGENT_LLM_PROVIDER": "mock",
+                },
+                clear=False,
+            ),
+            patch_runtime_llm_provider(),
+        ):
             runtime = build_runtime()
 
             self.assertIs(runtime.exploration_manager._virtual_evaluator, runtime.virtual_evaluator)
@@ -533,7 +555,10 @@ class TestRuntimeWiring(unittest.TestCase):
             [
                 sys.executable,
                 "-c",
-                "import plugins; import exploration_manager.service; import scenarios.synthetic_research.plugin; print('ok')",
+                (
+                    "import plugins; import exploration_manager.service; "
+                    "import scenarios.synthetic_research.plugin; print('ok')"
+                ),
             ],
             check=False,
             capture_output=True,

@@ -41,7 +41,10 @@ class ExecutionBackendTests(unittest.TestCase):
                 branch_id="main",
                 loop_index=0,
                 workspace_path=str(workspace),
-                command="python3 -c \"from pathlib import Path; print('ok'); Path('out.txt').write_text('artifact', encoding='utf-8')\"",
+                command=(
+                    "python3 -c \"from pathlib import Path; print('ok'); "
+                    "Path('out.txt').write_text('artifact', encoding='utf-8')\""
+                ),
             )
 
             self.assertEqual(result.status, ExecutionStatus.SUCCESS)
@@ -153,7 +156,7 @@ class ExecutionBackendTests(unittest.TestCase):
                 branch_id="main",
                 loop_index=0,
                 workspace_path=str(workspace),
-                command="python3 -c \"import time; time.sleep(2)\"",
+                command='python3 -c "import time; time.sleep(2)"',
                 timeout_sec=1,
             )
 
@@ -175,15 +178,17 @@ class ExecutionBackendTests(unittest.TestCase):
                 prefer_docker=True,
                 allow_local_execution=False,
             )
-            with patch("core.execution.backend.shutil.which", return_value=None):
-                with self.assertRaisesRegex(RuntimeError, "allow_local_execution=true"):
-                    backend.execute(
-                        run_id="run-4",
-                        branch_id="main",
-                        loop_index=0,
-                        workspace_path=str(workspace),
-                        command="python3 -c \"print('blocked')\"",
-                    )
+            with (
+                patch("core.execution.backend.shutil.which", return_value=None),
+                self.assertRaisesRegex(RuntimeError, "allow_local_execution=true"),
+            ):
+                backend.execute(
+                    run_id="run-4",
+                    branch_id="main",
+                    loop_index=0,
+                    workspace_path=str(workspace),
+                    command="python3 -c \"print('blocked')\"",
+                )
 
             events = TraceStore(TraceStoreConfig(storage_path=trace_path)).query_events(run_id="run-4")
             self.assertEqual(len(events), 1)
@@ -207,7 +212,9 @@ class ExecutionBackendTests(unittest.TestCase):
                     branch_id="main",
                     loop_index=0,
                     workspace_path=str(workspace),
-                    command="python3 -c \"from pathlib import Path; Path('local.txt').write_text('ok', encoding='utf-8')\"",
+                    command=(
+                        "python3 -c \"from pathlib import Path; Path('local.txt').write_text('ok', encoding='utf-8')\""
+                    ),
                 )
 
             self.assertEqual(result.engine, "local")

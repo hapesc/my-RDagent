@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Set
 
 
 @dataclass
@@ -19,10 +18,10 @@ class TFIDFVectorizer:
         self._vocab = set()  # type: Set[str]
 
     @staticmethod
-    def _tokenize(text: str) -> List[str]:
+    def _tokenize(text: str) -> list[str]:
         return text.lower().split()
 
-    def fit_transform(self, documents: List[str]) -> List[Dict[str, float]]:
+    def fit_transform(self, documents: list[str]) -> list[dict[str, float]]:
         n_docs = len(documents)
         if n_docs == 0:
             return []
@@ -62,7 +61,7 @@ class TFIDFVectorizer:
 
         return vectors
 
-    def transform(self, document: str) -> Dict[str, float]:
+    def transform(self, document: str) -> dict[str, float]:
         tokens = self._tokenize(document)
         if not tokens:
             return {}
@@ -86,7 +85,7 @@ class TFIDFVectorizer:
         return tfidf
 
 
-def cosine_similarity(vec_a: Dict[str, float], vec_b: Dict[str, float]) -> float:
+def cosine_similarity(vec_a: dict[str, float], vec_b: dict[str, float]) -> float:
     if not vec_a or not vec_b:
         return 0.0
 

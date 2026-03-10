@@ -1,1 +1,0 @@
-PASS: All branches pruned case → kept 2 active branch(es)

@@ -3,10 +3,25 @@
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+# pandas 2.2+ added include_groups parameter to GroupBy.apply;
+# older versions don't accept it. Detect once at import time.
+try:
+    _df = pd.DataFrame({"a": [1]}).groupby("a")
+    _df.apply(lambda x: x, include_groups=False)  # type: ignore[call-arg]
+    _PD_HAS_INCLUDE_GROUPS = True
+    del _df
+except TypeError:
+    _PD_HAS_INCLUDE_GROUPS = False
+
+
+def _groupby_apply(grouped, func):  # type: ignore[type-arg]
+    if _PD_HAS_INCLUDE_GROUPS:
+        return grouped.apply(func, include_groups=False)  # type: ignore[call-arg]
+    return grouped.apply(func)
 
 
 def compute_ic(
@@ -34,7 +49,7 @@ def compute_ic(
             return float("nan")
         return float(np.corrcoef(p, a)[0, 1])
 
-    ic_series = df.groupby("date").apply(pearson_corr, include_groups=False)
+    ic_series = _groupby_apply(df.groupby("date"), pearson_corr)
     ic_series = ic_series.dropna()
 
     if ic_series.empty:
@@ -79,7 +94,7 @@ def compute_rank_ic(
             return float("nan")
         return float(np.corrcoef(p_rank, a_rank)[0, 1])
 
-    rank_ic_series = df.groupby("date").apply(spearman_corr, include_groups=False)
+    rank_ic_series = _groupby_apply(df.groupby("date"), spearman_corr)
     rank_ic_series = rank_ic_series.dropna()
 
     if rank_ic_series.empty:
@@ -123,7 +138,7 @@ def compute_mdd(cumulative_returns: pd.Series) -> float:
     return float(drawdown.min())
 
 
-def compute_arr(cumulative_returns: pd.Series, n_days: Optional[int] = None) -> float:
+def compute_arr(cumulative_returns: pd.Series, n_days: int | None = None) -> float:
     """Annualized Rate of Return. Input: daily returns series."""
     returns = cumulative_returns.dropna()
     if len(returns) < 2:

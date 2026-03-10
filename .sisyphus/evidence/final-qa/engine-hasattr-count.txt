@@ -1,5 +1,0 @@
-Command: grep -n "hasattr(self._exploration_manager" core/loop/engine.py | wc -l
-Status: PASS
-
-Output:
-0

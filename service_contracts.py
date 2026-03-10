@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from data_models import Event, RunSession, RunStatus, StopConditions, model_to_dict
 
 
-def _qualified_field(field_prefix: Optional[str], field_name: str) -> str:
+def _qualified_field(field_prefix: str | None, field_name: str) -> str:
     return f"{field_prefix}.{field_name}" if field_prefix else field_name
 
 
@@ -16,21 +16,21 @@ def _qualified_field(field_prefix: Optional[str], field_name: str) -> str:
 class ModelSelectorConfig:
     """Provider/model selection for an LLM-backed step."""
 
-    provider: Optional[str] = None
-    model: Optional[str] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    max_retries: Optional[int] = None
+    provider: str | None = None
+    model: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
+    max_retries: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
     def from_dict(
         cls,
-        data: Optional[Dict[str, Any]],
-        field_prefix: Optional[str] = None,
-    ) -> "ModelSelectorConfig":
+        data: dict[str, Any] | None,
+        field_prefix: str | None = None,
+    ) -> ModelSelectorConfig:
         if data is None:
             return cls()
         if not isinstance(data, dict):
@@ -41,9 +41,7 @@ class ModelSelectorConfig:
             )
         payload = data or {}
         try:
-            temperature = (
-                float(payload["temperature"]) if payload.get("temperature") is not None else None
-            )
+            temperature = float(payload["temperature"]) if payload.get("temperature") is not None else None
             max_tokens = int(payload["max_tokens"]) if payload.get("max_tokens") is not None else None
             max_retries = int(payload["max_retries"]) if payload.get("max_retries") is not None else None
         except (TypeError, ValueError) as exc:
@@ -83,17 +81,17 @@ class ModelSelectorConfig:
 class RunningStepConfig:
     """Execution-step overrides."""
 
-    timeout_sec: Optional[int] = None
+    timeout_sec: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
     def from_dict(
         cls,
-        data: Optional[Dict[str, Any]],
-        field_prefix: Optional[str] = "step_overrides.running",
-    ) -> "RunningStepConfig":
+        data: dict[str, Any] | None,
+        field_prefix: str | None = "step_overrides.running",
+    ) -> RunningStepConfig:
         if data is None:
             return cls()
         if not isinstance(data, dict):
@@ -129,16 +127,16 @@ class StepOverrideConfig:
     running: RunningStepConfig = field(default_factory=RunningStepConfig)
     feedback: ModelSelectorConfig = field(default_factory=ModelSelectorConfig)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
     def from_dict(
         cls,
-        data: Optional[Dict[str, Any]],
+        data: dict[str, Any] | None,
         *,
         field_prefix: str = "step_overrides",
-    ) -> "StepOverrideConfig":
+    ) -> StepOverrideConfig:
         if data is None:
             return cls()
         if not isinstance(data, dict):
@@ -177,7 +175,7 @@ class StepOverrideConfig:
 
 def merge_model_selector_config(
     defaults: ModelSelectorConfig,
-    override: Optional[ModelSelectorConfig] = None,
+    override: ModelSelectorConfig | None = None,
 ) -> ModelSelectorConfig:
     current = override or ModelSelectorConfig()
     return ModelSelectorConfig(
@@ -191,7 +189,7 @@ def merge_model_selector_config(
 
 def merge_running_step_config(
     defaults: RunningStepConfig,
-    override: Optional[RunningStepConfig] = None,
+    override: RunningStepConfig | None = None,
 ) -> RunningStepConfig:
     current = override or RunningStepConfig()
     return RunningStepConfig(
@@ -201,7 +199,7 @@ def merge_running_step_config(
 
 def resolve_step_override_config(
     defaults: StepOverrideConfig,
-    override: Optional[StepOverrideConfig] = None,
+    override: StepOverrideConfig | None = None,
 ) -> StepOverrideConfig:
     current = override or StepOverrideConfig()
     return StepOverrideConfig(
@@ -219,20 +217,18 @@ class ScenarioManifest:
     scenario_name: str
     title: str
     description: str
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     supports_branching: bool = True
     supports_resume: bool = True
     supports_local_execution: bool = False
-    supported_step_overrides: List[str] = field(
-        default_factory=lambda: ["proposal", "coding", "running", "feedback"]
-    )
+    supported_step_overrides: list[str] = field(default_factory=lambda: ["proposal", "coding", "running", "feedback"])
     default_step_overrides: StepOverrideConfig = field(default_factory=StepOverrideConfig)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ScenarioManifest":
+    def from_dict(cls, data: dict[str, Any]) -> ScenarioManifest:
         if not isinstance(data, dict):
             raise ServiceContractError(
                 code=ErrorCode.INVALID_REQUEST,
@@ -269,7 +265,7 @@ class ErrorCode(str):
 class ServiceContractError(ValueError):
     """Structured validation error used across CLI/UI/API entrypoints."""
 
-    def __init__(self, code: str, message: str, field: Optional[str] = None) -> None:
+    def __init__(self, code: str, message: str, field: str | None = None) -> None:
         super().__init__(message)
         self.code = code
         self.field = field
@@ -281,9 +277,9 @@ class StructuredError:
 
     code: str
     message: str
-    field: Optional[str] = None
+    field: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -293,11 +289,11 @@ class ErrorResponse:
 
     error: StructuredError
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_error(cls, error: ServiceContractError) -> "ErrorResponse":
+    def from_error(cls, error: ServiceContractError) -> ErrorResponse:
         return cls(error=StructuredError(code=error.code, message=str(error), field=error.field))
 
 
@@ -307,16 +303,16 @@ class RunCreateRequest:
 
     scenario: str
     task_summary: str
-    run_id: Optional[str] = None
-    entry_input: Dict[str, Any] = field(default_factory=dict)
+    run_id: str | None = None
+    entry_input: dict[str, Any] = field(default_factory=dict)
     stop_conditions: StopConditions = field(default_factory=StopConditions)
     step_overrides: StepOverrideConfig = field(default_factory=StepOverrideConfig)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RunCreateRequest":
+    def from_dict(cls, data: dict[str, Any]) -> RunCreateRequest:
         if not isinstance(data, dict):
             raise ServiceContractError(
                 code=ErrorCode.INVALID_REQUEST,
@@ -363,13 +359,9 @@ class RunCreateRequest:
                 stop_conditions=StopConditions(
                     max_loops=int(stop_conditions.get("max_loops", data.get("max_loops", 1))),
                     max_steps=(
-                        int(stop_conditions["max_steps"])
-                        if stop_conditions.get("max_steps") is not None
-                        else None
+                        int(stop_conditions["max_steps"]) if stop_conditions.get("max_steps") is not None else None
                     ),
-                    max_duration_sec=int(
-                        stop_conditions.get("max_duration_sec", data.get("max_duration_sec", 300))
-                    ),
+                    max_duration_sec=int(stop_conditions.get("max_duration_sec", data.get("max_duration_sec", 300))),
                 ),
                 step_overrides=StepOverrideConfig.from_dict(data.get("step_overrides")),
             )
@@ -390,17 +382,17 @@ class RunSummaryResponse:
     run_id: str
     scenario: str
     status: str
-    active_branch_ids: List[str]
+    active_branch_ids: list[str]
     created_at: str
     updated_at: str
-    stop_conditions: Dict[str, Any]
-    config_snapshot: Dict[str, Any]
+    stop_conditions: dict[str, Any]
+    config_snapshot: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
     @classmethod
-    def from_run_session(cls, run_session: RunSession) -> "RunSummaryResponse":
+    def from_run_session(cls, run_session: RunSession) -> RunSummaryResponse:
         payload = run_session.to_dict()
         return cls(
             run_id=run_session.run_id,
@@ -423,7 +415,7 @@ class RunControlResponse:
     status: str
     message: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -432,11 +424,11 @@ class RunEventPageResponse:
     """Cursor-based event page contract."""
 
     run_id: str
-    items: List[Event] = field(default_factory=list)
-    next_cursor: Optional[str] = None
+    items: list[Event] = field(default_factory=list)
+    next_cursor: str | None = None
     limit: int = 50
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -445,9 +437,9 @@ class ArtifactDescriptor:
     """Artifact listing contract."""
 
     path: str
-    branch_id: Optional[str] = None
+    branch_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -456,9 +448,9 @@ class ArtifactListResponse:
     """Artifact page contract."""
 
     run_id: str
-    items: List[ArtifactDescriptor] = field(default_factory=list)
+    items: list[ArtifactDescriptor] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -469,7 +461,7 @@ class BranchSummary:
     branch_id: str
     head_node_id: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)
 
 
@@ -478,7 +470,7 @@ class BranchListResponse:
     """Branch list contract."""
 
     run_id: str
-    items: List[BranchSummary] = field(default_factory=list)
+    items: list[BranchSummary] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return model_to_dict(self)

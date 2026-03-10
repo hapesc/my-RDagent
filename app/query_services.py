@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Optional
 
 from core.storage import BranchTraceStore, BranchTraceStoreConfig, SQLiteMetadataStore, SQLiteStoreConfig
 from service_contracts import (
@@ -19,7 +18,7 @@ from service_contracts import (
 )
 
 
-def load_run_summary(sqlite_path: str, run_id: str) -> Optional[RunSummaryResponse]:
+def load_run_summary(sqlite_path: str, run_id: str) -> RunSummaryResponse | None:
     store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     run_session = store.get_run(run_id)
     if run_session is None:
@@ -31,9 +30,9 @@ def load_event_page(
     sqlite_path: str,
     run_id: str,
     *,
-    branch_id: Optional[str] = None,
-    cursor: Optional[str] = None,
-    limit: int = 50,
+    branch_id: str | None = None,
+    cursor: str | None = None,
+    limit: int | str = 50,
 ) -> RunEventPageResponse:
     store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=sqlite_path))
     events = store.query_events(run_id=run_id, branch_id=branch_id)
@@ -62,7 +61,7 @@ def load_artifact_page(
     artifact_root: str,
     run_id: str,
     *,
-    branch_id: Optional[str] = None,
+    branch_id: str | None = None,
 ) -> ArtifactListResponse:
     if branch_id is None:
         paths = _list_paths_for_roots(
@@ -97,7 +96,7 @@ def load_artifact_page(
     )
 
 
-def _list_paths_for_roots(roots: List[Path]) -> List[str]:
+def _list_paths_for_roots(roots: list[Path]) -> list[str]:
     paths = set()
     for root in roots:
         if not root.exists():

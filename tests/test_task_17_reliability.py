@@ -15,7 +15,6 @@ from exploration_manager import ExplorationManager, ExplorationManagerConfig
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
-
 from tests._llm_test_utils import make_mock_llm_adapter
 
 
@@ -24,9 +23,7 @@ class ReliabilityAcceptanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=str(tmp_path / "meta.db")))
-            checkpoint_store = FileCheckpointStore(
-                CheckpointStoreConfig(root_dir=str(tmp_path / "checkpoints"))
-            )
+            checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(tmp_path / "checkpoints")))
             workspace_manager = WorkspaceManager(
                 WorkspaceManagerConfig(root_dir=str(tmp_path / "workspaces")),
                 checkpoint_store=checkpoint_store,

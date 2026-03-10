@@ -139,9 +139,7 @@ class WorkspaceManagerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = WorkspaceManager(
                 WorkspaceManagerConfig(root_dir=str(Path(tmpdir) / "workspaces")),
-                checkpoint_store=FileCheckpointStore(
-                    CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))
-                ),
+                checkpoint_store=FileCheckpointStore(CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))),
             )
             workspace_path = manager.create_workspace(run_id="run-safe", workspace_id="ws-safe")
 
@@ -172,9 +170,7 @@ class WorkspaceManagerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = WorkspaceManager(
                 WorkspaceManagerConfig(root_dir=str(Path(tmpdir) / "workspaces")),
-                checkpoint_store=FileCheckpointStore(
-                    CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))
-                ),
+                checkpoint_store=FileCheckpointStore(CheckpointStoreConfig(root_dir=str(Path(tmpdir) / "checkpoints"))),
             )
 
             with self.assertRaises(ValueError):

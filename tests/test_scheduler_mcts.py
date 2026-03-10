@@ -1,5 +1,4 @@
 import math
-from typing import Dict, List, Optional, Tuple
 
 from data_models import BranchState, ExplorationGraph, NodeRecord
 from exploration_manager.reward import RewardCalculator
@@ -9,12 +8,12 @@ from exploration_manager.scheduler import MCTSScheduler
 def _node(
     node_id: str,
     *,
-    score: Optional[float] = None,
+    score: float | None = None,
     branch_state: BranchState = BranchState.ACTIVE,
     visits: int = 0,
     total_value: float = 0.0,
     avg_value: float = 0.0,
-    parent_ids: Optional[List[str]] = None,
+    parent_ids: list[str] | None = None,
 ) -> NodeRecord:
     return NodeRecord(
         node_id=node_id,
@@ -27,7 +26,7 @@ def _node(
     )
 
 
-def _graph(nodes: List[NodeRecord], visit_counts: Optional[Dict[str, int]] = None) -> ExplorationGraph:
+def _graph(nodes: list[NodeRecord], visit_counts: dict[str, int] | None = None) -> ExplorationGraph:
     graph = ExplorationGraph(nodes=nodes)
     if visit_counts is not None:
         graph.visit_counts = visit_counts
@@ -65,26 +64,32 @@ def test_unvisited_node_with_no_score_preferred_first() -> None:
 
 
 def test_pruned_nodes_skipped() -> None:
-    graph = _graph([
-        _node("p", branch_state=BranchState.PRUNED),
-        _node("a", branch_state=BranchState.ACTIVE),
-    ])
+    graph = _graph(
+        [
+            _node("p", branch_state=BranchState.PRUNED),
+            _node("a", branch_state=BranchState.ACTIVE),
+        ]
+    )
     assert MCTSScheduler().select_node(graph) == "a"
 
 
 def test_merged_nodes_skipped() -> None:
-    graph = _graph([
-        _node("m", branch_state=BranchState.MERGED),
-        _node("a", branch_state=BranchState.ACTIVE),
-    ])
+    graph = _graph(
+        [
+            _node("m", branch_state=BranchState.MERGED),
+            _node("a", branch_state=BranchState.ACTIVE),
+        ]
+    )
     assert MCTSScheduler().select_node(graph) == "a"
 
 
 def test_all_pruned_returns_none() -> None:
-    graph = _graph([
-        _node("p1", branch_state=BranchState.PRUNED),
-        _node("p2", branch_state=BranchState.PRUNED),
-    ])
+    graph = _graph(
+        [
+            _node("p1", branch_state=BranchState.PRUNED),
+            _node("p2", branch_state=BranchState.PRUNED),
+        ]
+    )
     assert MCTSScheduler().select_node(graph) is None
 
 
@@ -137,9 +142,9 @@ def test_backpropagation_with_single_root_node() -> None:
 def test_observe_feedback_uses_reward_calculator_and_triggers_backpropagation() -> None:
     class SpyRewardCalculator:
         def __init__(self) -> None:
-            self.calls: List[Tuple[Optional[float], Optional[bool]]] = []
+            self.calls: list[tuple[float | None, bool | None]] = []
 
-        def calculate(self, score: Optional[float], decision: Optional[bool]) -> float:
+        def calculate(self, score: float | None, decision: bool | None) -> float:
             self.calls.append((score, decision))
             return 0.75
 

@@ -12,9 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from agentrd_cli import ExitCode, main
-from ui.trace_ui import load_run_summary
-
 from tests._llm_test_utils import patch_runtime_llm_provider
+from ui.trace_ui import load_run_summary
 
 
 class Task20PerStepConfigTests(unittest.TestCase):

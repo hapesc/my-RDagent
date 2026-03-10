@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from data_models import BranchState, ExplorationGraph
 
@@ -23,8 +22,8 @@ class BranchPruner:
 
     def __init__(
         self,
-        score_threshold: Optional[float] = None,
-        relative_threshold: Optional[float] = 0.5,
+        score_threshold: float | None = None,
+        relative_threshold: float | None = 0.5,
     ) -> None:
         self._score_threshold = score_threshold
         self._relative_threshold = relative_threshold
@@ -51,9 +50,7 @@ class BranchPruner:
 
         scored_values = [node.score for node in scored_active_nodes if node.score is not None]
         best_score = max(scored_values)
-        best_node_ids = {
-            node.node_id for node in scored_active_nodes if node.score == best_score
-        }
+        best_node_ids = {node.node_id for node in scored_active_nodes if node.score == best_score}
         cutoff = self._compute_cutoff(best_score)
 
         pruned_count = 0
@@ -71,9 +68,7 @@ class BranchPruner:
                 if existing.branch_state == BranchState.ACTIVE and existing.node_id != node.node_id
             )
             if remaining_active < 1:
-                _log.debug(
-                    "Skipping prune of %s - would leave 0 active nodes", node.node_id
-                )
+                _log.debug("Skipping prune of %s - would leave 0 active nodes", node.node_id)
                 continue
 
             node.branch_state = BranchState.PRUNED
@@ -108,9 +103,7 @@ class BranchPruner:
             return False
 
         active_scored = [
-            node
-            for node in graph.nodes
-            if node.branch_state == BranchState.ACTIVE and node.score is not None
+            node for node in graph.nodes if node.branch_state == BranchState.ACTIVE and node.score is not None
         ]
         if len(active_scored) <= 1:
             return False

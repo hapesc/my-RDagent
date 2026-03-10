@@ -1,9 +1,9 @@
 """Tests for StructuredFeedback and ReasoningTrace schemas (FC-3 feedback pipeline)."""
 
-import pytest
-from llm.schemas import StructuredFeedback, ReasoningTrace
-from llm.adapter import MockLLMProvider
 import json
+
+from llm.adapter import MockLLMProvider
+from llm.schemas import ReasoningTrace, StructuredFeedback
 
 
 class TestStructuredFeedback:

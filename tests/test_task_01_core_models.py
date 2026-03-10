@@ -19,6 +19,7 @@ from data_models import (
     WorkspaceSnapshot,
 )
 
+
 class CoreModelContractTests(unittest.TestCase):
     def test_run_session_and_event_serialization(self) -> None:
         session = RunSession(

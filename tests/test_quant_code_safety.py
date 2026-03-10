@@ -1,7 +1,5 @@
 """Tests for code safety validator (TDD)."""
 
-import pytest
-
 from scenarios.quant.code_safety import validate_code_safety
 
 

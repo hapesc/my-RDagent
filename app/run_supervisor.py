@@ -5,8 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.runtime import build_run_service, build_runtime
 from data_models import RunSession, RunStatus
@@ -35,14 +34,14 @@ class RunSupervisor:
         "stop": "stopped",
     }
 
-    def __init__(self, config: Optional[RunSupervisorConfig] = None) -> None:
+    def __init__(self, config: RunSupervisorConfig | None = None) -> None:
         self._config = config or RunSupervisorConfig()
         self._lock = threading.Lock()
-        self._workers: Dict[str, threading.Thread] = {}
-        self._controls: Dict[str, str] = {}
+        self._workers: dict[str, threading.Thread] = {}
+        self._controls: dict[str, str] = {}
         self._recover_inflight_runs()
 
-    def create_run(self, request: RunCreateRequest, config_snapshot: Dict[str, Any]) -> RunSession:
+    def create_run(self, request: RunCreateRequest, config_snapshot: dict[str, Any]) -> RunSession:
         runtime = build_runtime()
         run_service = build_run_service(runtime, request.scenario)
         run_session = run_service.create_run(

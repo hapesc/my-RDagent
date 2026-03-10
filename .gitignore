@@ -1,9 +1,55 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
+*.py[cod]
+*.egg
 *.egg-info/
+.mypy_cache/
+.ruff_cache/
+.python-version
+
+# Virtual Environments (CRITICAL - prevents API key and secret leaks)
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+
+# Build and Distribution
 dist/
 build/
 .eggs/
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.project
+.settings/
+*.sublime-*
+
+# OS and System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# Project Specific
 config.yaml
+*.sqlite3
+*.db
+logs/
+/tmp/
+
+# Tool / AI working artifacts
+.sisyphus/
+.claude/
+FC4_*.md

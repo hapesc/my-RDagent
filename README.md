@@ -43,30 +43,58 @@ The system is plugin-based. The loop engine is generic — scenario-specific log
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 - (Optional) Docker for sandboxed code execution
 - An LLM API key (e.g. `GEMINI_API_KEY`) — **required for real runs**. There is no mock fallback at runtime; missing LLM config will raise an error.
 - (Optional) `yfinance` for the quant scenario's real market data
 
-### 1. Verify Configuration
+### 1. Set Up Environment (with uv)
 
 ```bash
-python3 -m app.startup
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and enter the project
+git clone https://github.com/hapesc/my-RDagent.git
+cd my-RDagent
+
+# Create venv and install all dependencies (one command)
+uv venv && uv pip install -e ".[all]"
+
+# Or use Make shortcuts:
+make install      # core only
+make install-all  # all optional deps (LLM, API, UI, test, dev)
+```
+
+<details>
+<summary>Using pip instead of uv</summary>
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[all]"
+```
+</details>
+
+### 2. Verify Configuration
+
+```bash
+python -m app.startup
 
 # or validate with a specific config file
-python3 -m app.startup --config ./config.yaml
+python -m app.startup --config ./config.yaml
 ```
 
 This prints the active configuration as JSON. All settings have sensible defaults — no setup required for a local trial.
 
-### 2. Run an Experiment
+### 3. Run an Experiment
 
 ```bash
 # Simple CLI
-python3 cli.py --config ./config.yaml --scenario data_science --task "classify iris dataset" --max-steps 3
+python cli.py --config ./config.yaml --scenario data_science --task "classify iris dataset" --max-steps 3
 
 # Dry run (validate config only, no execution)
-python3 cli.py --dry-run --task "verify setup"
+python cli.py --dry-run --task "verify setup"
 ```
 
 Or use the full CLI with JSON input:
@@ -74,7 +102,7 @@ Or use the full CLI with JSON input:
 ```bash
 export AGENTRD_ALLOW_LOCAL_EXECUTION=1
 
-python3 agentrd_cli.py run \
+python agentrd_cli.py run \
   --config ./config.yaml \
   --scenario data_science \
   --loops-per-call 1 \
@@ -82,19 +110,17 @@ python3 agentrd_cli.py run \
   --input '{"task_summary": "classify iris dataset", "max_loops": 3}'
 ```
 
-### 3. Query Traces
+### 4. Query Traces
 
 ```bash
-python3 agentrd_cli.py trace --run-id <RUN_ID> --format table
+python agentrd_cli.py trace --run-id <RUN_ID> --format table
 ```
 
-### 4. Start the Control Plane & UI (Optional)
+### 5. Start the Control Plane & UI (Optional)
 
-Requires `fastapi`, `uvicorn`, and `streamlit`:
+Requires the `api` and `ui` extras (included in `.[all]`):
 
 ```bash
-pip install fastapi uvicorn streamlit
-
 # REST API
 uvicorn app.api_main:app --host 127.0.0.1 --port 8000
 
@@ -102,11 +128,13 @@ uvicorn app.api_main:app --host 127.0.0.1 --port 8000
 streamlit run ui/trace_ui.py
 ```
 
-### 5. Health Check
+### 6. Health Check
 
 ```bash
-python3 agentrd_cli.py health-check --verbose
+python agentrd_cli.py health-check --verbose
 ```
+
+> **Docker quickstart**: See [QUICKSTART.md](QUICKSTART.md) for Docker Compose setup and more detailed guides.
 
 ## Configuration
 
@@ -160,7 +188,7 @@ Use `--config <path>` in `app.startup`, `cli.py`, and `agentrd_cli.py` to load a
 Each run can override model and timeout settings per step (`proposal`, `coding`, `running`, `feedback`):
 
 ```bash
-python3 agentrd_cli.py run \
+python agentrd_cli.py run \
   --scenario data_science \
   --input '{
     "task_summary": "override demo",
@@ -177,7 +205,7 @@ python3 agentrd_cli.py run \
 To audit the effective config for a run:
 
 ```bash
-python3 agentrd_cli.py trace --run-id <RUN_ID> --format json
+python agentrd_cli.py trace --run-id <RUN_ID> --format json
 ```
 
 The `run.config_snapshot.step_overrides` field shows the final merged config; `requested_step_overrides` shows what was requested.
@@ -203,7 +231,7 @@ When running the FastAPI control plane:
 
 ```bash
 # Full regression suite (739 tests)
-python3 -m pytest tests -q
+python -m pytest tests -q
 
 # Acceptance tests
 ./scripts/run_task17_acceptance.sh
@@ -215,13 +243,13 @@ These scripts run a full loop-engine cycle with a real LLM backend (Gemini). The
 
 ```bash
 # Quant scenario — real yfinance data + LLM factor generation + backtest
-python3 scripts/run_quant_e2e.py
+python scripts/run_quant_e2e.py
 
 # Data Science scenario — real LLM reasoning + coding + local execution
-python3 scripts/run_data_science_e2e.py
+python scripts/run_data_science_e2e.py
 
 # Synthetic Research scenario — real LLM research brief + findings
-python3 scripts/run_synthetic_research_e2e.py
+python scripts/run_synthetic_research_e2e.py
 ```
 
 ## Project Structure
@@ -268,4 +296,4 @@ This project is an independent implementation inspired by the [R&D-Agent paper](
 
 ## License
 
-This project is for research and educational purposes.
+[MIT](LICENSE)

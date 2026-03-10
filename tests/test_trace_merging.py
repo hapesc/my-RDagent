@@ -1,5 +1,5 @@
-import json
 import importlib
+import json
 
 import pytest
 
@@ -131,9 +131,7 @@ def test_merge_traces_prompt_produces_expected_sections():
 
 def test_mock_llm_provider_detects_merge_prompt():
     provider = MockLLMProvider()
-    raw = provider.complete(
-        "You are an expert research synthesizer.\n## Completed Traces\n..."
-    )
+    raw = provider.complete("You are an expert research synthesizer.\n## Completed Traces\n...")
     payload = json.loads(raw)
     assert payload["summary"] == "Merged experiment design"
     assert "implementation_steps" in payload

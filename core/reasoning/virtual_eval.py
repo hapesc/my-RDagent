@@ -1,8 +1,8 @@
 """FC-3 virtual evaluation: generate N candidates, rank top K."""
+
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from core.reasoning.pipeline import ReasoningPipeline
 from llm.adapter import LLMAdapter
@@ -19,7 +19,7 @@ class VirtualEvaluator:
         llm_adapter: LLMAdapter,
         n_candidates: int = 5,
         k_forward: int = 2,
-        reasoning_pipeline: Optional[ReasoningPipeline] = None,
+        reasoning_pipeline: ReasoningPipeline | None = None,
     ) -> None:
         self._llm_adapter = llm_adapter
         self._pipeline = reasoning_pipeline or ReasoningPipeline(llm_adapter)
@@ -31,19 +31,19 @@ class VirtualEvaluator:
         task_summary: str,
         scenario_name: str,
         iteration: int,
-        previous_results: List[str],
-        current_scores: List[float],
+        previous_results: list[str],
+        current_scores: list[float],
         evaluation_criteria: str = "feasibility, novelty, expected performance gain",
-        model_config: Optional[ModelSelectorConfig] = None,
-        n_candidates: Optional[int] = None,
-        k_forward: Optional[int] = None,
-    ) -> List[ExperimentDesign]:
+        model_config: ModelSelectorConfig | None = None,
+        n_candidates: int | None = None,
+        k_forward: int | None = None,
+    ) -> list[ExperimentDesign]:
         effective_n_candidates = n_candidates if n_candidates is not None else self._n_candidates
         effective_k_forward = k_forward if k_forward is not None else self._k_forward
         effective_n_candidates = max(1, int(effective_n_candidates))
         effective_k_forward = max(1, min(int(effective_k_forward), effective_n_candidates))
 
-        candidates: List[ExperimentDesign] = []
+        candidates: list[ExperimentDesign] = []
         for i in range(effective_n_candidates):
             diversified_task = self._diversify_prompt(task_summary, i, effective_n_candidates)
             design = self._pipeline.reason(
@@ -71,8 +71,7 @@ class VirtualEvaluator:
             return candidates
 
         candidate_dicts = [
-            {"index": i, "summary": d.summary, "virtual_score": d.virtual_score}
-            for i, d in enumerate(candidates)
+            {"index": i, "summary": d.summary, "virtual_score": d.virtual_score} for i, d in enumerate(candidates)
         ]
         ranking_prompt = virtual_eval_prompt(
             candidates=candidate_dicts,

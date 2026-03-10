@@ -325,8 +325,14 @@ class LLMAdapter:
         for match in matches:
             lang = (match.group(1) or "").strip().lower()
             if lang != "json":
-                return match.group(2).strip()
-        return matches[-1].group(2).strip()
+                code = match.group(2).strip()
+                if "\n" not in code and "\\n" in code:
+                    code = code.replace("\\n", "\n").replace("\\t", "\t")
+                return code
+        code = matches[-1].group(2).strip()
+        if "\n" not in code and "\\n" in code:
+            code = code.replace("\\n", "\n").replace("\\t", "\t")
+        return code
 
     @staticmethod
     def _repair_json(raw: str) -> str:

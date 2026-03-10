@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.11/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent-p0-codegen
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 11 items
+
+tests/test_codegen_validators.py::test_compile_validator_valid_code PASSED [  9%]
+tests/test_codegen_validators.py::test_compile_validator_syntax_error PASSED [ 18%]
+tests/test_codegen_validators.py::test_placeholder_detector_clean PASSED [ 27%]
+tests/test_codegen_validators.py::test_placeholder_detector_todo PASSED  [ 36%]
+tests/test_codegen_validators.py::test_placeholder_detector_template_tokens PASSED [ 45%]
+tests/test_codegen_validators.py::test_content_validator_has_function PASSED [ 54%]
+tests/test_codegen_validators.py::test_content_validator_missing_function PASSED [ 63%]
+tests/test_codegen_validators.py::test_content_validator_empty_code PASSED [ 72%]
+tests/test_codegen_validators.py::test_ast_safety_not_blocking_imports PASSED [ 81%]
+tests/test_codegen_validators.py::test_full_pipeline_valid PASSED        [ 90%]
+tests/test_codegen_validators.py::test_full_pipeline_first_failure_stops PASSED [100%]
+
+============================= 11 passed in 15.27s ==============================

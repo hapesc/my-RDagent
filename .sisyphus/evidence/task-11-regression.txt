@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.11/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent-p0-codegen
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 4 items
+
+tests/test_task_13_data_science_plugin_v1.py::DataSciencePluginV1Tests::test_generator_node_ids_are_branch_unique PASSED [ 25%]
+tests/test_task_13_data_science_plugin_v1.py::DataSciencePluginV1Tests::test_real_input_one_round_e2e_and_persisted PASSED [ 50%]
+tests/test_task_13_data_science_plugin_v1.py::DataSciencePluginV1Tests::test_usefulness_accepts_informative_metrics_payload PASSED [ 75%]
+tests/test_task_13_data_science_plugin_v1.py::DataSciencePluginV1Tests::test_usefulness_rejects_row_count_only_even_with_positive_logs PASSED [100%]
+
+============================== 4 passed in 1.67s ===============================

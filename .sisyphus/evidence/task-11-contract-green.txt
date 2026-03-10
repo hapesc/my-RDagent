@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.11/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/michael-liang/Code/my-RDagent-p0-codegen
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 8 items
+
+tests/test_data_science_codegen_contract.py::test_develop_writes_llm_code_not_template PASSED [ 12%]
+tests/test_data_science_codegen_contract.py::test_develop_code_is_executable PASSED [ 25%]
+tests/test_data_science_codegen_contract.py::test_develop_code_contains_metrics_write PASSED [ 37%]
+tests/test_data_science_codegen_contract.py::test_develop_code_no_placeholders PASSED [ 50%]
+tests/test_data_science_codegen_contract.py::test_develop_fallback_on_mock_provider_returns_none PASSED [ 62%]
+tests/test_data_science_codegen_contract.py::test_develop_sets_code_source_trace PASSED [ 75%]
+tests/test_data_science_codegen_contract.py::test_develop_code_has_data_source PASSED [ 87%]
+tests/test_data_science_codegen_contract.py::test_develop_artifact_description_has_code PASSED [100%]
+
+============================== 8 passed in 1.56s ===============================

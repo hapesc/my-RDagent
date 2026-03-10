@@ -30,6 +30,8 @@ from llm import (
     LLMAdapter,
     ProposalDraft,
 )
+from llm.codegen import CODE_SOURCE_FAILED, CODE_SOURCE_LLM, emit_code_source_event
+from llm.codegen.validators import detect_placeholders, validate_compile, validate_content
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -354,6 +356,15 @@ class QuantCoder(Coder):
         return hypothesis
 
     def _generate_factor_code(self, proposal: Proposal, scenario: ScenarioContext, experiment: ExperimentNode) -> str:
+        """Generate factor code via LLM with validation, falling back to a
+        default momentum factor on failure.
+
+        Unlike ``DataScienceCoder`` which raises on code-gen failure
+        (fail-fast), quant uses graceful degradation: a validation or
+        LLM error returns ``_DEFAULT_FACTOR_CODE`` so the backtest loop
+        can still produce metrics and actionable feedback for the next
+        CoSTEER round.
+        """
         if self._llm is None:
             return _DEFAULT_FACTOR_CODE
 
@@ -368,20 +379,67 @@ class QuantCoder(Coder):
         )
         from llm import CodeDraft
 
+        event_metadata = {
+            "run_id": experiment.run_id,
+            "branch_id": experiment.branch_id,
+            "loop_index": experiment.loop_index,
+            "node_id": experiment.node_id,
+            "round": experiment.loop_index,
+        }
+
         try:
             draft, code = self._llm.generate_code(
                 prompt,
                 CodeDraft,
                 model_config=scenario.step_config.coding,
             )
-            if code and "def compute_factor" in code:
-                return code
-            # Fallback: check if code ended up in description field
+
+            candidate_code = code
             desc = getattr(draft, "description", "") or ""
-            if "def compute_factor" in desc:
-                return desc
-        except Exception:
-            pass
+
+            if (not candidate_code or not candidate_code.strip()) and desc.strip():
+                candidate_code = desc
+
+            compile_result = validate_compile(candidate_code)
+            placeholder_result = detect_placeholders(candidate_code)
+            content_result = validate_content(candidate_code, ["def compute_factor"])
+
+            errors: list[str] = []
+            if not compile_result.valid:
+                errors.extend(compile_result.errors)
+            if not placeholder_result.valid:
+                errors.extend(placeholder_result.errors)
+            if not content_result.valid:
+                errors.extend(content_result.errors)
+
+            if errors:
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+                emit_code_source_event(
+                    CODE_SOURCE_FAILED,
+                    "quant",
+                    {
+                        **event_metadata,
+                        "errors": errors,
+                    },
+                )
+                return _DEFAULT_FACTOR_CODE
+
+            if isinstance(experiment.hypothesis, dict):
+                experiment.hypothesis["_code_source"] = CODE_SOURCE_LLM
+            emit_code_source_event(CODE_SOURCE_LLM, "quant", event_metadata)
+            return candidate_code
+        except Exception as exc:
+            if isinstance(experiment.hypothesis, dict):
+                experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
+            emit_code_source_event(
+                CODE_SOURCE_FAILED,
+                "quant",
+                {
+                    **event_metadata,
+                    "errors": [f"generate_code failed: {exc}"],
+                },
+            )
         return _DEFAULT_FACTOR_CODE
 
 

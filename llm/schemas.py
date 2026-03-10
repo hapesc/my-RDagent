@@ -55,6 +55,7 @@ class CodeDraft:
     artifact_id: str
     description: str
     location: str
+    code: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> CodeDraft:
@@ -62,6 +63,7 @@ class CodeDraft:
             artifact_id=str(data.get("artifact_id", "artifact-llm")),
             description=str(data.get("description", "")),
             location=str(data.get("location", "/tmp/rd_agent_workspace")),
+            code=str(data["code"]) if data.get("code") is not None else None,
         )
 
 

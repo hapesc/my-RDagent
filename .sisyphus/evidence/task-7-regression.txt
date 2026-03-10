@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/michael-liang/Code/my-RDagent-p0-codegen
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collected 24 items
+
+tests/test_task_13_data_science_plugin_v1.py ....                        [ 16%]
+tests/test_quant_code_safety.py ....................                     [100%]
+
+============================= 24 passed in 15.43s ==============================

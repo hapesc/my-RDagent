@@ -7,11 +7,11 @@ from typing import Any
 
 def _imports():
     module = import_module("llm.codegen.validators")
-    ValidationResult = getattr(module, "ValidationResult")
-    validate_compile = getattr(module, "validate_compile")
-    detect_placeholders = getattr(module, "detect_placeholders")
-    validate_content = getattr(module, "validate_content")
-    validate_pipeline = getattr(module, "validate_pipeline")
+    ValidationResult = module.ValidationResult
+    validate_compile = module.validate_compile
+    detect_placeholders = module.detect_placeholders
+    validate_content = module.validate_content
+    validate_pipeline = module.validate_pipeline
 
     return ValidationResult, validate_compile, detect_placeholders, validate_content, validate_pipeline
 
@@ -19,8 +19,8 @@ def _imports():
 def _assert_validation_result_shape(result: Any, ValidationResult: Any):
     assert isinstance(result, ValidationResult), "result must be ValidationResult"
     assert is_dataclass(result), "ValidationResult should be a dataclass"
-    valid = getattr(result, "valid", None)
-    errors = getattr(result, "errors", None)
+    valid = result.valid
+    errors = result.errors
     assert isinstance(valid, bool), "ValidationResult.valid must be bool"
     assert isinstance(errors, list), "ValidationResult.errors must be list"
     assert all(isinstance(item, str) for item in errors), "ValidationResult.errors must be list[str]"

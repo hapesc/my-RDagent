@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from importlib import util
 from pathlib import Path
-import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -311,7 +311,7 @@ def test_costeer_data_science_coder_reads_feedback(tmp_path) -> None:
         step_config=StepOverrideConfig(),
     )
 
-    artifact = coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
+    coder.develop(experiment=experiment, proposal=proposal, scenario=scenario)
     pipeline_text = (tmp_path / "workspace-ds" / "pipeline.py").read_text(encoding="utf-8")
     coding_prompt_text = llm_adapter.generate_code.call_args.args[0]
 

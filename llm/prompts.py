@@ -197,7 +197,8 @@ def coding_prompt(
             f"## Data Science Coding Requirements\n"
             f"1. Write runnable Python code, not pseudocode.\n"
             f"2. Read input data from a variable named `data_source` (exact name required).\n"
-            f"3. Write evaluation outputs to `metrics.json` and serialize metrics via `json.dumps({{'metric': value}})`.\n"
+            f"3. Write evaluation outputs to `metrics.json` and serialize metrics via "
+            f"`json.dumps({{'metric': value}})`.\n"
             f"4. Use only safe, standard data-science imports (e.g., pandas, numpy, sklearn, scipy, json, pathlib).\n"
             f"5. Do NOT use TODO, placeholder, or template patterns.\n"
         )

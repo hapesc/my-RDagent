@@ -1,22 +1,15 @@
 from __future__ import annotations
 
+import importlib.util
 import sys
 import types
-import importlib.util
 from pathlib import Path
 from typing import Any
 
-from data_models import CodeArtifact, DebugConfig
-from data_models import ExperimentNode, Proposal
+from data_models import CodeArtifact, DebugConfig, ExperimentNode, Proposal
 from llm import CodeDraft
 from plugins.contracts import ScenarioContext
 from tests._llm_test_utils import make_mock_llm_adapter
-
-
-if "pandas" not in sys.modules:
-    fake_pandas = types.ModuleType("pandas")
-    setattr(fake_pandas, "read_csv", lambda *args, **kwargs: [])
-    sys.modules["pandas"] = fake_pandas
 
 
 def _load_data_science_coder() -> Any:

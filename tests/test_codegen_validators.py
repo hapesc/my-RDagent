@@ -4,6 +4,16 @@ from dataclasses import is_dataclass
 from importlib import import_module
 from typing import Any
 
+from llm.codegen.validators import (
+    compile_check,
+    count_quantitative_claims,
+    has_forbidden_import,
+    has_placeholder,
+    has_required_signature,
+    has_structural_markers,
+    hedging_ratio,
+)
+
 
 def _imports():
     module = import_module("llm.codegen.validators")
@@ -173,3 +183,64 @@ def test_full_pipeline_first_failure_stops():
     assert result.valid is False
     assert "first failed" in " ".join(result.errors).lower()
     assert calls["second"] == 0, "pipeline must stop after first failure"
+
+
+def test_compile_check_accepts_valid_code() -> None:
+    assert compile_check("def foo():\n    return 42") is True
+
+
+def test_compile_check_rejects_syntax_error() -> None:
+    assert compile_check("def foo(") is False
+
+
+def test_placeholder_detector_catches_todo() -> None:
+    assert has_placeholder("def foo():\n    # TODO: implement\n    pass") is True
+
+
+def test_placeholder_detector_passes_real_code() -> None:
+    assert has_placeholder("def foo():\n    return sum(range(10))") is False
+
+
+def test_forbidden_import_detector_catches_os() -> None:
+    code = "import os\nos.system('rm -rf /')"
+    assert has_forbidden_import(code, forbidden=["os", "subprocess"]) is True
+
+
+def test_forbidden_import_detector_passes_clean_code() -> None:
+    assert has_forbidden_import("import pandas as pd", forbidden=["os", "subprocess"]) is False
+
+
+def test_signature_check_passes_matching() -> None:
+    assert has_required_signature("def compute_factor(df):\n    pass", "compute_factor") is True
+
+
+def test_signature_check_fails_missing() -> None:
+    assert has_required_signature("def other_func(x):\n    pass", "compute_factor") is False
+
+
+def test_quantitative_claims_counts_numbers() -> None:
+    text = "Temperature rose by 0.18°C per decade. The correlation is 0.95."
+    assert count_quantitative_claims(text) == 2
+
+
+def test_quantitative_claims_zero_for_vague_prose() -> None:
+    text = "The results suggest interesting patterns. Further research is needed."
+    assert count_quantitative_claims(text) == 0
+
+
+def test_hedging_ratio_high_for_weasel_text() -> None:
+    text = "It appears that trends may possibly exist. It seems likely that variables might be correlated."
+    assert hedging_ratio(text) > 0.5
+
+
+def test_hedging_ratio_low_for_concrete_text() -> None:
+    text = "Temperature increased by 0.18°C per decade. CO2 correlation is 0.95."
+    assert hedging_ratio(text) < 0.1
+
+
+def test_structural_markers_found() -> None:
+    assert has_structural_markers("## Findings\n1. First result", ["##", "1."]) is True
+
+
+def test_structural_markers_missing_numbering() -> None:
+    assert has_structural_markers("## Findings\nSome prose here", ["##", "1."]) is False

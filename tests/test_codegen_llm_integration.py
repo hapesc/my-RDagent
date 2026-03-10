@@ -8,10 +8,28 @@ pytestmark = pytest.mark.llm
 
 
 @pytest.mark.parametrize("golden_task", load_golden_tasks(), ids=lambda task: task["task_id"])
-def test_single_round_codegen_produces_non_empty_artifact(
+def test_single_round_codegen_passes_quality_gate(
     golden_task,
     benchmark_llm_adapter,
     benchmark_model_config,
 ) -> None:
     result = run_single_round(golden_task, benchmark_llm_adapter, benchmark_model_config)
-    assert result.artifact.strip(), f"{golden_task['task_id']} produced an empty artifact"
+    assert result.passed, f"{golden_task['task_id']} failed: {result.reasons}"
+
+
+def test_aggregate_pass_rate_above_80_percent(benchmark_llm_adapter, benchmark_model_config) -> None:
+    tasks = load_golden_tasks()
+    results = [run_single_round(task, benchmark_llm_adapter, benchmark_model_config) for task in tasks]
+    passed = sum(1 for result in results if result.passed)
+    rate = passed / len(results)
+    assert rate >= 0.8, f"aggregate pass rate {rate:.0%} ({passed}/{len(results)}) below 80%"
+
+
+@pytest.mark.parametrize("scenario", ["quant", "data_science", "synthetic_research"])
+def test_per_scenario_pass_rate_above_60_percent(scenario, benchmark_llm_adapter, benchmark_model_config) -> None:
+    tasks = load_golden_tasks(scenario=scenario)
+    assert len(tasks) >= 2
+    results = [run_single_round(task, benchmark_llm_adapter, benchmark_model_config) for task in tasks]
+    passed = sum(1 for result in results if result.passed)
+    rate = passed / len(results)
+    assert rate >= 0.6, f"{scenario} pass rate {rate:.0%} ({passed}/{len(results)}) below 60%"

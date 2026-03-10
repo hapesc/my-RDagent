@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from llm import CodeDraft, LLMAdapter, LLMAdapterConfig, coding_prompt
+from llm import LLMAdapter, LLMAdapterConfig, coding_prompt
+from llm.codegen.quality_gate import CodegenQualityGate
 from llm.providers.litellm_provider import LiteLLMProvider
 from scenarios.quant.prompts import DATA_SCHEMA_DESCRIPTION, FACTOR_CODE_SYSTEM_PROMPT, FACTOR_CODE_USER_TEMPLATE
 from service_contracts import ModelSelectorConfig
@@ -84,8 +85,6 @@ def run_single_round(golden_task: dict[str, Any], llm_adapter: LLMAdapter, model
                     data_schema=DATA_SCHEMA_DESCRIPTION,
                 )
             )
-            draft, code = llm_adapter.generate_code(prompt, CodeDraft, model_config=model_config)
-            artifact = code.strip() or draft.description.strip()
         else:
             prompt = coding_prompt(
                 proposal_summary=str(golden_task["task_summary"]),
@@ -94,8 +93,9 @@ def run_single_round(golden_task: dict[str, Any], llm_adapter: LLMAdapter, model
                 workspace_ref="/tmp/golden-benchmark",
                 scenario_name=scenario,
             )
-            draft = llm_adapter.generate_structured(prompt, CodeDraft, model_config=model_config)
-            artifact = draft.description.strip()
+        raw_output = llm_adapter.complete(prompt, model_config=model_config)
+        gate_result = CodegenQualityGate(scenario).evaluate(raw_output)
+        artifact = (gate_result.extracted_code or "").strip()
     except Exception as exc:
         return BenchmarkResult(
             task_id=task_id,
@@ -105,7 +105,8 @@ def run_single_round(golden_task: dict[str, Any], llm_adapter: LLMAdapter, model
             artifact=artifact,
         )
 
-    reasons = evaluate_expected_properties(artifact=artifact, expected_properties=golden_task["expected_properties"])
+    reasons = list(gate_result.reasons)
+    reasons.extend(evaluate_expected_properties(artifact=artifact, expected_properties=golden_task["expected_properties"]))
     return BenchmarkResult(
         task_id=task_id,
         scenario=scenario,

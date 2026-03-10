@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from hypothesis import given, strategies as st
+
 from llm.codegen.extractors import extract_code_and_metadata, extract_code_block
 
 
@@ -32,3 +34,16 @@ def test_truncated_code_returns_best_effort_extraction() -> None:
 def test_no_code_block_returns_none() -> None:
     raw = "Just plain text with no code"
     assert extract_code_block(raw) is None
+
+
+@given(code=st.text(min_size=1, max_size=500))
+def test_extract_never_crashes(code: str) -> None:
+    extract_code_block(f"```python\n{code}\n```")
+
+
+@given(code=st.from_regex(r"def [a-z_]+\([a-z_]*\):\n    return \d+", fullmatch=True))
+def test_valid_function_always_extracted(code: str) -> None:
+    raw = f"```python\n{code}\n```"
+    result = extract_code_block(raw)
+    assert result is not None
+    assert "def " in result

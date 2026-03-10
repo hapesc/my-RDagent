@@ -52,4 +52,5 @@ logs/
 # Tool / AI working artifacts
 .sisyphus/
 .claude/
+.worktrees/
 FC4_*.md

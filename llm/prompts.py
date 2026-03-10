@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 
+from llm.codegen import get_few_shot_examples
 from llm.schemas import ExperimentDesign, HypothesisModification, PlanningStrategy
 
 
@@ -161,6 +162,8 @@ def coding_prompt(
     normalized_workspace = workspace_ref or workspace or "/tmp/rd_agent_workspace"
     normalized_scenario = scenario_name or scenario_type or "unknown"
     constraints_block = "\n".join(f"  - {c}" for c in constraints_list) if constraints_list else "  (none)"
+    scenario_instructions = _coding_scenario_instructions(scenario_name)
+    few_shot_block = _render_few_shot_examples(scenario_name)
 
     base_prompt = (
         f"You are a research engineer translating a proposal into an executable experiment design.\n"
@@ -176,10 +179,19 @@ def coding_prompt(
         f"- Node ID: {normalized_node_id}\n"
         f"- Workspace: {normalized_workspace}\n"
         f"\n"
+        f"## Implementation Rules\n"
+        f"- Do not return placeholder, template, TODO, or stub content.\n"
+        f"- Be concrete about the exact artifact content and output format.\n"
+        f"- Honor the scenario-specific contract below.\n"
+        f"\n"
+        f"{scenario_instructions}"
+        f"\n"
+        f"{few_shot_block}"
+        f"\n"
         f"## Output Fields\n"
         f"- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).\n"
-        f"- `description`: 2-3 sentences covering: (1) what runs, (2) what it measures, "
-        f"(3) what output files are produced.\n"
+        f"- `description`: describe the concrete artifact to produce, including what runs, what it measures, "
+        f"and what output format or files are produced.\n"
         f"- `location`: Use the workspace path provided above.\n"
     )
 
@@ -225,6 +237,54 @@ def coding_prompt(
         )
 
     return base_prompt
+
+
+def _coding_scenario_instructions(scenario_name: str) -> str:
+    scenario_specs = {
+        "data_science": (
+            "## Scenario Contract\n"
+            "- Produce a runnable data-science pipeline description with explicit training and evaluation steps.\n"
+            "- The output format must mention `metrics.json` and the evaluation metrics that will be written there.\n"
+            "- Avoid placeholder datasets, fake metrics, and vague references like 'train a model somehow'.\n"
+        ),
+        "quant": (
+            "## Scenario Contract\n"
+            "- Produce a factor implementation centered on `compute_factor` with clear input/output expectations.\n"
+            "- Respect risk constraints such as forbidden imports, no file I/O, and no network access unless explicitly allowed.\n"
+            "- Describe the returned factor columns and the transformation logic, not a generic template.\n"
+        ),
+        "synthetic_research": (
+            "## Scenario Contract\n"
+            "- Produce a structured research artifact with headings, findings, methodology, and conclusion.\n"
+            "- Include quantitative evidence wherever possible instead of generic observations.\n"
+            "- Avoid placeholder prose, vague summaries, or restating the task without findings.\n"
+        ),
+    }
+    return scenario_specs.get(
+        scenario_name,
+        "## Scenario Contract\n- Produce a concrete artifact with no placeholder or template content.\n",
+    )
+
+
+def _render_few_shot_examples(scenario_name: str) -> str:
+    examples = get_few_shot_examples(scenario_name)
+    if not examples:
+        return "## Reference Implementation\nNo curated examples are available for this scenario."
+
+    rendered_examples: list[str] = ["## Reference Implementation"]
+    for index, example in enumerate(examples[:2], start=1):
+        rendered_examples.extend(
+            [
+                f"### Example {index}",
+                f"Task: {example['task']}",
+                f"Artifact type: {example['artifact_type']}",
+                "Artifact:",
+                "```",
+                example["artifact"],
+                "```",
+            ]
+        )
+    return "\n".join(rendered_examples) + "\n"
 
 
 def feedback_prompt(

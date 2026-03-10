@@ -51,6 +51,11 @@ if TYPE_CHECKING:
     from core.reasoning.virtual_eval import VirtualEvaluator
 
 
+def _clamp_sample_fraction(value: float) -> float:
+    """Clamp sample_fraction to valid range [0.0, 1.0]."""
+    return max(0.0, min(value, 1.0))
+
+
 def default_data_science_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
     return StepOverrideConfig(
         proposal=ModelSelectorConfig(provider="mock", model="ds-proposal-default", max_retries=2),
@@ -434,7 +439,7 @@ class DataScienceRunner(Runner):
             and getattr(debug_config, "supports_debug_sampling", False)
         ):
             sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
-            sample_fraction = max(0.0, min(sample_fraction, 1.0))
+            sample_fraction = _clamp_sample_fraction(sample_fraction)
 
             if sample_fraction == 0.0:
                 logger.warning("Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 row)")

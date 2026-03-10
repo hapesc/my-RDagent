@@ -28,7 +28,7 @@ from evaluation_service.validation_selector import ValidationSelector
 from llm.adapter import LLMAdapter, MockLLMProvider
 from memory_service.service import MemoryService, MemoryServiceConfig
 from planner.service import Planner, PlannerConfig
-from scenarios.data_science.plugin import DataScienceProposalEngine
+from scenarios.data_science.plugin import DataScienceProposalEngine, _clamp_sample_fraction
 
 
 class TestEdgeCaseZeroBudget(unittest.TestCase):
@@ -300,12 +300,10 @@ class TestEdgeCaseDebugSampleFractionZero(unittest.TestCase):
 
     def test_debug_sample_fraction_zero_creates_minimum_sample(self):
         """Debug mode with sample_fraction=0 should keep at least 1 row."""
-        # This is tested through the max(1, int(...)) guard in the runner code
-        # But we test the logic in isolation
-
         rows = ["row1", "row2", "row3"]
         sample_fraction = 0.0
-        sample_size = max(1, int(len(rows) * sample_fraction))
+        clamped_fraction = _clamp_sample_fraction(sample_fraction)
+        sample_size = max(1, int(len(rows) * clamped_fraction))
 
         self.assertEqual(sample_size, 1)
         self.assertGreater(len(rows[:sample_size]), 0)
@@ -315,12 +313,12 @@ class TestEdgeCaseDebugSampleFractionZero(unittest.TestCase):
 
         # Test negative clamp
         sample_fraction = -0.5
-        clamped = max(0.0, min(sample_fraction, 1.0))
+        clamped = _clamp_sample_fraction(sample_fraction)
         self.assertEqual(clamped, 0.0)
 
         # Test positive overflow clamp
         sample_fraction = 1.5
-        clamped = max(0.0, min(sample_fraction, 1.0))
+        clamped = _clamp_sample_fraction(sample_fraction)
         self.assertEqual(clamped, 1.0)
 
 

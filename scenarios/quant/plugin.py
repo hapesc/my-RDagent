@@ -132,7 +132,7 @@ def _extract_quant_ordered_pairs(input_payload: dict[str, Any]) -> list[tuple[st
         return sorted(
             [
                 (str(order_value), data_id)
-                for order_value, data_id in zip(order_values, direct_data_ids)
+                for order_value, data_id in zip(order_values, direct_data_ids, strict=False)
                 if str(data_id).strip()
             ],
             key=lambda item: item[0],

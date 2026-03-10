@@ -526,14 +526,12 @@ class LLMAdapter:
             max_retries = model_config.max_retries
         attempts = max_retries + 1
 
-        enhanced = self._enhance_prompt(prompt, metadata_schema_cls)
-
         diagnostics: list[ParseDiagnostic] = []
         last_error: Exception | None = None
         for attempt in range(attempts):
             raw = ""
             try:
-                raw = self._provider.complete(enhanced, model_config=model_config)
+                raw = self._provider.complete(prompt, model_config=model_config)
                 metadata = self._parse_with_schema(raw, metadata_schema_cls)
                 code = self._extract_code(raw)
                 return metadata, code

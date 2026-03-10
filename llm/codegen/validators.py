@@ -15,6 +15,12 @@ class ValidationResult:
 
 
 def validate_compile(code: str) -> ValidationResult:
+    if not code or not code.strip():
+        return ValidationResult(
+            valid=False,
+            errors=["Code is empty"],
+            validator_name="validate_compile",
+        )
     try:
         compile(code, "<generated>", "exec")
     except SyntaxError as exc:

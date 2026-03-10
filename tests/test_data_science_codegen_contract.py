@@ -152,8 +152,8 @@ def test_develop_fallback_on_mock_provider_returns_none(tmp_path: Path, monkeypa
     pipeline_text = (workspace / "pipeline.py").read_text(encoding="utf-8")
 
     assert "row_count = 0" in pipeline_text
-    assert experiment.hypothesis.get("_code_source") == "template_fallback"
-    assert "code_source=template_fallback" in artifact.description
+    assert experiment.hypothesis.get("_code_source") == "template"
+    assert "code_source=template" in artifact.description
 
 
 def test_develop_sets_code_source_trace(tmp_path: Path, monkeypatch) -> None:

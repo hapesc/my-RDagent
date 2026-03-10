@@ -445,7 +445,7 @@ class DataScienceCoder(Coder):
                     pipeline_script = self._build_pipeline_script(data_source=data_source)
                     (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
                     if isinstance(experiment.hypothesis, dict):
-                        experiment.hypothesis["_code_source"] = "template_fallback"
+                        experiment.hypothesis["_code_source"] = "template"
                     emit_code_source_event(
                         CODE_SOURCE_TEMPLATE,
                         "data_science",
@@ -456,7 +456,7 @@ class DataScienceCoder(Coder):
                             "node_id": experiment.node_id,
                         },
                     )
-                    readme_text = f"{code_draft.description}\n{pipeline_script}\n\ncode_source=template_fallback"
+                    readme_text = f"{code_draft.description}\n{pipeline_script}\n\ncode_source=template"
                     (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
                     return CodeArtifact(
                         artifact_id=artifact_id,
@@ -535,7 +535,7 @@ class DataScienceCoder(Coder):
             pipeline_script = self._build_pipeline_script(data_source=data_source)
             (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
             if isinstance(experiment.hypothesis, dict):
-                experiment.hypothesis["_code_source"] = "template_fallback"
+                experiment.hypothesis["_code_source"] = "template"
             emit_code_source_event(
                 CODE_SOURCE_TEMPLATE,
                 "data_science",
@@ -546,7 +546,7 @@ class DataScienceCoder(Coder):
                     "node_id": experiment.node_id,
                 },
             )
-            readme_text = f"{pipeline_script}\n\ncode_source=template_fallback"
+            readme_text = f"{pipeline_script}\n\ncode_source=template"
         (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
 
         return CodeArtifact(

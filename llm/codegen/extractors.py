@@ -35,7 +35,11 @@ def extract_code_block(raw: str) -> str | None:
 
 def extract_code_and_metadata(raw: str) -> ExtractedCode:
     metadata = _extract_metadata(raw)
-    code = extract_code_block(raw) or ""
+    artifact_from_metadata = metadata.get("artifact")
+    if isinstance(artifact_from_metadata, str) and artifact_from_metadata.strip():
+        code = artifact_from_metadata.strip()
+    else:
+        code = extract_code_block(raw) or ""
     if metadata and code:
         source = "json_plus_block"
     elif code:

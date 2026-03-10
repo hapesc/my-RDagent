@@ -190,6 +190,8 @@ def coding_prompt(
         f"\n"
         f"## Output Fields\n"
         f"- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).\n"
+        f"- `artifact`: the complete artifact body. For code scenarios, this must be the full runnable code. "
+        f"For structured-text scenarios, this must be the full report markdown.\n"
         f"- `description`: describe the concrete artifact to produce, including what runs, what it measures, "
         f"and what output format or files are produced.\n"
         f"- `location`: Use the workspace path provided above.\n"
@@ -245,17 +247,23 @@ def _coding_scenario_instructions(scenario_name: str) -> str:
             "## Scenario Contract\n"
             "- Produce a runnable data-science pipeline description with explicit training and evaluation steps.\n"
             "- The output format must mention `metrics.json` and the evaluation metrics that will be written there.\n"
+            "- Put the full runnable Python script in the top-level `artifact` field.\n"
+            "- Keep the artifact concise: no narrative comments, no long explanations, no synthetic demo dataset unless required.\n"
             "- Avoid placeholder datasets, fake metrics, and vague references like 'train a model somehow'.\n"
         ),
         "quant": (
             "## Scenario Contract\n"
             "- Produce a factor implementation centered on `compute_factor` with clear input/output expectations.\n"
             "- Respect risk constraints such as forbidden imports, no file I/O, and no network access unless explicitly allowed.\n"
+            "- Put the complete factor implementation in the top-level `artifact` field or a fenced Python block.\n"
             "- Describe the returned factor columns and the transformation logic, not a generic template.\n"
         ),
         "synthetic_research": (
             "## Scenario Contract\n"
             "- Produce a structured research artifact with headings, findings, methodology, and conclusion.\n"
+            "- Put the complete report markdown in the top-level `artifact` field.\n"
+            "- Use the exact headings `## Findings`, `## Methodology`, and `## Conclusion`.\n"
+            "- Under `## Findings`, use numbered items like `1.` and `2.` rather than prose paragraphs.\n"
             "- Include quantitative evidence wherever possible instead of generic observations.\n"
             "- Avoid placeholder prose, vague summaries, or restating the task without findings.\n"
         ),

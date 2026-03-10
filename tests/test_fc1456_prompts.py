@@ -171,3 +171,26 @@ class TestCodingPrompt:
             scenario_name="quant",
         )
         assert "no file I/O" in prompt
+
+    def test_coding_prompt_requires_full_artifact_field(self):
+        prompt = coding_prompt(
+            proposal_summary="build a pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "`artifact`" in prompt
+        assert "full runnable" in prompt.lower() or "complete artifact" in prompt.lower()
+
+    def test_coding_prompt_requires_exact_synthetic_sections(self):
+        prompt = coding_prompt(
+            proposal_summary="compare optimizers",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="synthetic_research",
+        )
+        assert "## Findings" in prompt
+        assert "## Methodology" in prompt
+        assert "## Conclusion" in prompt

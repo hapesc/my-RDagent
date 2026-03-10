@@ -67,6 +67,7 @@ FACTOR_CODE_SYSTEM_PROMPT: str = (
     "  - Use groupby('stock_id') for cross-sectional operations\n"
     "  - Handle NaN: use .fillna(), .dropna(), or pd.isna() guards\n"
     "  - The function must be callable directly, no class wrappers\n"
+    "  - Keep the implementation concise: under 40 lines, no comments, no explanatory prose\n"
     "\n"
     "COMMON MISTAKES TO AVOID:\n"
     "  - Using .shift(-n) (negative shift = future data = lookahead bias)\n"
@@ -90,7 +91,8 @@ FACTOR_CODE_USER_TEMPLATE: str = (
     "You must respond with EXACTLY two sections:\n"
     "\n"
     "1. A JSON object with metadata:\n"
-    '{{"artifact_id": "factor_v1", "description": "Brief description of the factor", "location": "factor.py"}}\n'
+    '{{"artifact_id": "factor_v1", "description": "Brief description of the factor", '
+    '"location": "factor.py", "artifact": "full compute_factor implementation as a Python string"}}\n'
     "\n"
     "2. A Python code block with the implementation:\n"
     "```python\n"
@@ -119,6 +121,7 @@ FACTOR_CODE_USER_TEMPLATE: str = (
     "\n"
     "RULES:\n"
     "- The JSON 'description' is a SHORT text summary, NOT code.\n"
+    "- The JSON 'artifact' field must contain the complete factor implementation.\n"
     "- The Python code block must define `compute_factor(df)` returning a DataFrame "
     "with [date, stock_id, factor_value].\n"
     "- Return BOTH the JSON and the code block. Nothing else."

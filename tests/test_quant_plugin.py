@@ -94,6 +94,12 @@ class TestQuantPrompts:
         assert "pct_change(5)" in FACTOR_CODE_USER_TEMPLATE
         assert "rolling(20).std()" in FACTOR_CODE_USER_TEMPLATE
 
+    def test_factor_code_user_template_requires_artifact_field(self):
+        assert '"artifact"' in FACTOR_CODE_USER_TEMPLATE
+
+    def test_factor_code_system_prompt_requires_concise_output(self):
+        assert "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
+
 
 class TestQuantExperimentGenerator:
     def test_generate_returns_experiment_node(self, proposal, run_session, loop_state, tmp_workspace):

@@ -27,6 +27,7 @@ from scenarios.quant.plugin import (
     _validate_quant_usefulness,
     build_quant_bundle,
 )
+from scenarios.quant.prompts import FACTOR_CODE_SYSTEM_PROMPT, FACTOR_CODE_USER_TEMPLATE
 
 
 @pytest.fixture
@@ -80,6 +81,17 @@ class TestQuantScenarioPlugin:
         plugin = QuantScenarioPlugin()
         ctx = plugin.build_context(run_session, {})
         assert ctx.task_summary == "mine alpha factors"
+
+
+class TestQuantPrompts:
+    def test_factor_code_system_prompt_mentions_lookahead_and_self_check(self):
+        assert ".shift(-n)" in FACTOR_CODE_SYSTEM_PROMPT
+        assert "SELF-CHECK before returning" in FACTOR_CODE_SYSTEM_PROMPT
+        assert "date, stock_id, factor_value" in FACTOR_CODE_SYSTEM_PROMPT
+
+    def test_factor_code_user_template_contains_second_reference_pattern(self):
+        assert "pct_change(5)" in FACTOR_CODE_USER_TEMPLATE
+        assert "rolling(20).std()" in FACTOR_CODE_USER_TEMPLATE
 
 
 class TestQuantExperimentGenerator:

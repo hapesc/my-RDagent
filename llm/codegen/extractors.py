@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from llm.adapter import _CODE_BLOCK_RE, _JSON_BLOCK_RE, _JSON_BLOCK_UNCLOSED_RE
 
 _UNCLOSED_CODE_BLOCK_RE = re.compile(r"```(?:python|py)?\s*\n?(.*)$", re.DOTALL)
+_ARTIFACT_FIELD_RE = re.compile(r'"artifact"\s*:\s*"(?P<artifact>.*)', re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -39,7 +40,7 @@ def extract_code_and_metadata(raw: str) -> ExtractedCode:
     if isinstance(artifact_from_metadata, str) and artifact_from_metadata.strip():
         code = artifact_from_metadata.strip()
     else:
-        code = extract_code_block(raw) or ""
+        code = _extract_artifact_field_fallback(raw) or extract_code_block(raw) or ""
     if metadata and code:
         source = "json_plus_block"
     elif code:
@@ -76,3 +77,13 @@ def _extract_metadata(raw: str) -> dict[str, object]:
             return {str(key): value for key, value in payload.items()}
 
     return {}
+
+
+def _extract_artifact_field_fallback(raw: str) -> str | None:
+    match = _ARTIFACT_FIELD_RE.search(raw)
+    if match is None:
+        return None
+    artifact = match.group("artifact")
+    artifact = artifact.replace("\\n", "\n").replace('\\"', '"').replace("\\t", "\t").replace("\\\\", "\\")
+    artifact = artifact.strip()
+    return artifact or None

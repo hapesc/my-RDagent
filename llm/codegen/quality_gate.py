@@ -108,7 +108,8 @@ class CodegenQualityGate:
         )
 
     def _evaluate_text(self, raw_output: str) -> QualityResult:
-        text = raw_output.strip()
+        extracted = extract_code_and_metadata(raw_output)
+        text = (extracted.code or raw_output).strip()
         reasons: list[str] = []
         config = self._config.text_config or TextQualityConfig()
 
@@ -140,7 +141,7 @@ class CodegenQualityGate:
             passed=not reasons,
             reasons=reasons,
             extracted_code=text,
-            metadata=None,
+            metadata=extracted.metadata or None,
         )
 
 

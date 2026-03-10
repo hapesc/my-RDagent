@@ -194,3 +194,25 @@ class TestCodingPrompt:
         assert "## Findings" in prompt
         assert "## Methodology" in prompt
         assert "## Conclusion" in prompt
+
+    def test_coding_prompt_discourages_json_wrapper_for_data_science(self):
+        prompt = coding_prompt(
+            proposal_summary="build a regression pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "do not wrap the code in json" in prompt.lower() or "return only the python artifact" in prompt.lower()
+        assert "```python" in prompt or "python code block" in prompt.lower()
+
+    def test_coding_prompt_discourages_json_wrapper_for_synthetic_report(self):
+        prompt = coding_prompt(
+            proposal_summary="analyze temperature trends",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="synthetic_research",
+        )
+        assert "do not wrap the report in json" in prompt.lower() or "return only the markdown artifact" in prompt.lower()
+        assert "markdown only" in prompt.lower() or "no json wrapper" in prompt.lower()

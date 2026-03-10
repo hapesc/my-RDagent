@@ -35,6 +35,16 @@ def test_extracts_artifact_field_from_json_payload() -> None:
     assert result.metadata["artifact_id"] == "v1"
 
 
+def test_extracts_artifact_field_from_truncated_json_payload() -> None:
+    raw = (
+        '```json\n'
+        '{"artifact_id":"v1","artifact":"## Findings\\n\\n1. Value increased by 15%\\n2. Latency fell by 8%'
+    )
+    result = extract_code_and_metadata(raw)
+    assert result.code.startswith("## Findings")
+    assert "15%" in result.code
+
+
 def test_truncated_code_returns_best_effort_extraction() -> None:
     raw = "```python\ndef foo():\n    return"
     result = extract_code_block(raw)

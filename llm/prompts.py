@@ -249,6 +249,8 @@ def _coding_scenario_instructions(scenario_name: str) -> str:
             "- The output format must mention `metrics.json` and the evaluation metrics that will be written there.\n"
             "- Put the full runnable Python script in the top-level `artifact` field.\n"
             "- Keep the artifact concise: no narrative comments, no long explanations, no synthetic demo dataset unless required.\n"
+            "- Do not wrap the code in JSON-only prose. Return only the Python artifact content in `artifact`.\n"
+            "- Preferred output format: a Python code block (````python ... ````) or raw Python artifact text.\n"
             "- Avoid placeholder datasets, fake metrics, and vague references like 'train a model somehow'.\n"
         ),
         "quant": (
@@ -264,6 +266,8 @@ def _coding_scenario_instructions(scenario_name: str) -> str:
             "- Put the complete report markdown in the top-level `artifact` field.\n"
             "- Use the exact headings `## Findings`, `## Methodology`, and `## Conclusion`.\n"
             "- Under `## Findings`, use numbered items like `1.` and `2.` rather than prose paragraphs.\n"
+            "- Do not wrap the report in JSON-only prose. Return only the markdown artifact content in `artifact`.\n"
+            "- Preferred output format: markdown only, with no JSON wrapper and no fenced code block around the report.\n"
             "- Include quantitative evidence wherever possible instead of generic observations.\n"
             "- Avoid placeholder prose, vague summaries, or restating the task without findings.\n"
         ),

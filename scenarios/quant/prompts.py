@@ -122,6 +122,8 @@ FACTOR_CODE_USER_TEMPLATE: str = (
     "RULES:\n"
     "- The JSON 'description' is a SHORT text summary, NOT code.\n"
     "- The JSON 'artifact' field must contain the complete factor implementation.\n"
+    "- Do not return JSON only. The Python code block is the primary artifact and must be complete.\n"
+    "- Code block first is preferred. Return only a Python code block if you cannot fit both formats.\n"
     "- The Python code block must define `compute_factor(df)` returning a DataFrame "
     "with [date, stock_id, factor_value].\n"
     "- Return BOTH the JSON and the code block. Nothing else."

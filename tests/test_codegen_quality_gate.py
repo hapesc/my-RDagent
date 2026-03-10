@@ -145,3 +145,31 @@ def test_gate_passes_text_with_quantitative_findings() -> None:
         )
     )
     assert result.passed is True
+
+
+def test_gate_passes_fenced_markdown_structured_text() -> None:
+    result = CodegenQualityGate(scenario="synthetic_research").evaluate(
+        raw_output=(
+            "```markdown\n"
+            "## Findings\n"
+            "1. Accuracy improved by 15%.\n"
+            "2. Latency fell by 8%.\n\n"
+            "## Methodology\n"
+            "- Compared baseline and reranked runs.\n\n"
+            "## Conclusion\n"
+            "- The trade-off is favorable.\n"
+            "```"
+        )
+    )
+    assert result.passed is True
+
+
+def test_gate_passes_structured_text_stored_in_json_artifact_field() -> None:
+    result = CodegenQualityGate(scenario="synthetic_research").evaluate(
+        raw_output=(
+            '```json\n'
+            '{"artifact_id":"report_v1","artifact":"## Findings\\n\\n1. Accuracy improved by 15%.\\n2. Latency fell by 8%.\\n\\n## Methodology\\n\\n- Compared baseline and reranked runs.\\n\\n## Conclusion\\n\\n- The trade-off is favorable."}\n'
+            '```'
+        )
+    )
+    assert result.passed is True

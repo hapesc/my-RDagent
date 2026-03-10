@@ -100,6 +100,10 @@ class TestQuantPrompts:
     def test_factor_code_system_prompt_requires_concise_output(self):
         assert "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
 
+    def test_factor_code_user_template_discourages_json_only_output(self):
+        assert "do not return json only" in FACTOR_CODE_USER_TEMPLATE.lower() or "python code block is the primary artifact" in FACTOR_CODE_USER_TEMPLATE.lower()
+        assert "return only a python code block" in FACTOR_CODE_USER_TEMPLATE.lower() or "code block first" in FACTOR_CODE_USER_TEMPLATE.lower()
+
 
 class TestQuantExperimentGenerator:
     def test_generate_returns_experiment_node(self, proposal, run_session, loop_state, tmp_workspace):

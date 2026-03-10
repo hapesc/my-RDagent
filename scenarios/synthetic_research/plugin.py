@@ -30,6 +30,7 @@ from llm import (
     feedback_prompt,
     proposal_prompt,
 )
+from llm.codegen import CODE_SOURCE_LLM, emit_code_source_event
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -271,6 +272,7 @@ class SyntheticResearchCoder(Coder):
             brief_lines.extend(["", "Reference Topics:"])
             brief_lines.extend([f"- {topic}" for topic in topics])
         brief_text = "\n".join(brief_lines) + "\n"
+        artifact_id = f"artifact-{experiment.node_id}"
         artifact_description = proposal.summary
 
         proposal_summary_with_feedback = self._enrich_proposal_with_feedback(proposal, experiment)
@@ -282,17 +284,59 @@ class SyntheticResearchCoder(Coder):
                 experiment_node_id=experiment.node_id,
                 workspace_ref=experiment.workspace_ref,
                 scenario_name=scenario.scenario_name,
+                scenario_type="synthetic_research",
             )
-            draft = self._llm_adapter.generate_structured(
-                prompt,
-                CodeDraft,
-                model_config=scenario.step_config.coding,
-            )
-            (workspace / "research_notes.txt").write_text(draft.description, encoding="utf-8")
-            artifact_id = draft.artifact_id
-            artifact_description = draft.description
-        else:
-            artifact_id = f"artifact-{experiment.node_id}"
+            try:
+                draft = self._llm_adapter.generate_structured(
+                    prompt,
+                    CodeDraft,
+                    model_config=scenario.step_config.coding,
+                )
+            except Exception:
+                artifact_description = proposal.summary
+            else:
+                llm_description = str(draft.description).strip()
+                topics_block = (
+                    ", ".join(str(topic) for topic in topics) if isinstance(topics, list) and topics else "none"
+                )
+                constraints_block = ", ".join(proposal.constraints) if proposal.constraints else "none"
+                structured_description = (
+                    f"## Research Objective\n{proposal_summary_with_feedback}\n\n"
+                    f"## Generated Notes\n{llm_description or proposal.summary}\n\n"
+                    f"## Scope and Constraints\n"
+                    f"- Scenario: {scenario.scenario_name}\n"
+                    f"- Node ID: {experiment.node_id}\n"
+                    f"- Topics: {topics_block}\n"
+                    f"- Constraints: {constraints_block}\n\n"
+                    "## Expected Deliverables\n"
+                    "- research_brief.md with task framing and references\n"
+                    "- research_notes.txt with structured evidence-oriented synthesis\n"
+                    "- artifact.description containing full context for CoSTEER multi-round feedback"
+                )
+                if len(structured_description) < 200:
+                    structured_description = (
+                        f"{structured_description}\n\n"
+                        "Additional context: this synthetic_research artifact is text-first and should preserve "
+                        "proposal rationale, reviewer feedback context, and actionable next-step insights so "
+                        "downstream CoSTEER analysis can reason over rich natural-language evidence."
+                    )
+
+                artifact_id = draft.artifact_id
+                artifact_description = structured_description
+                (workspace / "research_notes.txt").write_text(artifact_description, encoding="utf-8")
+                if isinstance(experiment.hypothesis, dict):
+                    experiment.hypothesis["_code_source"] = CODE_SOURCE_LLM
+                emit_code_source_event(
+                    CODE_SOURCE_LLM,
+                    "synthetic_research",
+                    {
+                        "run_id": experiment.run_id,
+                        "branch_id": experiment.branch_id,
+                        "loop_index": experiment.loop_index,
+                        "node_id": experiment.node_id,
+                        "round": experiment.loop_index,
+                    },
+                )
         (workspace / "research_brief.md").write_text(brief_text, encoding="utf-8")
         return CodeArtifact(
             artifact_id=artifact_id,

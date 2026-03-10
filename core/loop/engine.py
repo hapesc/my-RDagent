@@ -116,7 +116,14 @@ class LoopEngine:
             )
             plan = self._planner.generate_plan(planning_context)
             context_pack = self._memory_service.query_context(
-                {"run_id": run_session.run_id, "iteration": str(loop_state.iteration)}
+                {
+                    "run_id": run_session.run_id,
+                    "iteration": str(loop_state.iteration),
+                    "branch_id": run_session.active_branch_ids[0] if run_session.active_branch_ids else "main",
+                    "scenario": run_session.scenario,
+                    "task_summary": task_summary,
+                    "max_iterations": str(total_loop_limit),
+                }
             )
 
             if self._scheduler is None:

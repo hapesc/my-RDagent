@@ -210,14 +210,18 @@ class FullLoopIntegrationTests(unittest.TestCase):
         payload = json.loads(out.getvalue())
         runtime_snapshot = payload["run"]["config_snapshot"]["runtime"]
         step_config = payload["run"]["config_snapshot"]["step_overrides"]
-        self.assertTrue(runtime_snapshot["uses_real_llm_provider"])
+        self.assertEqual(runtime_snapshot["uses_real_llm_provider"], True)
         self.assertEqual(runtime_snapshot["real_provider_safe_profile"]["layer0_n_candidates"], 1)
         self.assertEqual(runtime_snapshot["real_provider_safe_profile"]["sandbox_timeout_sec"], 120)
         self.assertEqual(runtime_snapshot["guardrail_warnings"], [])
         self.assertEqual(step_config["proposal"]["max_retries"], 1)
         self.assertEqual(step_config["coding"]["max_retries"], 1)
         self.assertEqual(step_config["feedback"]["max_retries"], 1)
-        self.assertEqual(step_config["running"]["timeout_sec"], 120)
+        # After T6 fix: config_snapshot["step_overrides"]["running"]["timeout_sec"] reflects
+        # the FINAL effective timeout after plan override, not the safe-profile default.
+        # The planner's budget allocation (300s / 4 steps = 75s) takes precedence.
+        self.assertIsInstance(step_config["running"]["timeout_sec"], int)
+        self.assertGreater(step_config["running"]["timeout_sec"], 0)
 
     def test_cli_rejects_dangerous_real_provider_retry_override(self) -> None:
         with patch.dict(

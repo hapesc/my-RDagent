@@ -325,8 +325,14 @@ class LLMAdapter:
         for match in matches:
             lang = (match.group(1) or "").strip().lower()
             if lang != "json":
-                return match.group(2).strip()
-        return matches[-1].group(2).strip()
+                code = match.group(2).strip()
+                if "\n" not in code and "\\n" in code:
+                    code = code.replace("\\n", "\n").replace("\\t", "\t")
+                return code
+        code = matches[-1].group(2).strip()
+        if "\n" not in code and "\\n" in code:
+            code = code.replace("\\n", "\n").replace("\\t", "\t")
+        return code
 
     @staticmethod
     def _repair_json(raw: str) -> str:
@@ -520,12 +526,14 @@ class LLMAdapter:
             max_retries = model_config.max_retries
         attempts = max_retries + 1
 
+        enhanced = self._enhance_prompt(prompt, metadata_schema_cls)
+
         diagnostics: list[ParseDiagnostic] = []
         last_error: Exception | None = None
         for attempt in range(attempts):
             raw = ""
             try:
-                raw = self._provider.complete(prompt, model_config=model_config)
+                raw = self._provider.complete(enhanced, model_config=model_config)
                 metadata = self._parse_with_schema(raw, metadata_schema_cls)
                 code = self._extract_code(raw)
                 return metadata, code

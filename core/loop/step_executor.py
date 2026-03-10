@@ -7,6 +7,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, cast
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
@@ -33,6 +34,9 @@ from .costeer import CoSTEEREvolver
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from data_models import ExecutionResult
+
 
 @dataclass
 class StepExecutionResult:
@@ -43,8 +47,9 @@ class StepExecutionResult:
     artifact_id: str
     score: Score
     feedback: FeedbackRecord
+    execution_result: ExecutionResult | None = None
     outcome: ExecutionOutcomeContract | None = None
-    step_state: StepState = StepState.RECORDED
+    step_state: StepState = cast(StepState, StepState.RECORDED)
     failed_stage: str | None = None
     error_message: str | None = None
     checkpoint_ids: list[str] = field(default_factory=list)
@@ -154,7 +159,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="proposing",
-            event_type=EventType.HYPOTHESIS_GENERATED,
+            event_type=cast(EventType, EventType.HYPOTHESIS_GENERATED),
             payload={
                 "proposal_id": proposal.proposal_id,
                 "constraints": proposal.constraints,
@@ -184,7 +189,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="experiment",
-            event_type=EventType.EXPERIMENT_GENERATED,
+            event_type=cast(EventType, EventType.EXPERIMENT_GENERATED),
             payload={
                 "node_id": experiment.node_id,
                 "workspace_ref": experiment.workspace_ref,
@@ -225,7 +230,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="coding",
-            event_type=EventType.CODING_ROUND,
+            event_type=cast(EventType, EventType.CODING_ROUND),
             payload={
                 "artifact_id": artifact.artifact_id,
                 "description": artifact.description,
@@ -252,7 +257,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="running",
-            event_type=EventType.EXECUTION_FINISHED,
+            event_type=cast(EventType, EventType.EXECUTION_FINISHED),
             payload={
                 "exit_code": execution_result.exit_code,
                 "timeout_sec": effective_step_config.running.timeout_sec,
@@ -291,7 +296,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="feedback",
-            event_type=EventType.FEEDBACK_GENERATED,
+            event_type=cast(EventType, EventType.FEEDBACK_GENERATED),
             payload={
                 "feedback_id": feedback.feedback_id,
                 "acceptable": feedback.acceptable,
@@ -306,7 +311,10 @@ class StepExecutor:
         )
 
         checkpoint("record")
-        terminal_step_state = StepState.RECORDED if execution_outcome.process_succeeded else StepState.FAILED
+        terminal_step_state = cast(
+            StepState,
+            StepState.RECORDED if execution_outcome.process_succeeded else StepState.FAILED,
+        )
         failed_stage = None if terminal_step_state == StepState.RECORDED else "running"
         experiment.step_state = terminal_step_state
         experiment.result_ref = execution_result.artifacts_ref
@@ -318,7 +326,7 @@ class StepExecutor:
             branch_id=branch_id,
             loop_index=loop_state.iteration,
             step_name="record",
-            event_type=EventType.TRACE_RECORDED,
+            event_type=cast(EventType, EventType.TRACE_RECORDED),
             payload={
                 "proposal_id": proposal.proposal_id,
                 "score_id": eval_result.score.score_id,
@@ -333,6 +341,7 @@ class StepExecutor:
             artifact_id=artifact.artifact_id,
             score=eval_result.score,
             feedback=feedback,
+            execution_result=execution_result,
             outcome=execution_outcome,
             step_state=terminal_step_state,
             failed_stage=failed_stage,
@@ -354,7 +363,6 @@ class StepExecutor:
 
         requested = StepOverrideConfig.from_dict(config_snapshot.get("requested_step_overrides"))
         effective = resolve_step_override_config(self._plugin_bundle.default_step_overrides, requested)
-        config_snapshot["step_overrides"] = effective.to_dict()
 
         timeout_source = "override"
         if requested.running.timeout_sec is None:
@@ -366,6 +374,7 @@ class StepExecutor:
                 timeout_source = "default"
 
         self._log_timeout_source("running", effective.running.timeout_sec, timeout_source)
+        config_snapshot["step_overrides"] = effective.to_dict()
         return effective, timeout_source
 
     def _coerce_plan_timeout(self, plan: Plan, step_name: str) -> int | None:

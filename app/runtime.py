@@ -309,6 +309,7 @@ def build_run_service(runtime: RuntimeContext, scenario: str) -> RunService:
         run_store=runtime.sqlite_store,
         event_store=runtime.sqlite_store,
         scheduler=runtime.scheduler,
+        evaluation_service=runtime.evaluation_service,
     )
     resume_manager = ResumeManager(
         checkpoint_store=runtime.checkpoint_store,

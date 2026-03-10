@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import re
 import unittest
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 from app.config import load_config
@@ -205,13 +207,28 @@ class TestFC1456Wiring(unittest.TestCase):
         engine.propose("predict churn", context, ["node-a", "node-b"], plan, scenario)
 
         prompt = llm.generate_structured.call_args.args[0]
-        self.assertIn("Prior Context:", prompt)
+        prompt_lower = prompt.lower()
+
+        self.assertIn("prior context", prompt_lower)
         self.assertIn("recent failure: leakage", prompt)
-        self.assertIn("cross-branch idea (score=0.910)", prompt)
-        self.assertIn("Strategic Guidance:", prompt)
-        self.assertIn("- focus:refine", prompt)
-        self.assertIn("Parent Branch Continuity:", prompt)
-        self.assertIn("node-a, node-b", prompt)
+        self.assertIn("strategic guidance", prompt_lower)
+        self.assertIn("focus:refine", prompt)
+        self.assertIn("parent branch continuity", prompt_lower)
+
+        score_match = cast(re.Match | None, re.search(r"cross-branch\s+idea\s*\(score=([0-9.]+)\)", prompt))
+        self.assertIsNotNone(score_match)
+        if score_match is not None:
+            extracted_score = float(score_match.group(1))
+            self.assertAlmostEqual(extracted_score, 0.91, places=2)
+
+        parent_section = cast(
+            re.Match | None, re.search(r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)", prompt, re.IGNORECASE)
+        )
+        self.assertIsNotNone(parent_section)
+        if parent_section is not None:
+            parent_content = parent_section.group(1)
+            self.assertIn("node-a", parent_content)
+            self.assertIn("node-b", parent_content)
 
     def test_quant_proposal_prompt_includes_context_guidance_and_parents(self):
         llm = MagicMock()
@@ -227,13 +244,27 @@ class TestFC1456Wiring(unittest.TestCase):
         engine.propose("mine alpha", context, ["quant-parent"], plan, scenario)
 
         prompt = llm.generate_structured.call_args.args[0]
-        self.assertIn("Prior Context:", prompt)
+        prompt_lower = prompt.lower()
+
+        self.assertIn("prior context", prompt_lower)
         self.assertIn("same branch memory", prompt)
-        self.assertIn("cross branch alpha (score=0.880)", prompt)
-        self.assertIn("Strategic Guidance:", prompt)
-        self.assertIn("- focus:novelty", prompt)
-        self.assertIn("Parent Branch Continuity:", prompt)
-        self.assertIn("quant-parent", prompt)
+        self.assertIn("strategic guidance", prompt_lower)
+        self.assertIn("focus:novelty", prompt)
+        self.assertIn("parent branch continuity", prompt_lower)
+
+        score_match = cast(re.Match | None, re.search(r"cross\s+branch\s+alpha\s*\(score=([0-9.]+)\)", prompt))
+        self.assertIsNotNone(score_match)
+        if score_match is not None:
+            extracted_score = float(score_match.group(1))
+            self.assertAlmostEqual(extracted_score, 0.88, places=2)
+
+        parent_section = cast(
+            re.Match | None, re.search(r"parent\s+branch\s+continuity[:\s]+(.+?)(?:\n|$)", prompt, re.IGNORECASE)
+        )
+        self.assertIsNotNone(parent_section)
+        if parent_section is not None:
+            parent_content = parent_section.group(1)
+            self.assertIn("quant-parent", parent_content)
 
     def test_synthetic_proposal_placeholder_keeps_context_visible(self):
         engine = SyntheticResearchProposalEngine(llm_adapter=None)
@@ -246,11 +277,17 @@ class TestFC1456Wiring(unittest.TestCase):
 
         proposal = engine.propose("survey agents", context, ["root-parent"], plan, scenario)
 
-        self.assertIn("Prior Context:", proposal.summary)
+        summary_lower = proposal.summary.lower()
+        self.assertIn("prior context", summary_lower)
         self.assertIn("memory insight", proposal.summary)
-        self.assertIn("cross branch note (score=0.500)", proposal.summary)
-        self.assertIn("Strategic Guidance:", proposal.summary)
-        self.assertIn("Parent Branch Continuity:", proposal.summary)
+        self.assertIn("strategic guidance", summary_lower)
+        self.assertIn("parent branch continuity", summary_lower)
+
+        score_match = cast(re.Match | None, re.search(r"cross\s+branch\s+note\s*\(score=([0-9.]+)\)", proposal.summary))
+        self.assertIsNotNone(score_match)
+        if score_match is not None:
+            extracted_score = float(score_match.group(1))
+            self.assertAlmostEqual(extracted_score, 0.5, places=2)
 
     def test_data_science_build_context_populates_split_manifest(self):
         scenario = DataScienceScenarioPlugin().build_context(

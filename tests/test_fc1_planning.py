@@ -67,10 +67,10 @@ class TestPlannerWithLLM(unittest.TestCase):
         )
         plan = self.planner.generate_plan(ctx)
         self.assertEqual(set(plan.budget_allocation.keys()), {"proposal", "coding", "running", "feedback"})
-        self.assertEqual(
-            plan.budget_allocation,
-            {"proposal": 120.0, "coding": 180.0, "running": 60.0, "feedback": 60.0},
-        )
+        # Verify budget allocation with tolerance-based comparison for floats
+        expected = {"proposal": 120.0, "coding": 180.0, "running": 60.0, "feedback": 60.0}
+        for key, expected_val in expected.items():
+            self.assertAlmostEqual(plan.budget_allocation[key], expected_val, places=5)
         for seconds in plan.budget_allocation.values():
             self.assertGreater(seconds, 0.0)
 
@@ -166,24 +166,25 @@ class TestPlannerLLMFallback(unittest.TestCase):
         )
         plan = planner.generate_plan(ctx)
         self.assertEqual(set(plan.budget_allocation.keys()), {"proposal", "coding", "running", "feedback"})
-        self.assertEqual(
-            plan.budget_allocation,
-            {"proposal": 20.0, "coding": 20.0, "running": 20.0, "feedback": 20.0},
-        )
-        self.assertTrue(all(seconds == 20.0 for seconds in plan.budget_allocation.values()))
+        expected = {"proposal": 20.0, "coding": 20.0, "running": 20.0, "feedback": 20.0}
+        for key, expected_val in expected.items():
+            self.assertAlmostEqual(plan.budget_allocation[key], expected_val, places=5)
+        # Verify all values are approximately equal to 20.0 with tolerance
+        for seconds in plan.budget_allocation.values():
+            self.assertAlmostEqual(seconds, 20.0, places=5)
 
     def test_default_budget_allocation_uses_default_total_when_budget_invalid(self):
         planner = Planner(PlannerConfig())
         allocation = planner._build_budget_allocation(total_budget=0.0, elapsed_time=100.0)
-        self.assertEqual(
-            allocation,
-            {"proposal": 125.0, "coding": 125.0, "running": 125.0, "feedback": 125.0},
-        )
+        expected = {"proposal": 125.0, "coding": 125.0, "running": 125.0, "feedback": 125.0}
+        self.assertEqual(set(allocation.keys()), set(expected.keys()))
+        for key, expected_val in expected.items():
+            self.assertAlmostEqual(allocation[key], expected_val, places=5)
 
     def test_default_budget_allocation_uses_minimum_when_remaining_depleted(self):
         planner = Planner(PlannerConfig())
         allocation = planner._build_budget_allocation(total_budget=100.0, elapsed_time=120.0)
-        self.assertEqual(
-            allocation,
-            {"proposal": 1.0, "coding": 1.0, "running": 1.0, "feedback": 1.0},
-        )
+        expected = {"proposal": 1.0, "coding": 1.0, "running": 1.0, "feedback": 1.0}
+        self.assertEqual(set(allocation.keys()), set(expected.keys()))
+        for key, expected_val in expected.items():
+            self.assertAlmostEqual(allocation[key], expected_val, places=5)

@@ -455,7 +455,7 @@ class DataScienceCoder(Coder):
                             "node_id": experiment.node_id,
                         },
                     )
-                    readme_text = f"{pipeline_script}\n\ncode_source=template_fallback"
+                    readme_text = f"{code_draft.description}\n{pipeline_script}\n\ncode_source=template_fallback"
                     (workspace / "README.txt").write_text(readme_text, encoding="utf-8")
                     return CodeArtifact(
                         artifact_id=artifact_id,

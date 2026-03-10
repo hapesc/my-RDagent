@@ -7,6 +7,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
+from typing import Optional
 
 from core.execution import WorkspaceManager
 from core.storage import BranchTraceStore
@@ -30,7 +31,6 @@ from plugins.contracts import CommonUsefulnessGate, PluginBundle
 from service_contracts import StepOverrideConfig, resolve_step_override_config
 
 from .costeer import CoSTEEREvolver
-
 
 logger = logging.getLogger(__name__)
 

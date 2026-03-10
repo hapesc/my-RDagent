@@ -310,7 +310,7 @@ class TaskIntakeDataSplitter:
 
     def _split_rows(self, rows: list[dict[str, str]], config: _SplitConfig) -> DataSplitManifest:
         row_ids = self._extract_row_ids(rows, config.id_column)
-        indexed_rows = list(zip(row_ids, rows, strict=False))
+        indexed_rows = list(zip(row_ids, rows))
         rng = random.Random(config.seed)
         train_count, val_count, test_count = self._allocate_counts(
             len(indexed_rows),

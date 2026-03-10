@@ -50,7 +50,7 @@ class StratifiedSplitter:
         rng: random.Random,
     ) -> DataSplitManifest:
         groups: dict[str, list[str]] = {}
-        for data_id, label in zip(data_ids, labels, strict=False):
+        for data_id, label in zip(data_ids, labels):
             groups.setdefault(label, []).append(data_id)
 
         train_ids: list[str] = []

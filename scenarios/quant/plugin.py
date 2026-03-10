@@ -25,6 +25,7 @@ from data_models import (
     Score,
     StepState,
 )
+from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     LLMAdapter,
     ProposalDraft,
@@ -41,7 +42,6 @@ from plugins.contracts import (
     UsefulnessGateInput,
 )
 from service_contracts import ModelSelectorConfig, RunningStepConfig, ScenarioManifest, StepOverrideConfig
-from evaluation_service.stratified_splitter import StratifiedSplitter
 
 from .backtest import LightweightBacktester
 from .constants import METRIC_THRESHOLDS
@@ -146,7 +146,9 @@ def _extract_quant_ordered_pairs(input_payload: Dict[str, Any]) -> List[tuple[st
         date_column = _first_quant_column(normalized, ["date", "datetime", "timestamp"])
         stock_column = _first_quant_column(normalized, ["stock_id", "symbol", "ticker", "asset_id"])
         if date_column and stock_column:
-            normalized["__split_id__"] = normalized[date_column].astype(str) + "|" + normalized[stock_column].astype(str)
+            normalized["__split_id__"] = (
+                normalized[date_column].astype(str) + "|" + normalized[stock_column].astype(str)
+            )
             id_column = "__split_id__"
         elif date_column:
             normalized["__split_id__"] = normalized[date_column].astype(str)
@@ -349,7 +351,7 @@ class QuantCoder(Coder):
         feedback_text = None
         if isinstance(experiment.hypothesis, dict):
             feedback_text = experiment.hypothesis.get("_costeer_feedback")
-        
+
         if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
             return f"{hypothesis}\n\nPrevious round feedback:\n{feedback_text}"
         return hypothesis
@@ -430,12 +432,12 @@ class QuantRunner(Runner):
         ):
             sample_fraction = float(getattr(debug_config, "sample_fraction", 0.1))
             sample_fraction = max(0.0, min(sample_fraction, 1.0))
-            
+
             if sample_fraction == 0.0:
                 logger.warning(
                     "Debug mode: sample_fraction=0 detected; using full dataset (minimum 1 date, 1 stock)"
                 )
-            
+
             logger.info("Debug mode active: sampling %.0f%% of data", sample_fraction * 100)
             if not ohlcv.empty:
                 dates = sorted(ohlcv["date"].unique())

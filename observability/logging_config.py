@@ -4,7 +4,7 @@ import json
 import logging
 import logging.config
 from collections.abc import MutableMapping
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from observability.redaction import sanitize_payload
@@ -15,7 +15,7 @@ _STANDARD_RECORD_FIELDS = frozenset(vars(logging.makeLogRecord({})).keys())
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat().replace("+00:00", "Z"),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

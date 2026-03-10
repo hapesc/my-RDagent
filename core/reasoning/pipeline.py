@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from llm.adapter import LLMAdapter
@@ -92,7 +92,7 @@ class ReasoningPipeline:
         trace_record = ReasoningTrace(
             trace_id=str(uuid.uuid4()),
             stages=trace_dict,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             metadata={
                 "task_summary": task_summary,
                 "scenario": scenario_name,

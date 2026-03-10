@@ -11,28 +11,24 @@ Verifies defensive behavior at integration points:
 """
 
 import unittest
-import json
-from pathlib import Path
-from typing import List, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from data_models import (
-    ContextPack,
-    Plan,
-    LoopState,
     BudgetLedger,
-    PlanningContext,
-    ExecutionResult,
-    Proposal,
-    ExperimentNode,
+    ContextPack,
     DataSplitManifest,
+    ExperimentNode,
+    LoopState,
+    Plan,
+    PlanningContext,
+    Proposal,
 )
-from planner.service import Planner, PlannerConfig
-from memory_service.service import MemoryService, MemoryServiceConfig
 from evaluation_service.stratified_splitter import StratifiedSplitter
 from evaluation_service.validation_selector import ValidationSelector
+from llm.adapter import LLMAdapter, MockLLMProvider
+from memory_service.service import MemoryService, MemoryServiceConfig
+from planner.service import Planner, PlannerConfig
 from scenarios.data_science.plugin import DataScienceProposalEngine
-from llm.adapter import MockLLMProvider, LLMAdapter
 
 
 class TestEdgeCaseZeroBudget(unittest.TestCase):
@@ -46,7 +42,7 @@ class TestEdgeCaseZeroBudget(unittest.TestCase):
             budget=BudgetLedger(total_time_budget=0.0, elapsed_time=0.0),
         )
         plan = planner.generate_plan(ctx)
-        
+
         # Should not crash and should have allocation
         self.assertIsNotNone(plan.budget_allocation)
         self.assertEqual(len(plan.budget_allocation), 4)  # proposal, coding, running, feedback
@@ -62,7 +58,7 @@ class TestEdgeCaseZeroBudget(unittest.TestCase):
             budget=BudgetLedger(total_time_budget=-100.0, elapsed_time=0.0),
         )
         plan = planner.generate_plan(ctx)
-        
+
         # Should not crash and should have allocation with defaults
         self.assertIsNotNone(plan.budget_allocation)
         self.assertGreater(len(plan.budget_allocation), 0)
@@ -75,7 +71,7 @@ class TestEdgeCaseZeroBudget(unittest.TestCase):
             budget=BudgetLedger(total_time_budget=10.0, elapsed_time=15.0),  # elapsed > total
         )
         plan = planner.generate_plan(ctx)
-        
+
         self.assertIsNotNone(plan.budget_allocation)
         for value in plan.budget_allocation.values():
             self.assertEqual(value, 1.0)  # Minimum fallback
@@ -88,7 +84,7 @@ class TestEdgeCaseEmptyCandidates(unittest.TestCase):
         """ValidationSelector.rank_candidates should return [] for empty list."""
         mock_eval_service = MagicMock()
         selector = ValidationSelector(mock_eval_service)
-        
+
         result = selector.rank_candidates([])
         self.assertEqual(result, [])
         # eval_service.evaluate_run() should NOT be called
@@ -98,7 +94,7 @@ class TestEdgeCaseEmptyCandidates(unittest.TestCase):
         """ValidationSelector.select_best should raise ValueError on empty list."""
         mock_eval_service = MagicMock()
         selector = ValidationSelector(mock_eval_service)
-        
+
         with self.assertRaises(ValueError):
             selector.select_best([])
 
@@ -110,10 +106,10 @@ class TestEdgeCaseNoLabels(unittest.TestCase):
         """StratifiedSplitter should fall back to random split when no labels."""
         splitter = StratifiedSplitter(train_ratio=0.8, test_ratio=0.2, seed=42)
         data_ids = ["id1", "id2", "id3", "id4", "id5"]
-        
+
         # No labels provided
         manifest = splitter.split(data_ids, labels=None)
-        
+
         self.assertIsInstance(manifest, DataSplitManifest)
         self.assertEqual(len(manifest.train_ids) + len(manifest.test_ids), 5)
         self.assertEqual(len(manifest.val_ids), 0)
@@ -121,9 +117,9 @@ class TestEdgeCaseNoLabels(unittest.TestCase):
     def test_stratified_splitter_empty_data_ids(self):
         """StratifiedSplitter should handle empty data_ids."""
         splitter = StratifiedSplitter()
-        
+
         manifest = splitter.split([], labels=None)
-        
+
         self.assertEqual(manifest.train_ids, [])
         self.assertEqual(manifest.test_ids, [])
         self.assertEqual(manifest.val_ids, [])
@@ -133,9 +129,9 @@ class TestEdgeCaseNoLabels(unittest.TestCase):
         splitter = StratifiedSplitter()
         data_ids = ["id1", "id2", "id3"]
         labels = ["a", "b"]  # Length mismatch
-        
+
         manifest = splitter.split(data_ids, labels=labels)
-        
+
         # Should use random split (fall back)
         self.assertEqual(len(manifest.train_ids) + len(manifest.test_ids), 3)
 
@@ -148,7 +144,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
         engine = DataScienceProposalEngine(llm_adapter=adapter)
-        
+
         # Empty context
         context = ContextPack(
             items=[],
@@ -164,7 +160,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
         scenario = MagicMock()
         scenario.task_summary = "test task"
         scenario.input_payload = {"loop_index": 0}
-        
+
         proposal = engine.propose(
             task_summary="test",
             context=context,
@@ -172,7 +168,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
             plan=plan,
             scenario=scenario,
         )
-        
+
         # Should not crash and return a Proposal
         self.assertIsInstance(proposal, Proposal)
         self.assertIsNotNone(proposal.summary)
@@ -182,7 +178,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
         engine = DataScienceProposalEngine(llm_adapter=adapter)
-        
+
         context = ContextPack(
             items=[],
             highlights=[],
@@ -200,7 +196,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
         scenario = MagicMock()
         scenario.task_summary = "test task"
         scenario.input_payload = {"loop_index": 0}
-        
+
         proposal = engine.propose(
             task_summary="test",
             context=context,
@@ -208,7 +204,7 @@ class TestEdgeCaseEmptyContextPack(unittest.TestCase):
             plan=plan,
             scenario=scenario,
         )
-        
+
         self.assertIsInstance(proposal, Proposal)
 
 
@@ -218,10 +214,10 @@ class TestEdgeCaseNoCrossBranchHypotheses(unittest.TestCase):
     def test_memory_service_no_cross_branch_no_error(self):
         config = MemoryServiceConfig(enable_hypothesis_storage=True)
         service = MemoryService(config=config)
-        
+
         # Query with a dict query (correct signature)
         context = service.query_context({"error_type": "test"})
-        
+
         self.assertIsInstance(context, ContextPack)
         # Should have empty items if no hypotheses in DB
         self.assertEqual(len(context.items), 0)
@@ -229,10 +225,10 @@ class TestEdgeCaseNoCrossBranchHypotheses(unittest.TestCase):
     def test_memory_service_cross_branch_query_safe(self):
         config = MemoryServiceConfig(enable_hypothesis_storage=True)
         service = MemoryService(config=config)
-        
+
         # Query with empty db
         context = service.query_context({"query": "test"})
-        
+
         self.assertIsInstance(context, ContextPack)
 
 
@@ -241,13 +237,11 @@ class TestEdgeCaseNoCoSTEERFeedback(unittest.TestCase):
 
     def test_coder_no_costeer_feedback_returns_original_summary(self):
         """Coder should return original summary when _costeer_feedback absent."""
-        provider = MockLLMProvider()
-        adapter = LLMAdapter(provider)
         from scenarios.data_science.plugin import DataScienceCoder
-        
+
         # Create a mock coder with the feedback enrichment method
         coder = DataScienceCoder()
-        
+
         proposal = Proposal(
             proposal_id="p1",
             summary="Test proposal",
@@ -255,17 +249,17 @@ class TestEdgeCaseNoCoSTEERFeedback(unittest.TestCase):
         )
         experiment = MagicMock(spec=ExperimentNode)
         experiment.hypothesis = {}  # No _costeer_feedback key
-        
+
         # Call the enrichment method
         enriched = coder._enrich_proposal_with_feedback(proposal, experiment)
-        
+
         # Should return original summary
         self.assertEqual(enriched, proposal.summary)
 
     def test_coder_costeer_feedback_empty_string(self):
         """Coder should omit feedback section when feedback is empty string."""
         from scenarios.data_science.plugin import DataScienceCoder
-        
+
         coder = DataScienceCoder()
         proposal = Proposal(
             proposal_id="p1",
@@ -274,16 +268,16 @@ class TestEdgeCaseNoCoSTEERFeedback(unittest.TestCase):
         )
         experiment = MagicMock(spec=ExperimentNode)
         experiment.hypothesis = {"_costeer_feedback": ""}  # Empty feedback
-        
+
         enriched = coder._enrich_proposal_with_feedback(proposal, experiment)
-        
+
         # Should return original summary (empty feedback ignored)
         self.assertEqual(enriched, proposal.summary)
 
     def test_coder_costeer_feedback_not_dict(self):
         """Coder should handle hypothesis not being a dict."""
         from scenarios.data_science.plugin import DataScienceCoder
-        
+
         coder = DataScienceCoder()
         proposal = Proposal(
             proposal_id="p1",
@@ -292,9 +286,9 @@ class TestEdgeCaseNoCoSTEERFeedback(unittest.TestCase):
         )
         experiment = MagicMock(spec=ExperimentNode)
         experiment.hypothesis = "not_a_dict"  # Not a dict
-        
+
         enriched = coder._enrich_proposal_with_feedback(proposal, experiment)
-        
+
         # Should return original summary (type check prevents error)
         self.assertEqual(enriched, proposal.summary)
 
@@ -306,23 +300,22 @@ class TestEdgeCaseDebugSampleFractionZero(unittest.TestCase):
         """Debug mode with sample_fraction=0 should keep at least 1 row."""
         # This is tested through the max(1, int(...)) guard in the runner code
         # But we test the logic in isolation
-        
+
         rows = ["row1", "row2", "row3"]
         sample_fraction = 0.0
         sample_size = max(1, int(len(rows) * sample_fraction))
-        
+
         self.assertEqual(sample_size, 1)
         self.assertGreater(len(rows[:sample_size]), 0)
 
     def test_debug_sample_fraction_clamps_to_zero_one(self):
         """Debug sample_fraction should be clamped to [0.0, 1.0]."""
-        import math
-        
+
         # Test negative clamp
         sample_fraction = -0.5
         clamped = max(0.0, min(sample_fraction, 1.0))
         self.assertEqual(clamped, 0.0)
-        
+
         # Test positive overflow clamp
         sample_fraction = 1.5
         clamped = max(0.0, min(sample_fraction, 1.0))
@@ -337,7 +330,7 @@ class TestEdgeCaseEmptyPlanGuidance(unittest.TestCase):
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
         engine = DataScienceProposalEngine(llm_adapter=adapter)
-        
+
         context = ContextPack(items=[], highlights=[], scored_items=[])
         plan = Plan(
             plan_id="p1",
@@ -348,7 +341,7 @@ class TestEdgeCaseEmptyPlanGuidance(unittest.TestCase):
         scenario = MagicMock()
         scenario.task_summary = "test"
         scenario.input_payload = {"loop_index": 0}
-        
+
         proposal = engine.propose(
             task_summary="test",
             context=context,
@@ -356,7 +349,7 @@ class TestEdgeCaseEmptyPlanGuidance(unittest.TestCase):
             plan=plan,
             scenario=scenario,
         )
-        
+
         self.assertIsInstance(proposal, Proposal)
 
 
@@ -368,13 +361,13 @@ class TestEdgeCaseNoneContextPack(unittest.TestCase):
         provider = MockLLMProvider()
         adapter = LLMAdapter(provider)
         engine = DataScienceProposalEngine(llm_adapter=adapter)
-        
+
         context = ContextPack(
             items=[],
             highlights=[],
             scored_items=[],
         )
-        
+
         plan = Plan(
             plan_id="p1",
             exploration_strength=0.5,
@@ -384,7 +377,7 @@ class TestEdgeCaseNoneContextPack(unittest.TestCase):
         scenario = MagicMock()
         scenario.task_summary = "test"
         scenario.input_payload = {"loop_index": 0}
-        
+
         proposal = engine.propose(
             task_summary="test",
             context=context,
@@ -392,7 +385,7 @@ class TestEdgeCaseNoneContextPack(unittest.TestCase):
             plan=plan,
             scenario=scenario,
         )
-        
+
         self.assertIsInstance(proposal, Proposal)
 
 

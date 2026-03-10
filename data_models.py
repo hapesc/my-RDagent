@@ -4,19 +4,30 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import UTC, datetime
-from enum import Enum, StrEnum
+from datetime import datetime, timezone
+from enum import Enum
+
+
+try:
+    from enum import StrEnum
+except ImportError:
+    # Python < 3.11 compatibility
+    class StrEnum(str, Enum):
+        """String enum base class for Python < 3.11."""
+
+        def __str__(self) -> str:
+            return self.value
 from typing import Any, List, Optional, Tuple
 
 
 def utc_now() -> datetime:
     """Return timezone-aware UTC timestamp."""
 
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 def _to_iso_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _from_iso_utc(value: str) -> datetime:

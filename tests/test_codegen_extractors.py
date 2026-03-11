@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from llm.codegen.extractors import extract_code_and_metadata, extract_code_block
 
@@ -91,7 +92,10 @@ def test_truncated_json_with_code_key() -> None:
 
 
 def test_truncated_json_picks_longest_code_value() -> None:
-    raw = '{"description": "momentum", "python_code": "import pandas as pd\\ndef big_func():\\n    return 42", "code": "x=1'
+    raw = (
+        '{"description": "momentum", "python_code": "import pandas as pd\\ndef big_func():\\n'
+        '    return 42", "code": "x=1'
+    )
     result = extract_code_and_metadata(raw)
     assert "big_func" in result.code
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tests.golden_tasks.benchmark import create_benchmark_llm_adapter, load_golden_tasks, run_single_round
@@ -25,7 +25,7 @@ def main() -> None:
     aggregate_total = sum(int(result["total"]) for result in results.values())
     aggregate_passed = sum(int(result["passed"]) for result in results.values())
     baseline = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "model": model_config.model,
         "temperature": model_config.temperature,
         "results": results,

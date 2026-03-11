@@ -22,7 +22,7 @@ The architecture intentionally favors clear module boundaries and incremental im
 - `G2` Recoverable: every run must be resumable from the latest successful step.
 - `G3` Executable: generated code must run in a sandboxed, timeout-bound environment.
 - `G4` Observable: every proposal, code diff, execution result, and feedback decision must be inspectable.
-- `G5` Evolvable: coding is multi-round refinement, not single-shot generation. (CoSTEER multi-round code evolution is being implemented in this version).
+- `G5` Evolvable: coding is multi-round refinement, not single-shot generation. The current codebase already includes CoSTEER multi-round evolution and structured feedback capture.
 - `G6` Branchable: the system must support multiple experiment branches off previous checkpoints.
 - `G7` Deployable: the MVP must work on one machine; later versions may scale to multi-worker.
 
@@ -556,15 +556,15 @@ class FeedbackAnalyzer(Protocol):
 
 ### 12.1 CLI
 
-Minimum commands:
+Current commands (installed script `rdagent`, or source entrypoint `python agentrd_cli.py`):
 
-- `agentrd run --scenario <name> --input <json-or-file>`
-- `agentrd resume --run-id <id> [--checkpoint <step>]`
-- `agentrd pause --run-id <id>`
-- `agentrd stop --run-id <id>`
-- `agentrd trace --run-id <id>`
-- `agentrd ui`
-- `agentrd health-check`
+- `rdagent run --scenario <name> --input <json-or-file>`
+- `rdagent resume --run-id <id> [--checkpoint <step>]`
+- `rdagent pause --run-id <id>`
+- `rdagent stop --run-id <id>`
+- `rdagent trace --run-id <id>`
+- `rdagent ui`
+- `rdagent health-check`
 
 ### 12.2 REST API
 
@@ -577,6 +577,8 @@ Minimum endpoints:
 - `POST /runs/{run_id}/stop`
 - `GET /runs/{run_id}/events`
 - `GET /runs/{run_id}/artifacts`
+- `GET /runs/{run_id}/branches`
+- `GET /scenarios`
 - `GET /health`
 
 ### 12.3 Event Schema
@@ -798,13 +800,13 @@ This section summarizes the current implementation status compared to the design
 | `EvaluationService` | **Implemented** | Evaluates generated code and results. |
 | `WorkspaceManager` | **Implemented** | Manages file snapshots and checkpoints. |
 | `StepExecutor` | **Implemented** | Executes individual steps via plugins. |
-| `CoSTEER` | **In-Progress** | Multi-round code evolution logic. |
+| `CoSTEER` | **Implemented** | Multi-round code evolution plus structured feedback capture are present in `core/loop/costeer.py`. |
 | `ReasoningPipeline` | **Implemented** | 4-stage scientific reasoning (Analyze → Identify → Hypothesize → Design) per FC-3. Located in `core/reasoning/pipeline.py`. |
 | `VirtualEvaluator` | **Implemented** | Generates multiple candidate ideas and forwards a config-driven top subset via LLM evaluation (FC-3). Located in `core/reasoning/virtual_eval.py`. |
 | `MCTSScheduler` | **Implemented** | MCTS/PUCT-based branch selection for DAG exploration (FC-2). Located in `exploration_manager/scheduler.py`. |
 | `BranchPruner` | **Implemented** | Score-based branch pruning with relative threshold (FC-2). Located in `exploration_manager/pruning.py`. |
 | `TraceMerger` | **Implemented** | LLM-based synthesis of best ideas from multiple branch traces (FC-2). Located in `exploration_manager/merging.py`. |
-| `Web UI` | **Stub** | Minimal trace inspection provided via CLI/logs for now. |
+| `Web UI` | **Implemented** | Minimal Streamlit trace inspection UI exists in `ui/trace_ui.py`. |
 | `Multi-Worker` | **Planned** | Current focus is on single-host stability. |
 
 ### 21.2 Dependency Injection Model

@@ -45,8 +45,9 @@ When using RDagent, please follow these security best practices:
 ### Secret Management
 
 - **Never hardcode API keys** or sensitive credentials in your code
-- **Use `.env` file** for storing sensitive configuration (see `.env.example` for reference)
-- Ensure your `.env` file is added to `.gitignore` to prevent accidental commits
+- Prefer **environment variables** for secrets and keep `config.yaml` for non-secret runtime settings
+- If you use Docker Compose, you may create your own local `.env` file, but the repository does not ship a `.env.example`
+- Ensure any local secret file remains untracked and excluded from commits
 
 ### Code Execution Security
 

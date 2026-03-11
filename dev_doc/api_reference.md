@@ -1,8 +1,6 @@
-# OpenAPI V1 Draft
+# Control Plane API Reference
 
-Task-18 freezes the response and request shapes before the FastAPI control plane is implemented in Task-21.
-
-## Planned endpoints
+当前控制面由 `app/control_plane.py` 提供，接口列表如下：
 
 - `POST /runs`
 - `GET /runs/{run_id}`
@@ -15,70 +13,114 @@ Task-18 freezes the response and request shapes before the FastAPI control plane
 - `GET /scenarios`
 - `GET /health`
 
-## Component schemas
+## `POST /runs`
 
-### `RunCreateRequest`
+请求体：
 
 ```json
 {
-  "scenario": "data_science",
-  "task_summary": "evaluate dataset",
+  "scenario": "synthetic_research",
+  "task_summary": "summarize evaluation benchmark trends",
   "run_id": "optional-run-id",
   "entry_input": {
-    "data_source": "/tmp/train.csv"
+    "reference_topics": ["benchmarks", "evaluation"]
   },
   "stop_conditions": {
-    "max_loops": 2,
+    "max_loops": 1,
     "max_steps": null,
     "max_duration_sec": 300
   },
   "step_overrides": {
     "proposal": {
-      "provider": "openai",
-      "model": "gpt-5-mini"
+      "provider": "litellm",
+      "model": "openai/gpt-4o-mini",
+      "max_retries": 1
     },
     "coding": {},
     "running": {
-      "timeout_sec": 30
+      "timeout_sec": 120
     },
     "feedback": {}
   }
 }
 ```
 
-### `RunSummaryResponse`
+说明：
+
+- `scenario` 和 `task_summary` 必填
+- 也支持把 `max_loops`、`max_duration_sec` 放在顶层，`RunCreateRequest.from_dict()` 会兼容读取
+- `step_overrides` 只允许 `proposal`、`coding`、`running`、`feedback`
+
+响应体是 `RunSummaryResponse`：
 
 ```json
 {
   "run_id": "run-123",
-  "scenario": "data_science",
+  "scenario": "synthetic_research",
   "status": "RUNNING",
-  "active_branch_ids": [
-    "main"
-  ],
-  "created_at": "2026-03-06T12:00:00Z",
-  "updated_at": "2026-03-06T12:00:10Z",
+  "active_branch_ids": ["main"],
+  "created_at": "2026-03-11T12:00:00Z",
+  "updated_at": "2026-03-11T12:00:01Z",
   "stop_conditions": {
-    "max_loops": 2,
+    "max_loops": 1,
     "max_steps": null,
     "max_duration_sec": 300
   },
-  "config_snapshot": {}
+  "config_snapshot": {
+    "runtime": {
+      "llm_provider": "litellm",
+      "llm_model": "openai/gpt-4o-mini",
+      "uses_real_llm_provider": true,
+      "sandbox_timeout_sec": 120,
+      "allow_local_execution": true,
+      "default_scenario": "data_science",
+      "real_provider_safe_profile": {
+        "layer0_n_candidates": 1,
+        "layer0_k_forward": 1,
+        "costeer_max_rounds": 1,
+        "sandbox_timeout_sec": 120,
+        "max_retries": 1
+      },
+      "guardrail_warnings": []
+    }
+  }
 }
 ```
 
-### `RunControlResponse`
+## Run Control Endpoints
+
+`POST /runs/{run_id}/pause`
+
+`POST /runs/{run_id}/resume`
+
+`POST /runs/{run_id}/stop`
+
+统一返回：
 
 ```json
 {
   "run_id": "run-123",
   "action": "pause",
   "status": "PAUSED",
-  "message": "run paused"
+  "message": "pause requested"
 }
 ```
 
-### `RunEventPageResponse`
+`resume` 的 `message` 为 `resume scheduled`，`stop` 的 `message` 为 `stop requested`。
+
+## `GET /runs/{run_id}`
+
+返回和 `POST /runs` 相同结构的 `RunSummaryResponse`。
+
+## `GET /runs/{run_id}/events`
+
+查询参数：
+
+- `cursor` 可选
+- `limit` 可选，默认 `50`
+- `branch_id` 可选
+
+响应：
 
 ```json
 {
@@ -89,7 +131,13 @@ Task-18 freezes the response and request shapes before the FastAPI control plane
 }
 ```
 
-### `ArtifactListResponse`
+## `GET /runs/{run_id}/artifacts`
+
+可选查询参数：
+
+- `branch_id`
+
+响应：
 
 ```json
 {
@@ -103,7 +151,9 @@ Task-18 freezes the response and request shapes before the FastAPI control plane
 }
 ```
 
-### `BranchListResponse`
+## `GET /runs/{run_id}/branches`
+
+响应：
 
 ```json
 {
@@ -111,50 +161,41 @@ Task-18 freezes the response and request shapes before the FastAPI control plane
   "items": [
     {
       "branch_id": "main",
-      "head_node_id": "node-run-123-main-1"
+      "head_node_id": "node-run-123-main-0"
     }
   ]
 }
 ```
 
-### `ScenarioManifest`
+## `GET /scenarios`
+
+返回已注册 manifest 列表。当前默认 registry 包含：
+
+- `data_science`
+- `synthetic_research`
+- `quant`
+
+注意：`quant` 虽然会出现在这里，但默认 runtime 没有注入 market data provider。
+
+## `GET /health`
+
+`/health` 会构建真实 runtime，然后返回：
 
 ```json
 {
-  "scenario_name": "data_science",
-  "title": "Data Science",
-  "description": "Generate, execute, and evaluate small data-science experiments against a dataset.",
-  "tags": [
-    "built-in",
-    "python",
-    "dataset"
-  ],
-  "supports_branching": true,
-  "supports_resume": true,
-  "supports_local_execution": false,
-  "supported_step_overrides": [
-    "proposal",
-    "coding",
-    "running",
-    "feedback"
-  ],
-  "default_step_overrides": {
-    "proposal": {},
-    "coding": {},
-    "running": {},
-    "feedback": {}
+  "status": "ok",
+  "checks": {
+    "sqlite": "ok",
+    "artifact_root": "ok",
+    "execution_backend": "ok",
+    "llm_adapter": "ok"
+  },
+  "details": {
+    "docker_available": true,
+    "allow_local_execution": false,
+    "registered_scenarios": ["data_science", "synthetic_research", "quant"]
   }
 }
 ```
 
-### `ErrorResponse`
-
-```json
-{
-  "error": {
-    "code": "invalid_request",
-    "message": "scenario must not be empty",
-    "field": "scenario"
-  }
-}
-```
+因此 `/health` 也依赖真实 LLM provider 配置，而不是纯静态检查。

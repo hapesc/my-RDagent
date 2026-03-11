@@ -1,263 +1,155 @@
-# RDAgent 快速开始指南
+# RDAgent 快速开始
 
-本指南介绍如何使用 **uv** 和 **Docker** 快速搭建 RDAgent 开发环境。
+这份指南只保留当前 `main` 分支可直接执行的流程。
 
-## 📦 环境准备
+## 1. 安装依赖
 
-### 方式一：本地开发（推荐）
+推荐直接安装完整依赖：
 
-#### 1. 安装 uv
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+git clone https://github.com/hapesc/my-RDagent.git
+cd my-RDagent
 
-#### 2. 克隆并进入项目
-```bash
-cd /path/to/rdagent
-```
-
-#### 3. 创建虚拟环境并安装依赖
-```bash
-# 仅安装核心依赖（使用 mock LLM）
-make install
-
-# 或安装所有依赖（包含 litellm、fastapi、streamlit、pytest）
-make install-all
-```
-
-或者手动操作：
-```bash
 uv venv
 uv pip install -e ".[all]"
 ```
 
-#### 4. 验证安装
+如果使用 `make`：
+
 ```bash
-python -m app.startup
+make install-all
 ```
 
-#### 5. 运行示例
-```bash
-# 使用 mock provider（无需 API key）
-python cli.py --scenario data_science --task "classify iris dataset" --max-steps 3
+说明：
 
-# 或使用完整 CLI
+- `make install` 只装核心包，不足以运行真实 LLM 流程
+- `agentrd_cli.py`、`cli.py`、FastAPI 控制面都会经过 `build_runtime()`，因此需要 `litellm`
+
+## 2. 准备配置
+
+```bash
+cp config.example.yaml config.yaml
+python -m app.startup --config ./config.yaml
+```
+
+`app.startup` 只做配置加载和打印，不会真正构建运行时。
+
+## 3. 配置真实 LLM Provider
+
+当前源码中的测试 mock 不能作为正常运行时 fallback 使用。最小可运行配置：
+
+```bash
+export RD_AGENT_LLM_PROVIDER=litellm
+export RD_AGENT_LLM_MODEL=openai/gpt-4o-mini
+export RD_AGENT_LLM_API_KEY=your-api-key
+```
+
+如果你要运行 `data_science` 场景但本机没有 Docker，再额外开启：
+
+```bash
 export AGENTRD_ALLOW_LOCAL_EXECUTION=1
+```
+
+## 4. 本地跑一个最小实验
+
+最省事的是先跑 `synthetic_research`，因为它不依赖本地代码执行沙盒：
+
+```bash
 python agentrd_cli.py run \
-  --scenario data_science \
+  --config ./config.yaml \
+  --scenario synthetic_research \
   --loops-per-call 1 \
-  --max-loops 3 \
-  --input '{"task_summary": "classify iris dataset", "max_loops": 3}'
+  --max-loops 1 \
+  --input '{"task_summary":"write a short brief about evaluation benchmark failure modes","max_loops":1}'
 ```
 
----
+如果要验证代码执行链路，再跑 `data_science`：
 
-### 方式二：Docker（开箱即用）
-
-#### 1. 快速启动所有服务
 ```bash
-# 复制环境变量文件
-cp .env.example .env
-
-# 编辑 .env 文件，设置你的 LLM API key（可选）
-# 如果不设置，默认使用 mock provider
-
-# 一键启动
-make quickstart
-
-# 或手动启动
-# docker-compose up -d api ui
+python cli.py \
+  --config ./config.yaml \
+  --scenario data_science \
+  --task "classify iris dataset" \
+  --max-steps 1
 ```
 
-启动后访问：
-- **API**: http://localhost:8000
-- **UI**: http://localhost:8501
+## 5. 查看结果
 
-#### 2. 常用 Docker 命令
 ```bash
-# 构建镜像
-make build
-
-# 启动服务
-make up
-
-# 查看日志
-make logs
-
-# 进入开发容器
-make dev-shell
-
-# 运行测试
-make test
-
-# 停止并清理
-make down
-make clean
+python agentrd_cli.py trace --run-id <RUN_ID> --format table
+python agentrd_cli.py health-check --verbose
 ```
 
-#### 3. 单独启动服务
+说明：
+
+- `health-check` 也会构建运行时，所以同样需要真实 LLM provider 配置
+- `trace --format json` 会返回完整事件、节点、artifact 列表
+
+## 6. 启动控制面和 UI
+
 ```bash
-# 仅启动 API
-docker-compose up -d api
-
-# 仅启动 UI
-docker-compose up -d ui
-
-# 仅启动基础应用
-docker-compose up -d app
-```
-
----
-
-## 🔧 配置 LLM Provider
-
-### 使用 LiteLLM（推荐）
-
-编辑 `.env` 文件：
-```bash
-RD_AGENT_LLM_PROVIDER=litellm
-RD_AGENT_LLM_API_KEY=sk-your-api-key
-RD_AGENT_LLM_MODEL=gpt-4o-mini
-```
-
-支持的模型格式：
-- OpenAI: `gpt-4o-mini`, `gpt-4o`
-- Anthropic: `claude-3-sonnet-20240229`
-- Google: `gemini/gemini-2.5-pro`
-
-### 使用 Mock Provider（测试）
-```bash
-RD_AGENT_LLM_PROVIDER=mock
-```
-
----
-
-## 🧪 运行测试
-
-### 本地测试
-```bash
-make test
-
-# 或带覆盖率报告
-make test-cov
-```
-
-### Docker 测试
-```bash
-docker-compose run --rm test
-```
-
----
-
-## 🚀 启动 REST API
-
-### 本地启动
-```bash
-# 确保安装了 api 依赖
-uv pip install -e ".[api]"
-
-# 启动服务器
-uvicorn app.api_main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-访问：
-- API 文档: http://127.0.0.1:8000/docs
-- Health Check: http://127.0.0.1:8000/health
-
-### Docker 启动
-```bash
-make api
-```
-
----
-
-## 🎨 启动 Streamlit UI
-
-### 本地启动
-```bash
-# 确保安装了 ui 依赖
-uv pip install -e ".[ui]"
-
-# 启动 UI
+uvicorn app.api_main:app --host 127.0.0.1 --port 8000
 streamlit run ui/trace_ui.py
 ```
 
-### Docker 启动
+常用地址：
+
+- API: `http://127.0.0.1:8000`
+- OpenAPI: `http://127.0.0.1:8000/docs`
+- Health: `http://127.0.0.1:8000/health`
+- Trace UI: `http://127.0.0.1:8501`
+
+## 7. Docker Compose
+
+仓库里有 `docker-compose.yml` 和 `make quickstart`，但要注意两点：
+
+- 仓库没有 `.env.example`
+- `docker-compose.yml` 里的 `RD_AGENT_LLM_PROVIDER` 默认仍是 `mock`，因此你必须在启动前显式覆盖环境变量
+
+示例：
+
 ```bash
-make ui
+export RD_AGENT_LLM_PROVIDER=litellm
+export RD_AGENT_LLM_MODEL=openai/gpt-4o-mini
+export RD_AGENT_LLM_API_KEY=your-api-key
+
+make quickstart
 ```
 
----
+或直接：
 
-## 📁 项目结构
-
-```
-.
-├── pyproject.toml          # 主要依赖配置（uv/pip 使用）
-├── requirements.txt        # 兼容文件（已标记为 deprecated）
-├── Dockerfile              # 多阶段构建配置
-├── docker-compose.yml      # 服务编排
-├── Makefile                # 常用命令快捷方式
-├── .env.example            # 环境变量示例
-├── config.example.yaml     # 应用配置示例
-├── app/                    # 运行时、API、控制平面
-├── core/                   # 核心引擎
-├── llm/                    # LLM 适配器
-├── scenarios/              # 场景插件
-├── ui/                     # Streamlit UI
-└── tests/                  # 测试套件
-```
-
----
-
-## 🐛 故障排除
-
-### uv 安装失败
 ```bash
-# 使用 pip 安装 uv
-pip install uv
+docker-compose up -d api ui
 ```
 
-### Docker 权限问题
+如果你习惯使用 Compose 的 `.env` 文件，可以自行创建，但这不是仓库内置模板能力。
+
+## 8. 量化场景说明
+
+`quant` 场景已注册到插件系统，但默认 `build_runtime()` 没有注入 `QuantConfig.data_provider`，所以不能像 `data_science` 一样直接用默认 CLI 跑通。
+
+要跑真实量化链路，请使用：
+
 ```bash
-# Linux 用户需要加入 docker 组
-sudo usermod -aG docker $USER
-# 重新登录后生效
+python scripts/run_quant_e2e.py
 ```
 
-### 端口占用
+这个脚本会自行装配 `QuantConfig`、真实 LLM provider 和市场数据提供器。
+
+## 9. 常见问题
+
+### `Unknown or missing LLM provider: 'mock'`
+
+说明你已经进入了真正的运行时入口，但还没把 `RD_AGENT_LLM_PROVIDER` 改成 `litellm`。
+
+### `docker unavailable` 或执行后端降级
+
+若没有 Docker，请显式设置：
+
 ```bash
-# 如果 8000 或 8501 被占用，修改 docker-compose.yml 中的端口映射
-# 例如："8080:8000" 将 API 映射到主机的 8080 端口
+export AGENTRD_ALLOW_LOCAL_EXECUTION=1
 ```
 
-### LLM API 调用失败
-```bash
-# 检查环境变量是否正确设置
-cat .env
+### `quant` 运行时报缺少 data provider
 
-# 测试 LLM 连接
-python -c "
-from llm.providers.litellm_provider import LiteLLMProvider
-p = LiteLLMProvider(api_key='your-key')
-print(p.complete('Hello'))
-"
-```
-
----
-
-## 📚 更多信息
-
-- [完整 README](README.md)
-- [架构文档](dev_doc/architecture.md)
-- [配置说明](dev_doc/configuration.md)
-- [API 文档](dev_doc/api_reference.md)
-
----
-
-## 💡 提示
-
-1. **开发推荐**: 使用 `make dev-shell` 进入 Docker 开发容器，代码修改会实时同步
-2. **生产部署**: 修改 `docker-compose.yml` 中的环境变量，使用外部 LLM API
-3. **数据持久化**: 默认数据存储在 Docker volumes 中，重启不会丢失
-4. **代码检查**: 运行 `make format` 和 `make lint` 保持代码规范（需安装 ruff）
+这是当前默认 runtime 的已知约束，不是配置文件漏项。请走 `scripts/run_quant_e2e.py` 或自定义 runtime 装配。

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from core.storage.interfaces import EventMetadataStore, RunMetadataStore
+from core.correction.exceptions import SkipIterationError
 from data_models import (
     BranchState,
     BudgetLedger,
@@ -142,6 +143,15 @@ class LoopEngine:
                         context_pack=context_pack,
                         source_workspace=source_workspace,
                     )
+                except SkipIterationError as exc:
+                    logger.warning(
+                        "skip iteration routed in run_id=%s loop_index=%s error=%s",
+                        run_session.run_id,
+                        loop_state.iteration,
+                        str(exc),
+                    )
+                    self._archive_exception(run_session.run_id, loop_state.iteration, exc)
+                    step_result = None
                 except Exception as exc:
                     self._mark_iteration_failed(
                         run_session=run_session,
@@ -150,6 +160,19 @@ class LoopEngine:
                     )
                     self._archive_exception(run_session.run_id, loop_state.iteration, exc)
                     return loop_context
+
+                if step_result is None:
+                    source_workspace = None
+                    iter_elapsed = time.monotonic() - iter_start
+                    budget.elapsed_time += iter_elapsed
+                    budget.iteration_durations.append(iter_elapsed)
+                    recent = budget.iteration_durations[-3:]
+                    avg_duration = sum(recent) / len(recent)
+                    remaining_iters = max(0, target_iteration - loop_state.iteration - 1)
+                    budget.estimated_remaining = avg_duration * remaining_iters
+                    loop_state.iteration += 1
+                    self._run_store.create_run(run_session)
+                    continue
 
                 if self._is_fatal_step_result(step_result):
                     self._mark_iteration_failed(

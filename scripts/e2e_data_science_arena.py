@@ -7,9 +7,8 @@ and explicit outliers. It then asks the LLM to fit a linear regression on the
 normal data and output the slope to metrics.json.
 
 Usage:
-    source ~/.zshrc  # loads GEMINI_API_KEY
-    RD_AGENT_LLM_PROVIDER=litellm RD_AGENT_LLM_MODEL=gemini/gemini-2.5-flash \
-        python scripts/e2e_data_science_arena.py
+    export OPENCODE_API=<your_key>
+    python scripts/e2e_data_science_arena.py
 """
 
 from __future__ import annotations
@@ -43,8 +42,17 @@ def _select_event(events: Iterable[object], event_type: str, step_name: str | No
 
 
 def main() -> int:
+    from scripts.real_test_llm import TEST_LLM_BASE_URL, TEST_LLM_MODEL, get_test_llm_api_key
+
+    api_key = get_test_llm_api_key()
+    os.environ["RD_AGENT_LLM_PROVIDER"] = "litellm"
+    os.environ["RD_AGENT_LLM_MODEL"] = TEST_LLM_MODEL
+    os.environ["RD_AGENT_LLM_BASE_URL"] = TEST_LLM_BASE_URL
+    if api_key:
+        os.environ["RD_AGENT_LLM_API_KEY"] = api_key
+
     provider = os.environ.get("RD_AGENT_LLM_PROVIDER", "mock")
-    model = os.environ.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini")
+    model = os.environ.get("RD_AGENT_LLM_MODEL", TEST_LLM_MODEL)
 
     print("=" * 72)
     print("  E2E Data Science Arena — Micro-Accuracy Test")
@@ -52,9 +60,9 @@ def main() -> int:
     print(f"  Model    : {model}")
     print("=" * 72)
 
-    if provider != "litellm":
-        print("\n⚠️  RD_AGENT_LLM_PROVIDER is not 'litellm'. Set it to run with real LLM.")
-        print("    This arena expects a real LLM to perform actual math.\n")
+    if not api_key:
+        print("\n❌ No OpenCode-compatible API key found. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.\n")
+        return 1
 
     # 1. Generate deterministic dataset
     temp_dir = tempfile.mkdtemp(prefix="rd_arena_")

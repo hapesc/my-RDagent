@@ -1,0 +1,13 @@
+{
+  "task_id": "synthetic_trend_analysis",
+  "scenario": "synthetic_research",
+  "task_summary": "Analyze the trend in global average temperature anomalies from 1950-2020. Identify key inflection points, propose causal mechanisms, and summarize findings with quantitative evidence.",
+  "artifact_type": "structured_text",
+  "expected_properties": {
+    "no_placeholder": true,
+    "min_length_chars": 200,
+    "has_structure": true,
+    "contains_any_keyword": ["finding", "result", "trend", "increase", "anomal"]
+  },
+  "difficulty": "easy"
+}

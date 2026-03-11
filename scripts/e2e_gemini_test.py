@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-"""E2E test: run synthetic_research scenario with real Gemini LLM.
+"""E2E test: run synthetic_research scenario with OpenCode Kimi K2.5.
 
 Usage:
-    source ~/.zshrc  # loads GEMINI_API_KEY
-    RD_AGENT_LLM_PROVIDER=litellm RD_AGENT_LLM_MODEL=gemini/gemini-2.5-flash \
-        python scripts/e2e_gemini_test.py
+    export OPENCODE_API=<your_key>
+    python scripts/e2e_gemini_test.py
 """
 
 from __future__ import annotations
@@ -70,20 +69,29 @@ def evaluate_smoke_success(events: Iterable[object], run_status: str | None = No
 
 def main() -> int:
     # ── 0. Pre-flight checks ────────────────────────────────────────
+    from scripts.real_test_llm import TEST_LLM_BASE_URL, TEST_LLM_DISPLAY_NAME, TEST_LLM_MODEL, get_test_llm_api_key
+
+    api_key = get_test_llm_api_key()
+    os.environ["RD_AGENT_LLM_PROVIDER"] = "litellm"
+    os.environ["RD_AGENT_LLM_MODEL"] = TEST_LLM_MODEL
+    os.environ["RD_AGENT_LLM_BASE_URL"] = TEST_LLM_BASE_URL
+    if api_key:
+        os.environ["RD_AGENT_LLM_API_KEY"] = api_key
+
     provider = os.environ.get("RD_AGENT_LLM_PROVIDER", "mock")
-    model = os.environ.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini")
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    model = os.environ.get("RD_AGENT_LLM_MODEL", TEST_LLM_MODEL)
 
     print("=" * 72)
-    print("  E2E Gemini Test — synthetic_research scenario")
+    print("  E2E Kimi Test — synthetic_research scenario")
     print(f"  Provider : {provider}")
     print(f"  Model    : {model}")
-    print(f"  API Key  : {'set (' + gemini_key[:10] + '...)' if gemini_key else 'NOT SET'}")
+    print(f"  API Key  : {'set (' + api_key[:10] + '...)' if api_key else 'NOT SET'}")
+    print(f"  Backend  : {TEST_LLM_DISPLAY_NAME}")
     print("=" * 72)
 
-    if provider != "litellm":
-        print("\n⚠️  RD_AGENT_LLM_PROVIDER is not 'litellm'. Set it to run with real LLM.")
-        print("    Falling back to mock provider for demo.\n")
+    if not api_key:
+        print("\n❌ No OpenCode-compatible API key found. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.\n")
+        return 1
 
     # ── 1. Build runtime ─────────────────────────────────────────────
     from app.config import REAL_PROVIDER_SAFE_PROFILE

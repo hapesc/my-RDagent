@@ -24,6 +24,14 @@ _RETRYABLE_TRANSIENT_ERRORS: tuple[type[Exception], ...] = (
     LiteLLMAPIConnectionError,
     LiteLLMServiceUnavailableError,
 )
+_JSON_MODE_HINTS = (
+    "return json",
+    "valid json",
+    "json object",
+    "output json",
+    "respond in json",
+    "schema",
+)
 
 
 class LiteLLMProvider:
@@ -79,7 +87,7 @@ class LiteLLMProvider:
 
         # Force JSON output mode for structured output prompts.
         # This makes Gemini Thinking models put results in content (not only reasoning_content).
-        if "json" in prompt.lower() or "JSON" in prompt:
+        if self._should_force_json_mode(prompt):
             kwargs["response_format"] = {"type": "json_object"}
 
         # Disable streaming for structured output to avoid truncation bugs
@@ -132,3 +140,8 @@ class LiteLLMProvider:
             )
 
         return content
+
+    @staticmethod
+    def _should_force_json_mode(prompt: str) -> bool:
+        prompt_lower = prompt.lower()
+        return any(hint in prompt_lower for hint in _JSON_MODE_HINTS)

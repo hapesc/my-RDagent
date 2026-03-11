@@ -101,6 +101,35 @@ class LiteLLMProviderTests(unittest.TestCase):
         )
 
     @patch("litellm.completion")
+    def test_complete_does_not_force_json_mode_for_mixed_json_and_code_prompt(self, mock_completion) -> None:
+        from llm.providers.litellm_provider import LiteLLMProvider
+
+        mock_completion.return_value = _mock_response("mixed output")
+        provider = LiteLLMProvider(api_key="sk-test", model="gpt-4o-mini")
+        prompt = (
+            'Return EXACTLY two sections:\\n'
+            '{"artifact_id":"factor_v1","description":"desc","location":"factor.py"}\\n'
+            '```python\\nprint(\"hi\")\\n```'
+        )
+
+        provider.complete(prompt)
+
+        kwargs = mock_completion.call_args.kwargs
+        self.assertNotIn("response_format", kwargs)
+
+    @patch("litellm.completion")
+    def test_complete_does_not_force_json_mode_for_filename_mentions(self, mock_completion) -> None:
+        from llm.providers.litellm_provider import LiteLLMProvider
+
+        mock_completion.return_value = _mock_response("script")
+        provider = LiteLLMProvider(api_key="sk-test", model="gpt-4o-mini")
+
+        provider.complete("Write a script that saves metrics.json after training.")
+
+        kwargs = mock_completion.call_args.kwargs
+        self.assertNotIn("response_format", kwargs)
+
+    @patch("litellm.completion")
     def test_complete_uses_deterministic_thinking_timeout(self, mock_completion) -> None:
         from llm.providers.litellm_provider import LiteLLMProvider
 

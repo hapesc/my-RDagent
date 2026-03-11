@@ -5,6 +5,8 @@ import os
 import uuid
 from typing import Any
 
+from .few_shot import FewShotExample, get_few_shot_examples, register_examples
+
 logger = logging.getLogger(__name__)
 
 CODE_SOURCE_LLM = "llm"
@@ -81,5 +83,8 @@ __all__ = [
     "CODE_SOURCE_REJECTED_PLACEHOLDER",
     "CODE_SOURCE_REJECTED_SAFETY",
     "CODE_SOURCE_TEMPLATE",
+    "FewShotExample",
     "emit_code_source_event",
+    "get_few_shot_examples",
+    "register_examples",
 ]

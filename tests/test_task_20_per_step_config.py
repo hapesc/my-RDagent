@@ -124,7 +124,7 @@ class Task20PerStepConfigTests(unittest.TestCase):
         feedback_event = next(item for item in trace_payload["events"] if item["step_name"] == "feedback")
 
         self.assertIn("model:proposal-override", proposal_event["payload"]["constraints"])
-        self.assertIn("coding-override", coding_event["payload"]["description"])
+        self.assertEqual(coding_event["payload"]["model_config"]["model"], "coding-override")
         self.assertEqual(running_event["payload"]["timeout_sec"], 1)
         self.assertIn("model=feedback-override", feedback_event["payload"]["reason"])
         self.assertEqual(trace_payload["run"]["config_snapshot"]["step_overrides"]["running"]["timeout_sec"], 1)

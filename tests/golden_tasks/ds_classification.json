@@ -1,0 +1,13 @@
+{
+  "task_id": "ds_classification",
+  "scenario": "data_science",
+  "task_summary": "Build a classification pipeline for the iris dataset. Load the data, split into train/test, train a Random Forest classifier, and output accuracy and F1 score to metrics.json.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "no_placeholder": true,
+    "contains_all_keywords": ["metrics.json", "accuracy"],
+    "contains_any_keyword": ["RandomForest", "sklearn", "train_test_split", "fit"]
+  },
+  "difficulty": "easy"
+}

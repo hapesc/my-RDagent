@@ -31,6 +31,7 @@ from llm import (
     proposal_prompt,
 )
 from llm.codegen import CODE_SOURCE_LLM, emit_code_source_event
+from llm.codegen.quality_gate import CodegenQualityGate, QualityResult, ScenarioQualityConfig, TextQualityConfig
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -47,6 +48,26 @@ from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverri
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
     from core.reasoning.virtual_eval import VirtualEvaluator
+
+
+def evaluate_synthetic_quality(output: str) -> QualityResult:
+    result = CodegenQualityGate(
+        "synthetic_research",
+        extra_config=ScenarioQualityConfig(
+            artifact_type="structured_text",
+            text_config=TextQualityConfig(min_length_chars=40),
+        ),
+    ).evaluate(output)
+    prioritized = sorted(
+        result.reasons,
+        key=lambda reason: 0 if "restates" in reason.lower() or "findings" in reason.lower() else 1,
+    )
+    return QualityResult(
+        passed=result.passed,
+        reasons=prioritized,
+        extracted_code=result.extracted_code,
+        metadata=result.metadata,
+    )
 
 
 def default_synthetic_research_step_overrides(timeout_sec: int = 300) -> StepOverrideConfig:
@@ -320,6 +341,12 @@ class SyntheticResearchCoder(Coder):
                         "proposal rationale, reviewer feedback context, and actionable next-step insights so "
                         "downstream CoSTEER analysis can reason over rich natural-language evidence."
                     )
+
+                # --- Single-round quality gate (supplementary, non-blocking) ---
+                quality_result = evaluate_synthetic_quality(structured_description)
+                if not quality_result.passed:
+                    # Log but do NOT fail — synthetic_research is text-first
+                    pass
 
                 artifact_id = draft.artifact_id
                 artifact_description = structured_description

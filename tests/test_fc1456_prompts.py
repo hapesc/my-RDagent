@@ -1,6 +1,6 @@
-"""Tests for planning_strategy_prompt and hypothesis_modification_prompt functions."""
+"""Tests for planning_strategy_prompt, hypothesis_modification_prompt, and coding_prompt."""
 
-from llm.prompts import hypothesis_modification_prompt, planning_strategy_prompt
+from llm.prompts import coding_prompt, hypothesis_modification_prompt, planning_strategy_prompt
 
 
 class TestPlanningStrategyPrompt:
@@ -129,3 +129,100 @@ class TestHypothesisModificationPrompt:
         assert hyp in result
         assert task in result
         assert scenario in result
+
+
+class TestCodingPrompt:
+    def test_coding_prompt_includes_few_shot_when_available(self):
+        prompt = coding_prompt(
+            proposal_summary="classify iris dataset",
+            constraints=["overfitting risk"],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "## Example" in prompt or "## Reference Implementation" in prompt
+
+    def test_coding_prompt_includes_output_format_spec(self):
+        prompt = coding_prompt(
+            proposal_summary="test",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "metrics.json" in prompt or "output format" in prompt.lower()
+
+    def test_coding_prompt_includes_no_placeholder_instruction(self):
+        prompt = coding_prompt(
+            proposal_summary="test",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "placeholder" in prompt.lower() or "template" in prompt.lower()
+
+    def test_coding_prompt_includes_constraint_block(self):
+        prompt = coding_prompt(
+            proposal_summary="test",
+            constraints=["no file I/O"],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="quant",
+        )
+        assert "no file I/O" in prompt
+
+    def test_coding_prompt_requires_raw_artifact_output(self):
+        prompt = coding_prompt(
+            proposal_summary="build a pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "return only one fenced python code block" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
+
+    def test_coding_prompt_requires_exact_synthetic_sections(self):
+        prompt = coding_prompt(
+            proposal_summary="compare optimizers",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="synthetic_research",
+        )
+        assert "## Findings" in prompt
+        assert "## Methodology" in prompt
+        assert "## Conclusion" in prompt
+
+    def test_coding_prompt_discourages_json_wrapper_for_data_science(self):
+        prompt = coding_prompt(
+            proposal_summary="build a regression pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert "return only one fenced python code block" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
+
+    def test_coding_prompt_discourages_json_wrapper_for_synthetic_report(self):
+        prompt = coding_prompt(
+            proposal_summary="analyze temperature trends",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="synthetic_research",
+        )
+        assert "return only markdown" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
+
+    def test_coding_prompt_stays_compact_enough_for_single_round_codegen(self):
+        prompt = coding_prompt(
+            proposal_summary="build a feature engineering pipeline",
+            constraints=[],
+            experiment_node_id="node-1",
+            workspace_ref="/tmp/ws",
+            scenario_name="data_science",
+        )
+        assert len(prompt) < 1800

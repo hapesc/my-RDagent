@@ -1,14 +1,15 @@
 """
-End-to-end data_science integration test: real LLM (gemini-2.5-pro), local execution enabled.
+End-to-end data_science integration test: OpenCode Kimi K2.5, local execution enabled.
 走完整 loop engine 一次循环。
 
 用法:
-    export GEMINI_API_KEY=<your_key>
+    export OPENCODE_API=<your_key>
     python scripts/run_data_science_e2e.py
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -26,7 +27,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # 配置
 # --------------------------------------------------------------------------- #
 TASK_SUMMARY = "classify a small synthetic dataset"
-MAX_LOOPS = 1  # 一次完整循环 (propose → code → run → feedback)
 
 # --------------------------------------------------------------------------- #
 # 日志
@@ -39,29 +39,44 @@ logging.basicConfig(
 log = logging.getLogger("data_science_e2e")
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Data Science E2E Integration Test: OpenCode Kimi K2.5, local execution enabled."
+    )
+    parser.add_argument(
+        "--max-loops",
+        type=int,
+        default=1,
+        help="Number of loop iterations (default: 1)",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not gemini_api_key:
-        log.error("GEMINI_API_KEY is not set. Export it before running this script.")
+    args = parse_args()
+    max_loops = args.max_loops
+
+    from scripts.real_test_llm import TEST_LLM_DISPLAY_NAME, build_test_llm_provider, get_test_llm_api_key
+
+    api_key = get_test_llm_api_key()
+    if not api_key:
+        log.error("No OpenCode-compatible API key is set. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.")
         sys.exit(1)
 
     log.info("=== Data Science E2E Integration Test ===")
     log.info("Task      : %s", TASK_SUMMARY)
-    log.info("Model     : gemini/gemini-2.5-pro")
-    log.info("Max loops : %d", MAX_LOOPS)
+    log.info("Model     : %s", TEST_LLM_DISPLAY_NAME)
+    log.info("Max loops : %d", max_loops)
     print()
 
     # ---------------------------------------------------------------------- #
     # 1. 构建 LLM adapter
     # ---------------------------------------------------------------------- #
     from llm import LLMAdapter, LLMAdapterConfig
-    from llm.providers.litellm_provider import LiteLLMProvider
 
-    log.info("[1/4] Building LLM adapter (gemini-2.5-pro)...")
-    provider = LiteLLMProvider(
-        api_key=gemini_api_key,
-        model="gemini/gemini-2.5-pro",
-    )
+    log.info("[1/4] Building LLM adapter (%s)...", TEST_LLM_DISPLAY_NAME)
+    provider = build_test_llm_provider(api_key)
     llm_adapter = LLMAdapter(
         provider=provider,
         config=LLMAdapterConfig(max_retries=2),
@@ -208,7 +223,7 @@ def main() -> None:
         scenario="data_science",
         entry_input={
             "task_summary": TASK_SUMMARY,
-            "max_loops": MAX_LOOPS,
+            "max_loops": max_loops,
         },
     )
     log.info("      Run session created: %s (status=%s)", session.run_id, session.status)
@@ -217,10 +232,12 @@ def main() -> None:
         loop_ctx = run_service.start_run(
             run_id=run_id,
             task_summary=TASK_SUMMARY,
-            loops_per_call=MAX_LOOPS,
+            loops_per_call=max_loops,
         )
     except RuntimeError as exc:
         log.error("Run failed: %s", exc)
+        summary = {"scenario": "data_science", "passed": False, "iterations": 0, "artifact_path": ""}
+        print(json.dumps(summary))
         sys.exit(1)
 
     print()
@@ -258,7 +275,16 @@ def main() -> None:
     print()
     log.info("Workspace : %s", workspace_root)
     log.info("SQLite    : %s", sqlite_path)
+
+    summary = {
+        "scenario": "data_science",
+        "passed": True,
+        "iterations": loop_ctx.loop_state.iteration if loop_ctx.loop_state else 0,
+        "artifact_path": str(workspace_path),
+    }
+    print(json.dumps(summary))
     log.info("Done.")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

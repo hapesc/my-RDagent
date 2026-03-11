@@ -15,11 +15,15 @@ from plugins.contracts import ScenarioContext
 from scenarios.data_science.plugin import DataScienceCoder
 from scenarios.quant.plugin import QuantCoder
 from scenarios.synthetic_research.plugin import SyntheticResearchCoder
+from scripts.real_test_llm import (
+    TEST_LLM_MODEL,
+    build_test_llm_provider,
+)
 from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverrideConfig
 
-GEMINI_MODEL = "gemini/gemini-2.5-pro"
+_OPENCODE_KEY = os.environ.get("OPENCODE_API", "").strip() or os.environ.get("OPENCODE_API_KEY", "").strip()
 
-pytestmark = pytest.mark.skipif(not os.environ.get("GEMINI_API_KEY"), reason="GEMINI_API_KEY not set")
+pytestmark = pytest.mark.skipif(not _OPENCODE_KEY, reason="OPENCODE_API / OPENCODE_API_KEY not set")
 
 
 class _SanitizingLiteLLMProvider:
@@ -64,28 +68,19 @@ class _SanitizingLiteLLMProvider:
 
 
 def _build_real_adapter() -> LLMAdapter:
-    gemini_key = os.environ["GEMINI_API_KEY"]
-    for proxy_key in (
-        "ALL_PROXY",
-        "all_proxy",
-        "HTTP_PROXY",
-        "http_proxy",
-        "HTTPS_PROXY",
-        "https_proxy",
-    ):
-        os.environ.pop(proxy_key, None)
+    api_key = _OPENCODE_KEY
     os.environ["RD_AGENT_LLM_PROVIDER"] = "litellm"
-    os.environ["RD_AGENT_LLM_MODEL"] = GEMINI_MODEL
-    os.environ["RD_AGENT_LLM_API_KEY"] = gemini_key
-    provider = LiteLLMProvider(api_key=gemini_key, model=GEMINI_MODEL)
+    os.environ["RD_AGENT_LLM_MODEL"] = TEST_LLM_MODEL
+    os.environ["RD_AGENT_LLM_API_KEY"] = api_key
+    provider = build_test_llm_provider(api_key)
     return LLMAdapter(provider=_SanitizingLiteLLMProvider(provider), config=LLMAdapterConfig(max_retries=2))
 
 
 def _step_config() -> StepOverrideConfig:
-    model_cfg = ModelSelectorConfig(provider="litellm", model=GEMINI_MODEL, max_retries=2)
+    model_cfg = ModelSelectorConfig(provider="litellm", model=TEST_LLM_MODEL, max_retries=2)
     return StepOverrideConfig(
         proposal=model_cfg,
-        coding=ModelSelectorConfig(provider="litellm", model=GEMINI_MODEL, max_retries=2, max_tokens=4096),
+        coding=ModelSelectorConfig(provider="litellm", model=TEST_LLM_MODEL, max_retries=2, max_tokens=4096),
         running=RunningStepConfig(timeout_sec=120),
         feedback=model_cfg,
     )

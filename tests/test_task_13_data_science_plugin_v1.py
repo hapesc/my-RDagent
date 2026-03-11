@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutor
@@ -14,10 +15,12 @@ from core.storage import CheckpointStoreConfig, FileCheckpointStore, SQLiteMetad
 from data_models import EventType, ExecutionResult, LoopState, Proposal, RunSession, RunStatus, StopConditions
 from evaluation_service import EvaluationService, EvaluationServiceConfig
 from exploration_manager import ExplorationManager, ExplorationManagerConfig
+from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from memory_service import MemoryService, MemoryServiceConfig
 from planner import Planner, PlannerConfig
 from plugins.contracts import CommonUsefulnessGate, ScenarioContext
 from scenarios.data_science import DataScienceV1Config, build_data_science_v1_bundle
+from scenarios.data_science.plugin import DataScienceCoder
 from tests._llm_test_utils import make_mock_llm_adapter
 
 
@@ -40,6 +43,22 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
             writer.writeheader()
             writer.writerows(rows)
+
+    def _experiment(self, workspace: Path):
+        return build_data_science_v1_bundle(
+            DataScienceV1Config(
+                workspace_root=str(workspace.parent),
+                trace_storage_path=str(workspace.parent / "trace.jsonl"),
+                prefer_docker=False,
+                allow_local_execution=True,
+            ),
+            llm_adapter=make_mock_llm_adapter(),
+        ).experiment_generator.generate(
+            Proposal(proposal_id="p-1", summary="classify iris data", constraints=["no file I/O"]),
+            RunSession(run_id="run-task-13", scenario="data_science", status=RunStatus.RUNNING),
+            LoopState(loop_id="loop-1", iteration=0, status=RunStatus.RUNNING),
+            [],
+        )
 
     def test_real_input_one_round_e2e_and_persisted(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -186,6 +205,106 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             fork_node = bundle.experiment_generator.generate(proposal, fork_run, loop_state, [])
 
             self.assertNotEqual(main_node.node_id, fork_node.node_id)
+
+    def test_coder_uses_enhanced_prompt_with_few_shot(self) -> None:
+        class PromptCapturingProvider:
+            def __init__(self) -> None:
+                self.prompts: list[str] = []
+
+            def complete(self, prompt: str, model_config=None) -> str:
+                self.prompts.append(prompt)
+                return (
+                    '{"artifact_id":"artifact-llm","description":"pipeline","location":"/tmp/ws"}\n'
+                    "```python\n"
+                    "import json\n"
+                    "from pathlib import Path\n"
+                    "metrics = {'accuracy': 0.9}\n"
+                    "Path('metrics.json').write_text(json.dumps(metrics), encoding='utf-8')\n"
+                    "```\n"
+                )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            provider = PromptCapturingProvider()
+            adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=0))
+            coder = DataScienceCoder(llm_adapter=adapter)
+            workspace = Path(tmpdir) / "plugin_workspace" / "run-task-13" / "node-run-task-13-main-0"
+            experiment = self._experiment(workspace)
+            scenario = self._scenario_context()
+
+            coder.develop(experiment, Proposal(proposal_id="p", summary="classify iris data", constraints=[]), scenario)
+
+            self.assertTrue(provider.prompts)
+            self.assertIn("## Reference Implementation", provider.prompts[0])
+
+    def test_coder_rejects_placeholder_output_from_llm(self) -> None:
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"placeholder","location":"/tmp/ws"}\n'
+            "```python\n# TODO: implement pipeline\npass\n```\n"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            coder = DataScienceCoder(llm_adapter=adapter)
+            experiment = self._experiment(Path(tmpdir) / "workspace")
+            with self.assertRaises(RuntimeError):
+                coder.develop(
+                    experiment, Proposal(proposal_id="p", summary="task", constraints=[]), self._scenario_context()
+                )
+
+    def test_coder_extracts_real_code_from_llm_response(self) -> None:
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"real pipeline","location":"/tmp/ws"}\n'
+            "```python\n"
+            "import json\n"
+            "from pathlib import Path\n"
+            "metrics = {'accuracy': 0.91}\n"
+            "Path('metrics.json').write_text(json.dumps(metrics), encoding='utf-8')\n"
+            "```\n"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            coder = DataScienceCoder(llm_adapter=adapter)
+            experiment = self._experiment(Path(tmpdir) / "workspace")
+            artifact = coder.develop(
+                experiment,
+                Proposal(proposal_id="p", summary="task", constraints=[]),
+                self._scenario_context(),
+            )
+            pipeline_text = (Path(artifact.location) / "pipeline.py").read_text(encoding="utf-8")
+            self.assertIn("metrics.json", pipeline_text)
+            self.assertNotIn("row_count = 0", pipeline_text)
+
+    def test_coder_runs_validation_pipeline_before_returning(self) -> None:
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"real pipeline","location":"/tmp/ws"}\n'
+            "```python\ndef build_pipeline():\n    return 1\n```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            coder = DataScienceCoder(llm_adapter=adapter)
+            experiment = self._experiment(Path(tmpdir) / "workspace")
+            with (
+                patch("scenarios.data_science.plugin.validate_compile") as mock_compile,
+                patch("scenarios.data_science.plugin.detect_placeholders") as mock_placeholders,
+                patch("scenarios.data_science.plugin.validate_content") as mock_content,
+            ):
+                from llm.codegen.validators import ValidationResult
+
+                mock_compile.return_value = ValidationResult(valid=True, errors=[])
+                mock_placeholders.return_value = ValidationResult(valid=True, errors=[])
+                mock_content.return_value = ValidationResult(valid=True, errors=[])
+
+                coder.develop(
+                    experiment,
+                    Proposal(proposal_id="p", summary="task", constraints=[]),
+                    self._scenario_context(),
+                )
+
+                mock_compile.assert_called_once()
+                mock_placeholders.assert_called_once()
+                mock_content.assert_called_once()
 
 
 if __name__ == "__main__":

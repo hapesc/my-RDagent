@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 
+from llm.codegen import get_few_shot_examples
 from llm.schemas import ExperimentDesign, HypothesisModification, PlanningStrategy
 
 
@@ -161,6 +162,9 @@ def coding_prompt(
     normalized_workspace = workspace_ref or workspace or "/tmp/rd_agent_workspace"
     normalized_scenario = scenario_name or scenario_type or "unknown"
     constraints_block = "\n".join(f"  - {c}" for c in constraints_list) if constraints_list else "  (none)"
+    scenario_instructions = _coding_scenario_instructions(scenario_name)
+    few_shot_block = _render_few_shot_examples(scenario_name)
+    output_contract = _coding_output_contract(scenario_name)
 
     base_prompt = (
         f"You are a research engineer translating a proposal into an executable experiment design.\n"
@@ -176,10 +180,23 @@ def coding_prompt(
         f"- Node ID: {normalized_node_id}\n"
         f"- Workspace: {normalized_workspace}\n"
         f"\n"
+        f"## Implementation Rules\n"
+        f"- Do not return placeholder, template, TODO, or stub content.\n"
+        f"- Be concrete about the exact artifact content and output format.\n"
+        f"- Honor the scenario-specific contract below.\n"
+        f"\n"
+        f"{scenario_instructions}"
+        f"\n"
+        f"{few_shot_block}"
+        f"\n"
+        f"{output_contract}"
+        f"\n"
         f"## Output Fields\n"
         f"- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).\n"
-        f"- `description`: 2-3 sentences covering: (1) what runs, (2) what it measures, "
-        f"(3) what output files are produced.\n"
+        f"- `artifact`: the complete artifact body. For code scenarios, this must be the full runnable code. "
+        f"For structured-text scenarios, this must be the full report markdown.\n"
+        f"- `description`: describe the concrete artifact to produce, including what runs, what it measures, "
+        f"and what output format or files are produced.\n"
         f"- `location`: Use the workspace path provided above.\n"
     )
 
@@ -225,6 +242,76 @@ def coding_prompt(
         )
 
     return base_prompt
+
+
+def _coding_scenario_instructions(scenario_name: str) -> str:
+    scenario_specs = {
+        "data_science": (
+            "## Scenario Contract\n"
+            "- Produce one runnable Python pipeline.\n"
+            "- The code must write real evaluation metrics to `metrics.json`.\n"
+            "- Keep it concise: no narrative comments, no demo dataset unless required.\n"
+            "- Avoid placeholders, fake metrics, and generic boilerplate.\n"
+        ),
+        "quant": (
+            "## Scenario Contract\n"
+            "- Produce one factor implementation centered on `compute_factor(df)`.\n"
+            "- Respect forbidden imports, no file I/O, and no network access.\n"
+            "- Return exactly `date`, `stock_id`, and `factor_value`.\n"
+        ),
+        "synthetic_research": (
+            "## Scenario Contract\n"
+            "- Produce one markdown report.\n"
+            "- Use the exact headings `## Findings`, `## Methodology`, and `## Conclusion`.\n"
+            "- Under `## Findings`, use numbered items with quantitative evidence.\n"
+            "- Avoid placeholder prose or task restatement.\n"
+        ),
+    }
+    return scenario_specs.get(
+        scenario_name,
+        "## Scenario Contract\n- Produce a concrete artifact with no placeholder or template content.\n",
+    )
+
+
+def _render_few_shot_examples(scenario_name: str) -> str:
+    examples = get_few_shot_examples(scenario_name)
+    if not examples:
+        return "## Reference Implementation\nNo curated examples are available for this scenario."
+
+    rendered_examples: list[str] = ["## Reference Implementation"]
+    for index, example in enumerate(examples[:1], start=1):
+        rendered_examples.extend(
+            [
+                f"### Example {index}",
+                f"Task: {example['task']}",
+                f"Pattern: {example.get('explanation', '').strip()}",
+            ]
+        )
+    return "\n".join(rendered_examples) + "\n"
+
+
+def _coding_output_contract(scenario_name: str) -> str:
+    contracts = {
+        "data_science": (
+            "## Output Format\n"
+            "- Return only one fenced python code block.\n"
+            "- No JSON wrapper.\n"
+            "- The code block must be complete and runnable.\n"
+        ),
+        "quant": (
+            "## Output Format\n"
+            "- Return only one fenced python code block.\n"
+            "- No JSON wrapper.\n"
+            "- The code block must define `compute_factor(df)`.\n"
+        ),
+        "synthetic_research": (
+            "## Output Format\n- Return only markdown.\n- No JSON wrapper.\n- No fenced code block around the report.\n"
+        ),
+    }
+    return contracts.get(
+        scenario_name,
+        "## Output Format\n- Return only the requested artifact with no wrapper text.\n",
+    )
 
 
 def feedback_prompt(

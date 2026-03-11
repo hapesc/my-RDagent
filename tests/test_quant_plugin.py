@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -27,6 +28,7 @@ from scenarios.quant.plugin import (
     _validate_quant_usefulness,
     build_quant_bundle,
 )
+from scenarios.quant.prompts import FACTOR_CODE_SYSTEM_PROMPT, FACTOR_CODE_USER_TEMPLATE
 
 
 @pytest.fixture
@@ -82,6 +84,33 @@ class TestQuantScenarioPlugin:
         assert ctx.task_summary == "mine alpha factors"
 
 
+class TestQuantPrompts:
+    def test_factor_code_system_prompt_mentions_lookahead_and_self_check(self):
+        assert ".shift(-n)" in FACTOR_CODE_SYSTEM_PROMPT
+        assert "SELF-CHECK before returning" in FACTOR_CODE_SYSTEM_PROMPT
+        assert "date, stock_id, factor_value" in FACTOR_CODE_SYSTEM_PROMPT
+
+    def test_factor_code_user_template_contains_second_reference_pattern(self):
+        assert "pct_change(5)" in FACTOR_CODE_USER_TEMPLATE
+        assert "rolling(20).std()" in FACTOR_CODE_USER_TEMPLATE
+
+    def test_factor_code_user_template_requires_raw_code_output(self):
+        assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
+
+    def test_factor_code_system_prompt_requires_concise_output(self):
+        assert (
+            "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
+        )
+
+    def test_factor_code_user_template_discourages_json_only_output(self):
+        assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
+        assert "no json wrapper" in FACTOR_CODE_USER_TEMPLATE.lower()
+
+    def test_factor_code_prompt_stays_compact_enough_for_single_round_codegen(self):
+        prompt = FACTOR_CODE_SYSTEM_PROMPT + FACTOR_CODE_USER_TEMPLATE
+        assert len(prompt) < 2600
+
+
 class TestQuantExperimentGenerator:
     def test_generate_returns_experiment_node(self, proposal, run_session, loop_state, tmp_workspace):
         gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
@@ -127,6 +156,88 @@ class TestQuantCoder:
         artifact = coder.develop(node, proposal, scenario_ctx)
         assert isinstance(artifact, CodeArtifact)
         assert artifact.location
+
+    def test_develop_falls_back_on_placeholder_output_from_llm(self, proposal, scenario_ctx, tmp_workspace):
+        """Placeholder LLM output triggers graceful degradation to default factor code."""
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"placeholder","location":"factor.py"}\n'
+            "```python\n# TODO: implement factor\npass\n```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-003", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r3", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        artifact = coder.develop(node, proposal, scenario_ctx)
+        factor_text = (Path(artifact.location) / "factor.py").read_text(encoding="utf-8")
+        assert "pct_change(20)" in factor_text
+        assert node.hypothesis.get("_code_source") == "failed"
+
+    def test_develop_extracts_real_code_from_llm_response(self, proposal, scenario_ctx, tmp_workspace):
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"momentum factor","location":"factor.py"}\n'
+            "```python\n"
+            "import pandas as pd\n"
+            "def compute_factor(df):\n"
+            "    result = df[['date', 'stock_id']].copy()\n"
+            "    result['factor_value'] = df.groupby('stock_id')['close'].pct_change(5)\n"
+            "    return result[['date', 'stock_id', 'factor_value']]\n"
+            "```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-004", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r4", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        artifact = coder.develop(node, proposal, scenario_ctx)
+        factor_text = (Path(artifact.location) / "factor.py").read_text(encoding="utf-8")
+        assert "pct_change(5)" in factor_text
+        assert "pct_change(20)" not in factor_text
+
+    def test_develop_runs_validation_pipeline_before_returning(self, proposal, scenario_ctx, tmp_workspace):
+        raw = (
+            '{"artifact_id":"artifact-llm","description":"momentum factor","location":"factor.py"}\n'
+            "```python\nimport pandas as pd\ndef compute_factor(df):\n    return df\n```"
+        )
+        adapter = LLMAdapter(provider=MockLLMProvider(responses=[raw]), config=LLMAdapterConfig(max_retries=0))
+        coder = QuantCoder(llm_adapter=adapter)
+        gen = QuantExperimentGenerator(workspace_root=str(tmp_workspace))
+        loop_state = LoopState(loop_id="loop-005", iteration=0)
+        node = gen.generate(
+            proposal,
+            RunSession(run_id="r5", scenario="quant", status=RunStatus.RUNNING),
+            loop_state,
+            [],
+        )
+
+        with (
+            patch("scenarios.quant.plugin.validate_compile") as mock_compile,
+            patch("scenarios.quant.plugin.detect_placeholders") as mock_placeholders,
+            patch("scenarios.quant.plugin.validate_content") as mock_content,
+        ):
+            from llm.codegen.validators import ValidationResult
+
+            mock_compile.return_value = ValidationResult(valid=True, errors=[])
+            mock_placeholders.return_value = ValidationResult(valid=True, errors=[])
+            mock_content.return_value = ValidationResult(valid=True, errors=[])
+
+            coder.develop(node, proposal, scenario_ctx)
+
+            mock_compile.assert_called_once()
+            mock_placeholders.assert_called_once()
+            mock_content.assert_called_once()
 
 
 class TestQuantRunner:

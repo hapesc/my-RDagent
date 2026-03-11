@@ -29,13 +29,21 @@ from llm import (
     CodeDraft,
     FeedbackDraft,
     LLMAdapter,
+    MockLLMProvider,
     ProposalDraft,
     coding_prompt,
     feedback_prompt,
     proposal_prompt,
 )
 from llm.codegen import CODE_SOURCE_FAILED, CODE_SOURCE_LLM, CODE_SOURCE_TEMPLATE, emit_code_source_event
-from llm.codegen.validators import detect_placeholders, validate_compile, validate_content
+from llm.codegen.quality_gate import CodegenQualityGate, QualityResult
+from llm.codegen.validators import (
+    compile_check,
+    detect_placeholders,
+    has_placeholder,
+    validate_compile,
+    validate_content,
+)
 from plugins.contracts import (
     Coder,
     ExperimentGenerator,
@@ -52,6 +60,28 @@ from service_contracts import ModelSelectorConfig, RunningStepConfig, StepOverri
 if TYPE_CHECKING:
     from core.reasoning.pipeline import ReasoningPipeline
     from core.reasoning.virtual_eval import VirtualEvaluator
+
+
+_EXPERIMENT_METRICS = {"accuracy", "f1", "precision", "recall", "rmse", "mae", "r2", "auc", "log_loss"}
+
+
+def evaluate_data_science_quality(code: str, metrics: dict[str, object]) -> QualityResult:
+    reasons: list[str] = []
+    if has_placeholder(code):
+        reasons.append("placeholder code detected")
+    if not compile_check(code):
+        reasons.append("code does not compile")
+
+    metric_keys = {str(key).lower() for key in metrics}
+    has_experiment_metric = any(
+        metric == key or key.startswith(f"{metric}_") or key.endswith(f"_{metric}")
+        for metric in _EXPERIMENT_METRICS
+        for key in metric_keys
+    )
+    if not has_experiment_metric:
+        reasons.append("missing experiment metric (need one of: accuracy, f1, rmse, etc.)")
+
+    return QualityResult(passed=not reasons, reasons=reasons, extracted_code=code, metadata=metrics)
 
 
 def _clamp_sample_fraction(value: float) -> float:
@@ -212,7 +242,7 @@ def _load_validate_code_safety_func() -> Any:
 
 def _is_mock_llm_adapter(adapter: LLMAdapter) -> bool:
     provider = getattr(adapter, "_provider", None)
-    return provider is not None and provider.__class__.__name__ == "MockLLMProvider"
+    return provider is not None and isinstance(provider, MockLLMProvider)
 
 
 def _should_allow_metrics_open_write(safety_violations: list[str], code: str) -> list[str]:
@@ -457,6 +487,8 @@ class DataScienceCoder(Coder):
                 raise RuntimeError("data_science code generation returned empty code")
 
             generated_code = _ensure_data_source_binding(generated_code, data_source)
+
+            # --- PR #12 CoSTEER validation pipeline ---
             compile_result = validate_compile(generated_code)
             safety_result = validate_code_safety(generated_code)
             placeholder_result = detect_placeholders(generated_code)
@@ -478,6 +510,7 @@ class DataScienceCoder(Coder):
                 raise RuntimeError(f"data_science code validation failed: {'; '.join(errors)}")
 
             artifact_id = code_draft.artifact_id
+
             pipeline_script = generated_code
             (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")
             _emit_ds_code_source(CODE_SOURCE_LLM, experiment)

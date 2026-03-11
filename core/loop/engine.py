@@ -205,6 +205,7 @@ class LoopEngine:
                 branches_per_iteration = self._effective_branches_per_iteration(run_session)
                 successful_branches = 0
                 failed_branches = 0
+                skipped_branches = 0
                 successful_step_results = []
                 branch_nodes = []
 
@@ -231,6 +232,7 @@ class LoopEngine:
                         )
                     except SkipIterationError as exc:
                         failed_branches += 1
+                        skipped_branches += 1
                         self._archive_exception(run_session.run_id, loop_state.iteration, exc)
                         continue
                     except Exception as exc:
@@ -294,7 +296,7 @@ class LoopEngine:
                             decision=useful_decision,
                         )
 
-                if failed_branches > 0 and successful_branches == 0:
+                if failed_branches > 0 and successful_branches == 0 and skipped_branches < failed_branches:
                     self._mark_iteration_failed(
                         run_session=run_session,
                         loop_state=loop_state,

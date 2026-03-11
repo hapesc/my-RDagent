@@ -246,8 +246,10 @@ class DataSciencePluginV1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             coder = DataScienceCoder(llm_adapter=adapter)
             experiment = self._experiment(Path(tmpdir) / "workspace")
-            with self.assertRaises(ValueError):
-                coder.develop(experiment, Proposal(proposal_id="p", summary="task", constraints=[]), self._scenario_context())
+            with self.assertRaises(RuntimeError):
+                coder.develop(
+                    experiment, Proposal(proposal_id="p", summary="task", constraints=[]), self._scenario_context()
+                )
 
     def test_coder_extracts_real_code_from_llm_response(self) -> None:
         raw = (
@@ -273,7 +275,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
             self.assertIn("metrics.json", pipeline_text)
             self.assertNotIn("row_count = 0", pipeline_text)
 
-    def test_coder_runs_quality_gate_before_returning(self) -> None:
+    def test_coder_runs_validation_pipeline_before_returning(self) -> None:
         raw = (
             '{"artifact_id":"artifact-llm","description":"real pipeline","location":"/tmp/ws"}\n'
             "```python\ndef build_pipeline():\n    return 1\n```"
@@ -283,21 +285,26 @@ class DataSciencePluginV1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             coder = DataScienceCoder(llm_adapter=adapter)
             experiment = self._experiment(Path(tmpdir) / "workspace")
-            with patch("scenarios.data_science.plugin.CodegenQualityGate.evaluate") as evaluate:
-                from llm.codegen.quality_gate import QualityResult
+            with (
+                patch("scenarios.data_science.plugin.validate_compile") as mock_compile,
+                patch("scenarios.data_science.plugin.detect_placeholders") as mock_placeholders,
+                patch("scenarios.data_science.plugin.validate_content") as mock_content,
+            ):
+                from llm.codegen.validators import ValidationResult
 
-                evaluate.return_value = QualityResult(
-                    passed=True,
-                    reasons=[],
-                    extracted_code="def build_pipeline():\n    return 1",
-                    metadata={"artifact_id": "artifact-llm", "description": "real pipeline", "location": "/tmp/ws"},
-                )
+                mock_compile.return_value = ValidationResult(valid=True, errors=[])
+                mock_placeholders.return_value = ValidationResult(valid=True, errors=[])
+                mock_content.return_value = ValidationResult(valid=True, errors=[])
+
                 coder.develop(
                     experiment,
                     Proposal(proposal_id="p", summary="task", constraints=[]),
                     self._scenario_context(),
                 )
-                evaluate.assert_called_once()
+
+                mock_compile.assert_called_once()
+                mock_placeholders.assert_called_once()
+                mock_content.assert_called_once()
 
 
 if __name__ == "__main__":

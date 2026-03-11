@@ -445,21 +445,6 @@ class QuantCoder(Coder):
                 )
                 return _DEFAULT_FACTOR_CODE
 
-            # --- Single-round quality gate (supplementary) ---
-            quality_result = CodegenQualityGate("quant").evaluate(candidate_code)
-            if not quality_result.passed:
-                if isinstance(experiment.hypothesis, dict):
-                    experiment.hypothesis["_code_source"] = CODE_SOURCE_FAILED
-                emit_code_source_event(
-                    CODE_SOURCE_FAILED,
-                    "quant",
-                    {
-                        **event_metadata,
-                        "errors": quality_result.reasons,
-                    },
-                )
-                return _DEFAULT_FACTOR_CODE
-
             if isinstance(experiment.hypothesis, dict):
                 experiment.hypothesis["_code_source"] = CODE_SOURCE_LLM
             emit_code_source_event(CODE_SOURCE_LLM, "quant", event_metadata)

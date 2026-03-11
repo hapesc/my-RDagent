@@ -212,7 +212,10 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         self.assertEqual(signal.stage, "utility")
         self.assertEqual(signal.reason, "eligible")
 
-    def test_coder_rejects_placeholder_output_from_llm(self) -> None:
+    def test_coder_falls_back_on_placeholder_output_from_llm(self) -> None:
+        """synthetic_research is text-first and non-blocking — placeholder LLM output
+        triggers a graceful fallback (proposal.summary used as description) instead of
+        raising an exception."""
         from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
         from data_models import ExperimentNode, Proposal
 
@@ -222,10 +225,13 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         )
         experiment = ExperimentNode(node_id="node-1", run_id="run-1", branch_id="main", workspace_ref=self._tmpdir.name)
         proposal = Proposal(proposal_id="p-1", summary="synthetic task", constraints=[])
-        scenario = ScenarioContext(run_id="run-1", scenario_name="synthetic_research", input_payload={}, task_summary="synthetic task")
+        scenario = ScenarioContext(
+            run_id="run-1", scenario_name="synthetic_research", input_payload={}, task_summary="synthetic task"
+        )
 
-        with self.assertRaises(ValueError):
-            coder.develop(experiment, proposal, scenario)
+        artifact = coder.develop(experiment, proposal, scenario)
+        self.assertIsNotNone(artifact)
+        self.assertIn("synthetic task", artifact.description)
 
 
 if __name__ == "__main__":

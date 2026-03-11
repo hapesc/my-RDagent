@@ -98,7 +98,9 @@ class TestQuantPrompts:
         assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
 
     def test_factor_code_system_prompt_requires_concise_output(self):
-        assert "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
+        assert (
+            "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
+        )
 
     def test_factor_code_user_template_discourages_json_only_output(self):
         assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
@@ -155,7 +157,8 @@ class TestQuantCoder:
         assert isinstance(artifact, CodeArtifact)
         assert artifact.location
 
-    def test_develop_rejects_placeholder_output_from_llm(self, proposal, scenario_ctx, tmp_workspace):
+    def test_develop_falls_back_on_placeholder_output_from_llm(self, proposal, scenario_ctx, tmp_workspace):
+        """Placeholder LLM output triggers graceful degradation to default factor code."""
         raw = (
             '{"artifact_id":"artifact-llm","description":"placeholder","location":"factor.py"}\n'
             "```python\n# TODO: implement factor\npass\n```"
@@ -171,8 +174,10 @@ class TestQuantCoder:
             [],
         )
 
-        with pytest.raises(ValueError):
-            coder.develop(node, proposal, scenario_ctx)
+        artifact = coder.develop(node, proposal, scenario_ctx)
+        factor_text = (Path(artifact.location) / "factor.py").read_text(encoding="utf-8")
+        assert "pct_change(20)" in factor_text
+        assert node.hypothesis.get("_code_source") == "failed"
 
     def test_develop_extracts_real_code_from_llm_response(self, proposal, scenario_ctx, tmp_workspace):
         raw = (
@@ -201,7 +206,7 @@ class TestQuantCoder:
         assert "pct_change(5)" in factor_text
         assert "pct_change(20)" not in factor_text
 
-    def test_develop_runs_quality_gate_before_returning(self, proposal, scenario_ctx, tmp_workspace):
+    def test_develop_runs_validation_pipeline_before_returning(self, proposal, scenario_ctx, tmp_workspace):
         raw = (
             '{"artifact_id":"artifact-llm","description":"momentum factor","location":"factor.py"}\n'
             "```python\nimport pandas as pd\ndef compute_factor(df):\n    return df\n```"
@@ -217,17 +222,22 @@ class TestQuantCoder:
             [],
         )
 
-        with patch("scenarios.quant.plugin.CodegenQualityGate.evaluate") as evaluate:
-            from llm.codegen.quality_gate import QualityResult
+        with (
+            patch("scenarios.quant.plugin.validate_compile") as mock_compile,
+            patch("scenarios.quant.plugin.detect_placeholders") as mock_placeholders,
+            patch("scenarios.quant.plugin.validate_content") as mock_content,
+        ):
+            from llm.codegen.validators import ValidationResult
 
-            evaluate.return_value = QualityResult(
-                passed=True,
-                reasons=[],
-                extracted_code="import pandas as pd\ndef compute_factor(df):\n    return df\n",
-                metadata={"artifact_id": "artifact-llm", "description": "momentum factor", "location": "factor.py"},
-            )
+            mock_compile.return_value = ValidationResult(valid=True, errors=[])
+            mock_placeholders.return_value = ValidationResult(valid=True, errors=[])
+            mock_content.return_value = ValidationResult(valid=True, errors=[])
+
             coder.develop(node, proposal, scenario_ctx)
-            evaluate.assert_called_once()
+
+            mock_compile.assert_called_once()
+            mock_placeholders.assert_called_once()
+            mock_content.assert_called_once()
 
 
 class TestQuantRunner:

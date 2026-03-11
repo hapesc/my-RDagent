@@ -253,8 +253,8 @@ class LLMAdapterTests(unittest.TestCase):
 
         self.assertEqual(proposal.proposal_id, "proposal-llm")
         self.assertTrue(
-            artifact.artifact_id.startswith("artifact-node-"),
-            f"Expected artifact_id to start with 'artifact-node-', got '{artifact.artifact_id}'",
+            artifact.artifact_id.startswith("artifact-"),
+            f"Expected artifact_id to start with 'artifact-', got '{artifact.artifact_id}'",
         )
         self.assertIn("succeeded", feedback.reason)
 

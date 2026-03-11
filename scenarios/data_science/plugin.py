@@ -29,6 +29,7 @@ from llm import (
     CodeDraft,
     FeedbackDraft,
     LLMAdapter,
+    MockLLMProvider,
     ProposalDraft,
     coding_prompt,
     feedback_prompt,
@@ -241,7 +242,7 @@ def _load_validate_code_safety_func() -> Any:
 
 def _is_mock_llm_adapter(adapter: LLMAdapter) -> bool:
     provider = getattr(adapter, "_provider", None)
-    return provider is not None and provider.__class__.__name__ == "MockLLMProvider"
+    return provider is not None and isinstance(provider, MockLLMProvider)
 
 
 def _should_allow_metrics_open_write(safety_violations: list[str], code: str) -> list[str]:
@@ -508,16 +509,7 @@ class DataScienceCoder(Coder):
                 _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, errors)
                 raise RuntimeError(f"data_science code validation failed: {'; '.join(errors)}")
 
-            # --- Single-round quality gate (supplementary) ---
-            quality_result = CodegenQualityGate("data_science").evaluate(generated_code)
-            if not quality_result.passed:
-                _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, quality_result.reasons)
-                raise RuntimeError(f"data_science quality gate failed: {quality_result.reasons}")
-
             artifact_id = code_draft.artifact_id
-            metadata = quality_result.metadata or {}
-            if metadata.get("artifact_id"):
-                artifact_id = str(metadata["artifact_id"])
 
             pipeline_script = generated_code
             (workspace / "pipeline.py").write_text(pipeline_script, encoding="utf-8")

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from core.correction.feedback_enricher import enrich_feedback_context
 from data_models import (
     CodeArtifact,
     ContextPack,
@@ -267,12 +268,8 @@ class SyntheticResearchCoder(Coder):
         self._llm_adapter = llm_adapter
 
     def _enrich_proposal_with_feedback(self, proposal: Proposal, experiment: ExperimentNode) -> str:
-        feedback_text = None
         if isinstance(experiment.hypothesis, dict):
-            feedback_text = experiment.hypothesis.get("_costeer_feedback")
-
-        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
-            return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
+            return enrich_feedback_context(proposal.summary, experiment.hypothesis)
         return proposal.summary
 
     def develop(

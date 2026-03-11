@@ -316,6 +316,27 @@ class TestValidateQuantUsefulness:
         assert reason is not None
 
 
+class TestQuantFeedbackAnalyzer:
+    def test_feedback_marks_degraded_code_unacceptable(self) -> None:
+        from scenarios.quant.plugin import QuantFeedbackAnalyzer
+
+        analyzer = QuantFeedbackAnalyzer(llm_adapter=None)
+        experiment = ExperimentNode(
+            node_id="n1",
+            run_id="r1",
+            branch_id="main",
+            hypothesis={"text": "test factor", "_code_source": "failed"},
+        )
+        result = ExecutionResult(
+            run_id="r1",
+            exit_code=0,
+            logs_ref='{"status": "success", "sharpe": 1.5}',
+            artifacts_ref='["result.json"]',
+        )
+        feedback = analyzer.summarize(experiment, result)
+        assert not feedback.acceptable, "Degraded code should not be acceptable"
+
+
 class TestBuildQuantBundle:
     def test_bundle_has_correct_scenario_name(self):
         adapter = LLMAdapter(provider=MockLLMProvider(), config=LLMAdapterConfig(max_retries=1))

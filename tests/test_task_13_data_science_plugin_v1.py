@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from core.correction.exceptions import CoderError
 from core.execution import WorkspaceManager, WorkspaceManagerConfig
 from core.loop import LoopEngine, LoopEngineConfig, StepExecutor
 from core.storage import CheckpointStoreConfig, FileCheckpointStore, SQLiteMetadataStore, SQLiteStoreConfig
@@ -246,7 +247,7 @@ class DataSciencePluginV1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             coder = DataScienceCoder(llm_adapter=adapter)
             experiment = self._experiment(Path(tmpdir) / "workspace")
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(CoderError):
                 coder.develop(
                     experiment, Proposal(proposal_id="p", summary="task", constraints=[]), self._scenario_context()
                 )

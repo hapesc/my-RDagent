@@ -349,7 +349,7 @@ def test_costeer_knowledge_save_called(tmp_path) -> None:
     with patch.object(evolver, "_save_knowledge", wraps=evolver._save_knowledge) as save_mock:
         evolver.evolve(experiment=experiment, proposal=proposal, scenario=scenario)
 
-    assert save_mock.call_count == 1
+    assert save_mock.call_count == 2
 
 
 def test_costeer_single_round_backward_compat(tmp_path) -> None:

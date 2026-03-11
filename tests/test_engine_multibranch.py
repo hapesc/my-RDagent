@@ -414,3 +414,27 @@ def test_select_best_branch_warns_when_fabricating_execution_result(caplog) -> N
 
     assert best_node_id == "node-real"
     assert "using fabricated fallback" in caplog.text
+
+
+def test_scheduler_all_skip_errors_continue_loop_to_next_iteration() -> None:
+    from core.correction.exceptions import CoderError
+
+    scheduler = Mock()
+    scheduler.select_node.side_effect = ["root-a", "root-b", "root-c", "root-d"]
+
+    engine, _planner, exploration_manager, step_executor, _run_store, _event_store = _build_engine(
+        branches_per_iteration=2,
+        scheduler=scheduler,
+        step_side_effect=[
+            CoderError("skip iteration 0 branch 0"),
+            CoderError("skip iteration 0 branch 1"),
+            _make_step_result("n1"),
+            _make_step_result("n2"),
+        ],
+    )
+
+    context = engine.run(run_session=_make_run(max_loops=2), task_summary="all-skip", max_loops=2)
+
+    assert context.loop_state.status == RunStatus.COMPLETED
+    assert step_executor.execute_iteration.call_count == 4
+    assert exploration_manager.register_node.call_count == 2

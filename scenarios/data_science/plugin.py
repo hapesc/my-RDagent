@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from core.correction.exceptions import CoderError
+from core.correction.feedback_enricher import enrich_feedback_context
 from core.execution import DockerExecutionBackend, DockerExecutionBackendConfig
 from data_models import (
     CodeArtifact,
@@ -469,7 +471,7 @@ class DataScienceCoder(Coder):
                 )
             except Exception as exc:
                 _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, [f"generate_code failed: {exc}"])
-                raise RuntimeError("data_science code generation failed") from exc
+                raise CoderError("data_science code generation failed") from exc
 
             if not generated_code:
                 if _is_mock_llm_adapter(self._llm_adapter):
@@ -484,7 +486,7 @@ class DataScienceCoder(Coder):
                         location=str(workspace),
                     )
                 _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, ["generate_code returned empty code"])
-                raise RuntimeError("data_science code generation returned empty code")
+                raise CoderError("data_science code generation returned empty code")
 
             generated_code = _ensure_data_source_binding(generated_code, data_source)
 
@@ -507,7 +509,7 @@ class DataScienceCoder(Coder):
 
             if errors:
                 _emit_ds_code_source(CODE_SOURCE_FAILED, experiment, errors)
-                raise RuntimeError(f"data_science code validation failed: {'; '.join(errors)}")
+                raise CoderError(f"data_science code validation failed: {'; '.join(errors)}")
 
             artifact_id = code_draft.artifact_id
 
@@ -529,12 +531,8 @@ class DataScienceCoder(Coder):
         )
 
     def _enrich_proposal_with_feedback(self, proposal: Proposal, experiment: ExperimentNode) -> str:
-        feedback_text = None
         if isinstance(experiment.hypothesis, dict):
-            feedback_text = experiment.hypothesis.get("_costeer_feedback")
-
-        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
-            return f"{proposal.summary}\n\nPrevious round feedback:\n{feedback_text}"
+            return enrich_feedback_context(proposal.summary, experiment.hypothesis)
         return proposal.summary
 
     def _build_pipeline_script(self, data_source: str) -> str:

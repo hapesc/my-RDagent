@@ -185,7 +185,10 @@ class TestFC3E2E(unittest.TestCase):
         )
         fail_experiment, fail_proposal, fail_scenario = self._base_costeer_inputs()
         fail_evolver.evolve(fail_experiment, fail_proposal, fail_scenario)
-        fail_memory.write_memory.assert_not_called()
+        fail_memory.write_memory.assert_called_once()
+        call_kwargs = fail_memory.write_memory.call_args
+        metadata = call_kwargs.kwargs.get("metadata") or call_kwargs[1].get("metadata", {})
+        self.assertEqual(metadata["success"], "False")
 
     def test_reasoning_trace_persisted_e2e(self) -> None:
         adapter = LLMAdapter(MockLLMProvider())

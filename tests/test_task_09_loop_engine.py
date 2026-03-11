@@ -104,6 +104,24 @@ class SyntheticReasonPositiveAnalyzer:
         )
 
 
+class SkipIterationCoderBundle:
+    def __init__(self):
+        self._call_count = 0
+
+    def develop(self, experiment, proposal, scenario):
+        from core.correction.exceptions import CoderError
+        from data_models import CodeArtifact
+
+        self._call_count += 1
+        if self._call_count == 1:
+            raise CoderError("compile failed on first try")
+        return CodeArtifact(
+            artifact_id=f"a-{self._call_count}",
+            description="ok",
+            location="/tmp/ok",
+        )
+
+
 class LoopEngineTests(unittest.TestCase):
     def _build_services(self, tmpdir: str):
         sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=str(Path(tmpdir) / "meta.db")))
@@ -539,6 +557,60 @@ class LoopEngineTests(unittest.TestCase):
 
             self.assertFalse(feedback_event.payload.get("acceptable"))
             self.assertTrue(feedback_event.payload.get("decision"))
+
+
+class TestSkipIterationRouting(unittest.TestCase):
+    def test_coder_error_does_not_terminate_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            db_path = str(tmp / "meta.db")
+
+            sqlite_store = SQLiteMetadataStore(SQLiteStoreConfig(sqlite_path=db_path))
+            checkpoint_store = FileCheckpointStore(CheckpointStoreConfig(root_dir=str(tmp / "checkpoints")))
+            workspace_manager = WorkspaceManager(
+                WorkspaceManagerConfig(root_dir=str(tmp / "ws")),
+                checkpoint_store=checkpoint_store,
+            )
+
+            skip_coder = SkipIterationCoderBundle()
+            bundle = build_minimal_data_science_bundle()
+            bundle = PluginBundle(
+                scenario_name=bundle.scenario_name,
+                scenario_plugin=bundle.scenario_plugin,
+                proposal_engine=bundle.proposal_engine,
+                experiment_generator=bundle.experiment_generator,
+                coder=skip_coder,
+                runner=bundle.runner,
+                feedback_analyzer=bundle.feedback_analyzer,
+            )
+
+            evaluation_service = EvaluationService(EvaluationServiceConfig())
+            step_executor = StepExecutor(bundle, evaluation_service, workspace_manager, sqlite_store)
+            engine = LoopEngine(
+                config=LoopEngineConfig(exception_archive_root=str(tmp / "archives")),
+                step_executor=step_executor,
+                run_store=sqlite_store,
+                event_store=sqlite_store,
+                exploration_manager=ExplorationManager(ExplorationManagerConfig()),
+                planner=Planner(PlannerConfig()),
+                memory_service=MemoryService(MemoryServiceConfig()),
+                evaluation_service=EvaluationService(EvaluationServiceConfig()),
+            )
+
+            session = RunSession(
+                run_id="test-skip-routing",
+                scenario="data_science",
+                entry_input={"task_summary": "test", "data_source": "test.csv"},
+            )
+
+            ctx = engine.run(
+                run_session=session,
+                task_summary="test skip routing",
+                max_loops=2,
+            )
+
+            self.assertGreaterEqual(ctx.loop_state.iteration, 1)
+            self.assertGreater(len(ctx.budget.iteration_durations), 0)
 
 
 if __name__ == "__main__":

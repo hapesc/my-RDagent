@@ -292,8 +292,94 @@ class CoSTEEREvolverTests(unittest.TestCase):
         self.assertIsInstance(metadata, dict)
         self.assertEqual(metadata.get("source"), "costeer_knowledge_gen")
 
+    def test_failure_knowledge_saved_when_not_acceptable(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+        memory_service = MagicMock()
+        llm_adapter = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="code", location="/tmp/v1")
+        coder.develop.return_value = artifact
+
+        execution_result = self._useful_execution_result(exit_code=1, logs_ref="error")
+        runner.run.return_value = execution_result
+
+        feedback = FeedbackRecord(
+            feedback_id="fb1",
+            decision=False,
+            acceptable=False,
+            reason="compilation failed",
+        )
+        feedback_analyzer.summarize.return_value = feedback
+
+        llm_adapter.complete.return_value = "learned: compile error pattern"
+        llm_adapter.generate_structured.return_value = MagicMock(
+            reasoning="bad",
+            execution="failed",
+            code="broken",
+            return_checking=None,
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+            llm_adapter=llm_adapter,
+            memory_service=memory_service,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+
+        evolver.evolve(experiment, proposal, scenario)
+
+        memory_service.write_memory.assert_called_once()
+        call_kwargs = memory_service.write_memory.call_args
+        metadata = call_kwargs.kwargs.get("metadata") or call_kwargs[1].get("metadata", {})
+        self.assertEqual(metadata["success"], "False")
+
+    def test_save_knowledge_failure_does_not_crash_loop(self) -> None:
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+        memory_service = MagicMock()
+        llm_adapter = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="code", location="/tmp/v1")
+        coder.develop.return_value = artifact
+
+        execution_result = self._useful_execution_result(exit_code=0, logs_ref="ok")
+        runner.run.return_value = execution_result
+
+        feedback = FeedbackRecord(
+            feedback_id="fb1",
+            decision=True,
+            acceptable=True,
+            reason="looks good",
+        )
+        feedback_analyzer.summarize.return_value = feedback
+
+        llm_adapter.complete.side_effect = RuntimeError("LLM is down")
+        llm_adapter.generate_structured.side_effect = RuntimeError("LLM is down")
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=2,
+            llm_adapter=llm_adapter,
+            memory_service=memory_service,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+
+        result = evolver.evolve(experiment, proposal, scenario)
+        self.assertIsNotNone(result)
+
     def test_knowledge_not_saved_on_failure(self) -> None:
-        """Test that knowledge is NOT saved when all feedback is unacceptable."""
         from core.loop.costeer import CoSTEEREvolver
 
         coder = MagicMock()
@@ -329,7 +415,10 @@ class CoSTEEREvolverTests(unittest.TestCase):
 
         evolver.evolve(experiment, proposal, scenario)
 
-        memory_service.write_memory.assert_not_called()
+        memory_service.write_memory.assert_called_once()
+        call_kwargs = memory_service.write_memory.call_args
+        metadata = call_kwargs.kwargs.get("metadata") or call_kwargs[1].get("metadata", {})
+        self.assertEqual(metadata["success"], "False")
 
     def test_no_memory_service_no_error(self) -> None:
         """Test that evolver works normally without memory_service."""
@@ -645,6 +734,61 @@ class CoSTEEREvolverTests(unittest.TestCase):
 
         self.assertNotIn("estimated_full_time_sec", experiment.hypothesis)
         self.assertEqual(feedback_analyzer.summarize.call_count, 1)
+
+    def test_knowledge_saved_every_round_with_max_rounds_3(self) -> None:
+        """With max_rounds=3, write_memory must be called once per round (2 rounds total).
+
+        This is the regression test for the knowledge_saved guard bug: when the guard
+        was present, write_memory was called only once even if the loop ran 2 rounds.
+        """
+        from core.loop.costeer import CoSTEEREvolver
+
+        coder = MagicMock()
+        runner = MagicMock()
+        feedback_analyzer = MagicMock()
+        memory_service = MagicMock()
+        llm_adapter = MagicMock()
+
+        artifact = CodeArtifact(artifact_id="v1", description="code", location="/tmp/v1")
+        coder.develop.return_value = artifact
+
+        execution_result = self._useful_execution_result(exit_code=1, logs_ref="error")
+        runner.run.return_value = execution_result
+
+        feedback = FeedbackRecord(
+            feedback_id="fb1",
+            decision=False,
+            acceptable=False,
+            reason="compilation failed",
+        )
+        feedback_analyzer.summarize.return_value = feedback
+
+        llm_adapter.complete.return_value = "learned: something"
+        llm_adapter.generate_structured.return_value = MagicMock(
+            reasoning="bad",
+            execution="failed",
+            code="broken",
+            return_checking=None,
+        )
+
+        evolver = CoSTEEREvolver(
+            coder=coder,
+            runner=runner,
+            feedback_analyzer=feedback_analyzer,
+            max_rounds=3,
+            llm_adapter=llm_adapter,
+            memory_service=memory_service,
+        )
+        experiment, proposal, scenario = self._base_inputs()
+
+        evolver.evolve(experiment, proposal, scenario)
+
+        # max_rounds=3 → range(1, 3) = rounds 1 and 2 → write_memory called twice
+        self.assertEqual(memory_service.write_memory.call_count, 2)
+        # Both calls should have success=False
+        for call in memory_service.write_memory.call_args_list:
+            metadata = call.kwargs.get("metadata") or call[1].get("metadata", {})
+            self.assertEqual(metadata["success"], "False")
 
 
 if __name__ == "__main__":

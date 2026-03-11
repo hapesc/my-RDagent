@@ -5,6 +5,9 @@ import sys
 import types
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
 
 from data_models import CodeArtifact, DebugConfig, ExperimentNode, Proposal
 from llm import CodeDraft
@@ -178,6 +181,32 @@ def test_develop_artifact_description_has_code(tmp_path: Path, monkeypatch) -> N
 
     assert len(artifact.description) > 100
     assert "metrics.json" in artifact.description
+
+
+def test_develop_raises_coder_error_not_runtime_error(tmp_path: Path) -> None:
+    from core.correction.exceptions import CoderError
+
+    llm_adapter = MagicMock()
+    llm_adapter.generate_code.side_effect = Exception("LLM down")
+
+    coder_cls = _load_data_science_coder()
+    coder = coder_cls(llm_adapter=llm_adapter)
+    experiment = ExperimentNode(
+        node_id="n1",
+        run_id="r1",
+        branch_id="main",
+        workspace_ref=str(tmp_path / "ws"),
+        hypothesis={},
+    )
+    proposal = Proposal(proposal_id="p1", summary="test", constraints=[])
+    scenario = ScenarioContext(
+        run_id="r1",
+        scenario_name="data_science",
+        input_payload={"data_source": "test.csv"},
+    )
+
+    with pytest.raises(CoderError):
+        coder.develop(experiment, proposal, scenario)
 
 
 def test_debug_sampling_works_with_llm_code(tmp_path: Path) -> None:

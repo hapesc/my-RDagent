@@ -25,21 +25,14 @@ def test_extracts_json_then_code() -> None:
 
 
 def test_extracts_artifact_field_from_json_payload() -> None:
-    raw = (
-        '```json\n'
-        '{"artifact_id":"v1","artifact":"def foo():\\n    return 1"}\n'
-        '```'
-    )
+    raw = '```json\n{"artifact_id":"v1","artifact":"def foo():\\n    return 1"}\n```'
     result = extract_code_and_metadata(raw)
     assert result.code == "def foo():\n    return 1"
     assert result.metadata["artifact_id"] == "v1"
 
 
 def test_extracts_artifact_field_from_truncated_json_payload() -> None:
-    raw = (
-        '```json\n'
-        '{"artifact_id":"v1","artifact":"## Findings\\n\\n1. Value increased by 15%\\n2. Latency fell by 8%'
-    )
+    raw = '```json\n{"artifact_id":"v1","artifact":"## Findings\\n\\n1. Value increased by 15%\\n2. Latency fell by 8%'
     result = extract_code_and_metadata(raw)
     assert result.code.startswith("## Findings")
     assert "15%" in result.code
@@ -68,3 +61,66 @@ def test_valid_function_always_extracted(code: str) -> None:
     result = extract_code_block(raw)
     assert result is not None
     assert "def " in result
+
+
+def test_extracts_code_from_python_code_json_key() -> None:
+    raw = '{"python_code": "import pandas as pd\\n\\ndef compute_factor(df):\\n    return df"}'
+    result = extract_code_and_metadata(raw)
+    assert "def compute_factor" in result.code
+    assert result.source == "json_plus_block"
+
+
+def test_extracts_code_from_code_json_key() -> None:
+    raw = '{"code": "def foo():\\n    return 1", "description": "a function"}'
+    result = extract_code_and_metadata(raw)
+    assert result.code == "def foo():\n    return 1"
+
+
+def test_truncated_json_with_python_code_key() -> None:
+    raw = '{"python_code": "import pandas as pd\\ndef compute(df):\\n    return df[\\"close\\"].pct_change()\\n'
+    result = extract_code_and_metadata(raw)
+    assert "import pandas" in result.code
+    assert "pct_change" in result.code
+
+
+def test_truncated_json_with_code_key() -> None:
+    raw = '{"description": "momentum factor", "code": "import numpy as np\\ndef factor(df):\\n    return df[\\"vol'
+    result = extract_code_and_metadata(raw)
+    assert "import numpy" in result.code
+    assert "def factor" in result.code
+
+
+def test_truncated_json_picks_longest_code_value() -> None:
+    raw = '{"description": "momentum", "python_code": "import pandas as pd\\ndef big_func():\\n    return 42", "code": "x=1'
+    result = extract_code_and_metadata(raw)
+    assert "big_func" in result.code
+
+
+def test_truncated_json_handles_escaped_chars() -> None:
+    raw = '{"python_code": "line1\\nline2\\tindented\\\\backslash\\"quoted\\""}'
+    result = extract_code_and_metadata(raw)
+    assert "line1\nline2" in result.code
+    assert "\tindented" in result.code
+    assert "\\backslash" in result.code
+    assert '"quoted"' in result.code
+
+
+def test_truncated_json_empty_value_returns_none() -> None:
+    raw = '{"python_code": ""}'
+    result = extract_code_and_metadata(raw)
+    assert result.code == ""
+    assert result.source == "raw_fallback"
+
+
+def test_strips_fenced_wrapper_from_json_value() -> None:
+    raw = '{"implementation": "```python\\nimport pandas as pd\\ndef compute_factor(df):\\n    return df\\n```"}'
+    result = extract_code_and_metadata(raw)
+    assert not result.code.startswith("```")
+    assert "import pandas" in result.code
+    assert "def compute_factor" in result.code
+
+
+def test_extracts_python_function_key() -> None:
+    raw = '{"python_function": "import pandas as pd\\ndef compute_factor(df):\\n    return df"}'
+    result = extract_code_and_metadata(raw)
+    assert "def compute_factor" in result.code

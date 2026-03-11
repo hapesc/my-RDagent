@@ -172,7 +172,7 @@ class TestCodingPrompt:
         )
         assert "no file I/O" in prompt
 
-    def test_coding_prompt_requires_full_artifact_field(self):
+    def test_coding_prompt_requires_raw_artifact_output(self):
         prompt = coding_prompt(
             proposal_summary="build a pipeline",
             constraints=[],
@@ -180,8 +180,8 @@ class TestCodingPrompt:
             workspace_ref="/tmp/ws",
             scenario_name="data_science",
         )
-        assert "`artifact`" in prompt
-        assert "full runnable" in prompt.lower() or "complete artifact" in prompt.lower()
+        assert "return only one fenced python code block" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
 
     def test_coding_prompt_requires_exact_synthetic_sections(self):
         prompt = coding_prompt(
@@ -203,8 +203,8 @@ class TestCodingPrompt:
             workspace_ref="/tmp/ws",
             scenario_name="data_science",
         )
-        assert "do not wrap the code in json" in prompt.lower() or "return only the python artifact" in prompt.lower()
-        assert "```python" in prompt or "python code block" in prompt.lower()
+        assert "return only one fenced python code block" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
 
     def test_coding_prompt_discourages_json_wrapper_for_synthetic_report(self):
         prompt = coding_prompt(
@@ -214,8 +214,8 @@ class TestCodingPrompt:
             workspace_ref="/tmp/ws",
             scenario_name="synthetic_research",
         )
-        assert "do not wrap the report in json" in prompt.lower() or "return only the markdown artifact" in prompt.lower()
-        assert "markdown only" in prompt.lower() or "no json wrapper" in prompt.lower()
+        assert "return only markdown" in prompt.lower()
+        assert "no json wrapper" in prompt.lower()
 
     def test_coding_prompt_stays_compact_enough_for_single_round_codegen(self):
         prompt = coding_prompt(
@@ -225,4 +225,4 @@ class TestCodingPrompt:
             workspace_ref="/tmp/ws",
             scenario_name="data_science",
         )
-        assert len(prompt) < 3200
+        assert len(prompt) < 1800

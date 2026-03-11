@@ -164,6 +164,7 @@ def coding_prompt(
     constraints_block = "\n".join(f"  - {c}" for c in constraints_list) if constraints_list else "  (none)"
     scenario_instructions = _coding_scenario_instructions(scenario_name)
     few_shot_block = _render_few_shot_examples(scenario_name)
+    output_contract = _coding_output_contract(scenario_name)
 
     base_prompt = (
         f"You are a research engineer translating a proposal into an executable experiment design.\n"
@@ -187,6 +188,8 @@ def coding_prompt(
         f"{scenario_instructions}"
         f"\n"
         f"{few_shot_block}"
+        f"\n"
+        f"{output_contract}"
         f"\n"
         f"## Output Fields\n"
         f"- `artifact_id`: snake_case identifier with version suffix (e.g. `lr_ablation_v2`).\n"
@@ -245,31 +248,23 @@ def _coding_scenario_instructions(scenario_name: str) -> str:
     scenario_specs = {
         "data_science": (
             "## Scenario Contract\n"
-            "- Produce a runnable data-science pipeline description with explicit training and evaluation steps.\n"
-            "- The output format must mention `metrics.json` and the evaluation metrics that will be written there.\n"
-            "- Put the full runnable Python script in the top-level `artifact` field.\n"
-            "- Keep the artifact concise: no narrative comments, no long explanations, no synthetic demo dataset unless required.\n"
-            "- Do not wrap the code in JSON-only prose. Return only the Python artifact content in `artifact`.\n"
-            "- Preferred output format: a Python code block (````python ... ````) or raw Python artifact text.\n"
-            "- Avoid placeholder datasets, fake metrics, and vague references like 'train a model somehow'.\n"
+            "- Produce one runnable Python pipeline.\n"
+            "- The code must write real evaluation metrics to `metrics.json`.\n"
+            "- Keep it concise: no narrative comments, no demo dataset unless required.\n"
+            "- Avoid placeholders, fake metrics, and generic boilerplate.\n"
         ),
         "quant": (
             "## Scenario Contract\n"
-            "- Produce a factor implementation centered on `compute_factor` with clear input/output expectations.\n"
-            "- Respect risk constraints such as forbidden imports, no file I/O, and no network access unless explicitly allowed.\n"
-            "- Put the complete factor implementation in the top-level `artifact` field or a fenced Python block.\n"
-            "- Describe the returned factor columns and the transformation logic, not a generic template.\n"
+            "- Produce one factor implementation centered on `compute_factor(df)`.\n"
+            "- Respect forbidden imports, no file I/O, and no network access.\n"
+            "- Return exactly `date`, `stock_id`, and `factor_value`.\n"
         ),
         "synthetic_research": (
             "## Scenario Contract\n"
-            "- Produce a structured research artifact with headings, findings, methodology, and conclusion.\n"
-            "- Put the complete report markdown in the top-level `artifact` field.\n"
+            "- Produce one markdown report.\n"
             "- Use the exact headings `## Findings`, `## Methodology`, and `## Conclusion`.\n"
-            "- Under `## Findings`, use numbered items like `1.` and `2.` rather than prose paragraphs.\n"
-            "- Do not wrap the report in JSON-only prose. Return only the markdown artifact content in `artifact`.\n"
-            "- Preferred output format: markdown only, with no JSON wrapper and no fenced code block around the report.\n"
-            "- Include quantitative evidence wherever possible instead of generic observations.\n"
-            "- Avoid placeholder prose, vague summaries, or restating the task without findings.\n"
+            "- Under `## Findings`, use numbered items with quantitative evidence.\n"
+            "- Avoid placeholder prose or task restatement.\n"
         ),
     }
     return scenario_specs.get(
@@ -285,20 +280,38 @@ def _render_few_shot_examples(scenario_name: str) -> str:
 
     rendered_examples: list[str] = ["## Reference Implementation"]
     for index, example in enumerate(examples[:1], start=1):
-        artifact_lines = example["artifact"].splitlines()
-        preview = "\n".join(artifact_lines[:12]).strip()
         rendered_examples.extend(
             [
                 f"### Example {index}",
                 f"Task: {example['task']}",
-                f"Artifact type: {example['artifact_type']}",
-                "Artifact:",
-                "```",
-                preview,
-                "```",
+                f"Pattern: {example.get('explanation', '').strip()}",
             ]
         )
     return "\n".join(rendered_examples) + "\n"
+
+
+def _coding_output_contract(scenario_name: str) -> str:
+    contracts = {
+        "data_science": (
+            "## Output Format\n"
+            "- Return only one fenced python code block.\n"
+            "- No JSON wrapper.\n"
+            "- The code block must be complete and runnable.\n"
+        ),
+        "quant": (
+            "## Output Format\n"
+            "- Return only one fenced python code block.\n"
+            "- No JSON wrapper.\n"
+            "- The code block must define `compute_factor(df)`.\n"
+        ),
+        "synthetic_research": (
+            "## Output Format\n- Return only markdown.\n- No JSON wrapper.\n- No fenced code block around the report.\n"
+        ),
+    }
+    return contracts.get(
+        scenario_name,
+        "## Output Format\n- Return only the requested artifact with no wrapper text.\n",
+    )
 
 
 def feedback_prompt(

@@ -75,6 +75,16 @@ class MockLLMProvider:
         is_coding = "coding:" in prompt or "`artifact_id`" in prompt
         is_feedback = "feedback:" in prompt or "`acceptable`" in prompt
         is_quant_factor_prompt = "factor hypothesis" in prompt_lower and "compute_factor" in prompt
+        is_data_science_coding = (
+            "you are generating a single artifact" in prompt_lower
+            and "produce one runnable python pipeline" in prompt_lower
+        )
+        is_synthetic_coding = (
+            "you are generating a single artifact" in prompt_lower
+            and "## scenario contract" in prompt_lower
+            and not is_quant_factor_prompt
+            and not is_data_science_coding
+        )
 
         if is_proposal:
             summary = self._extract_section(prompt, "proposal:", "## Task\n") or "mock-proposal"
@@ -97,6 +107,52 @@ class MockLLMProvider:
                 "    result['factor_value'] = df.groupby('stock_id')['close'].pct_change(5)\n"
                 "    return result[['date', 'stock_id', 'factor_value']]\n"
                 "```"
+            )
+        if is_data_science_coding:
+            model_tag = ""
+            description_suffix = ""
+            if model_config is not None and model_config.model:
+                model_tag = f"  # model={model_config.model}"
+                description_suffix = f" [model={model_config.model}]"
+            summary = self._extract_section(prompt, "", "## Task\n") or "mock-ds-pipeline"
+            return (
+                json.dumps(
+                    {
+                        "artifact_id": "artifact-llm",
+                        "description": f"{summary}{description_suffix}",
+                        "location": "/tmp/rd_agent_workspace",
+                    }
+                )
+                + "\n"
+                "```python\n"
+                "import json\n"
+                "import os\n"
+                "\n"
+                f"def main():{model_tag}\n"
+                "    metrics = {'row_count': 0, 'column_count': 0, 'status': 'ok', 'accuracy': 0.85}\n"
+                "    out_dir = os.environ.get('OUTPUT_DIR', '.')\n"
+                "    with open(os.path.join(out_dir, 'metrics.json'), 'w') as f:\n"
+                "        json.dump(metrics, f)\n"
+                "    print(json.dumps(metrics))\n"
+                "    return metrics\n"
+                "\n"
+                "if __name__ == '__main__':\n"
+                "    main()\n"
+                "```"
+            )
+        if is_synthetic_coding:
+            summary = self._extract_section(prompt, "", "## Task\n") or "data pipeline"
+            return (
+                f"## Findings\n\n"
+                f"1. Analysis of {summary} showed a 23% improvement over baseline.\n"
+                f"2. Latency decreased from 450ms to 320ms (28.9% reduction).\n"
+                f"3. Error rate dropped to 0.3%, well below the 1% threshold.\n\n"
+                f"## Methodology\n\n"
+                f"We collected 10,000 samples over 30 days and applied "
+                f"stratified cross-validation with 5 folds.\n\n"
+                f"## Conclusion\n\n"
+                f"The experiment demonstrates statistically significant gains "
+                f"(p < 0.01) across all measured dimensions.\n"
             )
         if is_coding:
             summary = self._extract_section(prompt, "coding:", "## Research Proposal\n") or "mock-code"

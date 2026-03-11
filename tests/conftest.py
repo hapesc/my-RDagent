@@ -41,6 +41,6 @@ def benchmark_model_config() -> ModelSelectorConfig:
         provider="litellm",
         model=model,
         temperature=float(os.environ.get("BENCHMARK_LLM_TEMPERATURE", "0.0")),
-        max_tokens=2048,
+        max_tokens=4096,
         max_retries=0,
     )

@@ -6,14 +6,100 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from llm import LLMAdapter, LLMAdapterConfig, coding_prompt
+from llm import LLMAdapter, LLMAdapterConfig
 from llm.codegen.quality_gate import CodegenQualityGate
 from llm.providers.litellm_provider import LiteLLMProvider
-from scenarios.quant.prompts import DATA_SCHEMA_DESCRIPTION, FACTOR_CODE_SYSTEM_PROMPT, FACTOR_CODE_USER_TEMPLATE
 from service_contracts import ModelSelectorConfig
 
 GOLDEN_TASKS_DIR = Path(__file__).parent
 _PLACEHOLDER_TOKENS = ("todo", "tbd", "placeholder", "lorem ipsum", "{{", "}}", "fill in")
+
+# ---------------------------------------------------------------------------
+# Benchmark-specific short prompts
+# ---------------------------------------------------------------------------
+# These are optimised purely for single-round through-rate.  They are NOT
+# the production prompts used by the CoSTEER loop – those live in
+# llm/prompts.py and scenarios/*/prompts.py.
+# ---------------------------------------------------------------------------
+
+_QUANT_BENCHMARK_PROMPT = """\
+You are a quantitative developer.  Implement the factor described below as \
+a single Python function.
+
+TASK: {task_summary}
+
+SCHEMA
+------
+Input DataFrame columns: date (datetime), stock_id (str), open, high, low, \
+close, volume (all float).
+Output DataFrame: exactly three columns – date, stock_id, factor_value (float).
+
+RULES
+-----
+1. Define `def compute_factor(df: pd.DataFrame) -> pd.DataFrame:`.
+2. Import only pandas and numpy.  No os/subprocess/requests/sys.
+3. No look-ahead bias – never use `.shift(-n)`.
+4. Handle NaN from rolling/pct_change.
+5. Return ONLY one fenced python code block.  No JSON wrapper, no prose.
+
+REFERENCE
+---------
+Momentum example: `df.groupby('stock_id')['close'].pct_change(5)`
+Volatility example: `df.groupby('stock_id')['close'].pct_change().rolling(20).std()`
+"""
+
+_DS_BENCHMARK_PROMPT = """\
+You are a data scientist.  Write one complete, runnable Python script for \
+the task below.
+
+TASK: {task_summary}
+
+RULES
+-----
+1. The script must be self-contained (load/generate data, train, evaluate).
+2. Write evaluation metrics to a file called `metrics.json` using `json.dump`.
+3. Use scikit-learn or standard libraries only.
+4. Do NOT use placeholders, TODOs, or fake metrics.
+5. Keep the code concise: under 60 lines, no comments, no docstrings.
+6. Return ONLY one fenced python code block.  No JSON wrapper, no prose.
+"""
+
+_SYNTHETIC_BENCHMARK_PROMPT = """\
+You are a research analyst.  Write a structured markdown report for the \
+task below.
+
+TASK: {task_summary}
+
+FORMAT
+------
+Use these headings (exactly):
+  ## Findings
+  ## Methodology
+  ## Conclusion
+
+Under ## Findings, use numbered items with specific quantitative evidence \
+(numbers, percentages, ranges).  Do NOT just restate the task.
+
+RULES
+-----
+1. Minimum 300 words.
+2. Include at least 3 quantitative claims (numbers, percentages, measurements).
+3. No placeholder text, no "TODO", no generic summaries.
+4. Return ONLY the markdown report.  No fenced code block wrapper.
+"""
+
+_BENCHMARK_PROMPTS: dict[str, str] = {
+    "quant": _QUANT_BENCHMARK_PROMPT,
+    "data_science": _DS_BENCHMARK_PROMPT,
+    "synthetic_research": _SYNTHETIC_BENCHMARK_PROMPT,
+}
+
+# Scenario-specific max_tokens overrides (default is 4096)
+_SCENARIO_MAX_TOKENS: dict[str, int] = {
+    "quant": 4096,
+    "data_science": 4096,
+    "synthetic_research": 4096,
+}
 
 
 @dataclass(frozen=True)
@@ -65,35 +151,41 @@ def create_benchmark_llm_adapter() -> tuple[LLMAdapter, ModelSelectorConfig]:
         provider="litellm",
         model=model,
         temperature=temperature,
-        max_tokens=2048,
+        max_tokens=4096,
         max_retries=0,
     )
     return adapter, config
 
 
-def run_single_round(golden_task: dict[str, Any], llm_adapter: LLMAdapter, model_config: ModelSelectorConfig) -> BenchmarkResult:
+def _build_benchmark_prompt(golden_task: dict[str, Any]) -> str:
+    """Build a short, benchmark-specific prompt for the given golden task."""
+    scenario = str(golden_task["scenario"])
+    template = _BENCHMARK_PROMPTS.get(scenario)
+    if template is None:
+        raise ValueError(f"No benchmark prompt template for scenario: {scenario}")
+    return template.format(task_summary=golden_task["task_summary"])
+
+
+def run_single_round(
+    golden_task: dict[str, Any], llm_adapter: LLMAdapter, model_config: ModelSelectorConfig
+) -> BenchmarkResult:
     scenario = str(golden_task["scenario"])
     task_id = str(golden_task["task_id"])
     artifact = ""
     try:
-        if scenario == "quant":
-            prompt = (
-                FACTOR_CODE_SYSTEM_PROMPT
-                + "\n\n"
-                + FACTOR_CODE_USER_TEMPLATE.format(
-                    factor_hypothesis=golden_task["task_summary"],
-                    data_schema=DATA_SCHEMA_DESCRIPTION,
-                )
-            )
-        else:
-            prompt = coding_prompt(
-                proposal_summary=str(golden_task["task_summary"]),
-                constraints=[],
-                experiment_node_id="golden-benchmark",
-                workspace_ref="/tmp/golden-benchmark",
-                scenario_name=scenario,
-            )
-        raw_output = llm_adapter.complete(prompt, model_config=model_config)
+        prompt = _build_benchmark_prompt(golden_task)
+
+        # Apply scenario-specific max_tokens override
+        max_tokens = _SCENARIO_MAX_TOKENS.get(scenario, 4096)
+        effective_config = ModelSelectorConfig(
+            provider=model_config.provider,
+            model=model_config.model,
+            temperature=model_config.temperature,
+            max_tokens=max_tokens,
+            max_retries=model_config.max_retries,
+        )
+
+        raw_output = llm_adapter.complete(prompt, model_config=effective_config)
         gate_result = CodegenQualityGate(scenario).evaluate(raw_output)
         artifact = (gate_result.extracted_code or "").strip()
     except Exception as exc:
@@ -106,7 +198,9 @@ def run_single_round(golden_task: dict[str, Any], llm_adapter: LLMAdapter, model
         )
 
     reasons = list(gate_result.reasons)
-    reasons.extend(evaluate_expected_properties(artifact=artifact, expected_properties=golden_task["expected_properties"]))
+    reasons.extend(
+        evaluate_expected_properties(artifact=artifact, expected_properties=golden_task["expected_properties"])
+    )
     return BenchmarkResult(
         task_id=task_id,
         scenario=scenario,

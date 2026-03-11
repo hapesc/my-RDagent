@@ -94,15 +94,19 @@ class TestQuantPrompts:
         assert "pct_change(5)" in FACTOR_CODE_USER_TEMPLATE
         assert "rolling(20).std()" in FACTOR_CODE_USER_TEMPLATE
 
-    def test_factor_code_user_template_requires_artifact_field(self):
-        assert '"artifact"' in FACTOR_CODE_USER_TEMPLATE
+    def test_factor_code_user_template_requires_raw_code_output(self):
+        assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
 
     def test_factor_code_system_prompt_requires_concise_output(self):
         assert "no comments" in FACTOR_CODE_SYSTEM_PROMPT.lower() or "under 40 lines" in FACTOR_CODE_SYSTEM_PROMPT.lower()
 
     def test_factor_code_user_template_discourages_json_only_output(self):
-        assert "do not return json only" in FACTOR_CODE_USER_TEMPLATE.lower() or "python code block is the primary artifact" in FACTOR_CODE_USER_TEMPLATE.lower()
-        assert "return only a python code block" in FACTOR_CODE_USER_TEMPLATE.lower() or "code block first" in FACTOR_CODE_USER_TEMPLATE.lower()
+        assert "return only one fenced python code block" in FACTOR_CODE_USER_TEMPLATE.lower()
+        assert "no json wrapper" in FACTOR_CODE_USER_TEMPLATE.lower()
+
+    def test_factor_code_prompt_stays_compact_enough_for_single_round_codegen(self):
+        prompt = FACTOR_CODE_SYSTEM_PROMPT + FACTOR_CODE_USER_TEMPLATE
+        assert len(prompt) < 2600
 
 
 class TestQuantExperimentGenerator:

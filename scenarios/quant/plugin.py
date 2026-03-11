@@ -25,6 +25,7 @@ from data_models import (
     Score,
     StepState,
 )
+from core.correction.feedback_enricher import enrich_feedback_context
 from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     LLMAdapter,
@@ -157,7 +158,7 @@ def _extract_quant_ordered_pairs(input_payload: dict[str, Any]) -> list[tuple[st
         return sorted(
             [
                 (str(order_value), data_id)
-                for order_value, data_id in zip(order_values, direct_data_ids, strict=False)
+                for order_value, data_id in zip(order_values, direct_data_ids)
                 if str(data_id).strip()
             ],
             key=lambda item: item[0],
@@ -372,12 +373,8 @@ class QuantCoder(Coder):
         )
 
     def _enrich_hypothesis_with_feedback(self, hypothesis: str, experiment: ExperimentNode) -> str:
-        feedback_text = None
         if isinstance(experiment.hypothesis, dict):
-            feedback_text = experiment.hypothesis.get("_costeer_feedback")
-
-        if feedback_text and isinstance(feedback_text, str) and feedback_text.strip():
-            return f"{hypothesis}\n\nPrevious round feedback:\n{feedback_text}"
+            return enrich_feedback_context(hypothesis, experiment.hypothesis)
         return hypothesis
 
     def _generate_factor_code(self, proposal: Proposal, scenario: ScenarioContext, experiment: ExperimentNode) -> str:
@@ -597,7 +594,7 @@ class QuantFeedbackAnalyzer(FeedbackAnalyzer):
                 logs_data = {}
             succeeded = logs_data.get("status") == "success"
             sharpe = float(logs_data.get("sharpe", 0.0) or 0.0)
-            return FeedbackRecord(
+            feedback_record = FeedbackRecord(
                 feedback_id=f"quant-fb-{experiment.node_id}",
                 decision=succeeded and usefulness_eligible,
                 acceptable=succeeded and usefulness_eligible,
@@ -605,6 +602,13 @@ class QuantFeedbackAnalyzer(FeedbackAnalyzer):
                 observations=result.logs_ref[:200] if result.logs_ref else "",
                 code_change_summary="",
             )
+            code_source = (
+                experiment.hypothesis.get("_code_source", "") if isinstance(experiment.hypothesis, dict) else ""
+            )
+            if code_source == "failed":
+                feedback_record.acceptable = False
+                feedback_record.reason = f"[DEGRADED] {feedback_record.reason}"
+            return feedback_record
 
         hypothesis_text = (
             experiment.hypothesis.get("text", "")
@@ -627,7 +631,7 @@ class QuantFeedbackAnalyzer(FeedbackAnalyzer):
 
         try:
             draft = self._llm.generate_structured(prompt, _FeedbackDraft, model_config=None)
-            return FeedbackRecord(
+            feedback_record = FeedbackRecord(
                 feedback_id=f"quant-fb-{experiment.node_id}",
                 decision=draft.decision and usefulness_eligible,
                 acceptable=draft.acceptable and usefulness_eligible,
@@ -635,6 +639,13 @@ class QuantFeedbackAnalyzer(FeedbackAnalyzer):
                 observations=draft.observations,
                 code_change_summary=draft.code_change_summary,
             )
+            code_source = (
+                experiment.hypothesis.get("_code_source", "") if isinstance(experiment.hypothesis, dict) else ""
+            )
+            if code_source == "failed":
+                feedback_record.acceptable = False
+                feedback_record.reason = f"[DEGRADED] {feedback_record.reason}"
+            return feedback_record
         except Exception:
             return FeedbackRecord(
                 feedback_id=f"quant-fb-{experiment.node_id}",

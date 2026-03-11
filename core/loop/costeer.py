@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from llm.schemas import StructuredFeedback
 
 _log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class CoSTEEREvolver:
@@ -105,6 +106,7 @@ class CoSTEEREvolver:
         if self._max_rounds <= 1:
             return artifact
 
+        knowledge_saved = False
         for round_idx in range(1, self._max_rounds):
             round_started_at = time.monotonic()
             execution_result = self._runner.run(artifact, scenario)
@@ -124,8 +126,17 @@ class CoSTEEREvolver:
             feedback.acceptable = feedback.acceptable and is_useful_round
             feedback.decision = feedback.decision and is_useful_round
 
+            if not knowledge_saved:
+                try:
+                    self._save_knowledge(experiment, feedback, round_idx, scenario)
+                    knowledge_saved = True
+                except Exception:
+                    logger.warning(
+                        "Failed to save knowledge for round %d (acceptable=%s), continuing",
+                        round_idx,
+                        feedback.acceptable,
+                    )
             if feedback.acceptable:
-                self._save_knowledge(experiment, feedback, round_idx, scenario)
                 break
 
             if self._llm_adapter is not None:
@@ -175,5 +186,6 @@ class CoSTEEREvolver:
                 "source": "costeer_knowledge_gen",
                 "round": str(round_idx),
                 "scenario": scenario.scenario_name,
+                "success": str(feedback.acceptable),
             },
         )

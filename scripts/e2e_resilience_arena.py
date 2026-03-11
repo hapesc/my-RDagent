@@ -7,9 +7,8 @@ and verify that CoSTEER / the feedback loop successfully reads the stack trace,
 realizes the mistake, and fixes the code in loop 2 or 3.
 
 Usage:
-    source ~/.zshrc  # loads GEMINI_API_KEY
-    RD_AGENT_LLM_PROVIDER=litellm RD_AGENT_LLM_MODEL=gemini/gemini-2.5-flash \
-        python scripts/e2e_resilience_arena.py
+    export OPENCODE_API=<your_key>
+    python scripts/e2e_resilience_arena.py
 """
 
 from __future__ import annotations
@@ -28,8 +27,17 @@ logger = logging.getLogger("e2e_resilience_arena")
 
 
 def main() -> int:
+    from scripts.real_test_llm import TEST_LLM_BASE_URL, TEST_LLM_MODEL, get_test_llm_api_key
+
+    api_key = get_test_llm_api_key()
+    os.environ["RD_AGENT_LLM_PROVIDER"] = "litellm"
+    os.environ["RD_AGENT_LLM_MODEL"] = TEST_LLM_MODEL
+    os.environ["RD_AGENT_LLM_BASE_URL"] = TEST_LLM_BASE_URL
+    if api_key:
+        os.environ["RD_AGENT_LLM_API_KEY"] = api_key
+
     provider = os.environ.get("RD_AGENT_LLM_PROVIDER", "mock")
-    model = os.environ.get("RD_AGENT_LLM_MODEL", "gpt-4o-mini")
+    model = os.environ.get("RD_AGENT_LLM_MODEL", TEST_LLM_MODEL)
 
     print("=" * 72)
     print("  E2E Resilience Arena — Self-Correction Test")
@@ -37,8 +45,9 @@ def main() -> int:
     print(f"  Model    : {model}")
     print("=" * 72)
 
-    if provider != "litellm":
-        print("\n⚠️  RD_AGENT_LLM_PROVIDER is not 'litellm'. Set it to run with real LLM.")
+    if not api_key:
+        print("\n❌ No OpenCode-compatible API key found. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.")
+        return 1
 
     # 1. Build runtime
     from app.config import REAL_PROVIDER_SAFE_PROFILE

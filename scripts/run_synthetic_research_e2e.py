@@ -28,7 +28,7 @@ log = logging.getLogger("synthetic_research_e2e")
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(description="Synthetic Research E2E Integration Test: real LLM (gemini-2.5-pro)")
+    parser = argparse.ArgumentParser(description="Synthetic Research E2E Integration Test: OpenCode Kimi K2.5")
     parser.add_argument(
         "--max-loops",
         type=int,
@@ -41,26 +41,24 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     max_loops = args.max_loops
-    gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not gemini_api_key:
-        log.error("GEMINI_API_KEY is not set. Export it before running this script.")
+    from scripts.real_test_llm import TEST_LLM_DISPLAY_NAME, build_test_llm_provider, get_test_llm_api_key
+
+    api_key = get_test_llm_api_key()
+    if not api_key:
+        log.error("No OpenCode-compatible API key is set. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.")
         sys.exit(1)
 
     log.info("=== Synthetic Research E2E Integration Test ===")
     log.info("Task      : %s", TASK_SUMMARY)
     log.info("Topics    : %s", REFERENCE_TOPICS)
-    log.info("Model     : gemini/gemini-2.5-pro")
+    log.info("Model     : %s", TEST_LLM_DISPLAY_NAME)
     log.info("Max loops : %d", max_loops)
     print()
 
     from llm import LLMAdapter, LLMAdapterConfig
-    from llm.providers.litellm_provider import LiteLLMProvider
 
-    log.info("[1/4] Building LLM adapter (gemini-2.5-pro)...")
-    provider = LiteLLMProvider(
-        api_key=gemini_api_key,
-        model="gemini/gemini-2.5-pro",
-    )
+    log.info("[1/4] Building LLM adapter (%s)...", TEST_LLM_DISPLAY_NAME)
+    provider = build_test_llm_provider(api_key)
     llm_adapter = LLMAdapter(
         provider=provider,
         config=LLMAdapterConfig(max_retries=2),

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from llm import LLMAdapter, LLMAdapterConfig
-from llm.providers.litellm_provider import LiteLLMProvider
+from scripts.real_test_llm import build_test_llm_provider
 from service_contracts import ModelSelectorConfig
 from tests.golden_tasks.benchmark import resolve_benchmark_credentials
 
@@ -29,8 +27,7 @@ def benchmark_llm_adapter() -> LLMAdapter:
     if not api_key:
         pytest.skip("A supported benchmark API key is required for benchmark tests")
 
-    base_url = os.environ.get("BENCHMARK_LLM_BASE_URL")
-    provider = LiteLLMProvider(api_key=api_key, model=model, base_url=base_url)
+    provider = build_test_llm_provider(api_key)
     return LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=0))
 
 

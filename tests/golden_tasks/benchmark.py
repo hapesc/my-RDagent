@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from llm import LLMAdapter, LLMAdapterConfig
 from llm.codegen.quality_gate import CodegenQualityGate
-from llm.providers.litellm_provider import LiteLLMProvider
+from scripts.real_test_llm import TEST_LLM_MODEL, build_test_llm_provider, get_test_llm_api_key
 from service_contracts import ModelSelectorConfig
 
 GOLDEN_TASKS_DIR = Path(__file__).parent
@@ -123,19 +122,7 @@ def load_golden_tasks(scenario: str | None = None) -> list[dict[str, Any]]:
 
 
 def resolve_benchmark_credentials() -> tuple[str, str]:
-    explicit_model = os.environ.get("BENCHMARK_LLM_MODEL")
-    if explicit_model:
-        if explicit_model.startswith("gemini/"):
-            return os.environ.get("GEMINI_API_KEY", ""), explicit_model
-        if explicit_model.startswith(("gpt-", "openai/")):
-            return os.environ.get("OPENAI_API_KEY", ""), explicit_model.removeprefix("openai/")
-        return os.environ.get("BENCHMARK_LLM_API_KEY", ""), explicit_model
-
-    if os.environ.get("GEMINI_API_KEY"):
-        return os.environ["GEMINI_API_KEY"], "gemini/gemini-2.5-flash"
-    if os.environ.get("OPENAI_API_KEY"):
-        return os.environ["OPENAI_API_KEY"], "gpt-4o-mini"
-    return "", "gpt-4o-mini"
+    return get_test_llm_api_key(), TEST_LLM_MODEL
 
 
 def create_benchmark_llm_adapter() -> tuple[LLMAdapter, ModelSelectorConfig]:
@@ -143,9 +130,8 @@ def create_benchmark_llm_adapter() -> tuple[LLMAdapter, ModelSelectorConfig]:
     if not api_key:
         raise RuntimeError("A supported benchmark API key is required to run the golden benchmark")
 
-    temperature = float(os.environ.get("BENCHMARK_LLM_TEMPERATURE", "0.0"))
-    base_url = os.environ.get("BENCHMARK_LLM_BASE_URL")
-    provider = LiteLLMProvider(api_key=api_key, model=model, base_url=base_url)
+    temperature = 0.0
+    provider = build_test_llm_provider(api_key)
     adapter = LLMAdapter(provider=provider, config=LLMAdapterConfig(max_retries=0))
     config = ModelSelectorConfig(
         provider="litellm",

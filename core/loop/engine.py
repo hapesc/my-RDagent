@@ -229,6 +229,10 @@ class LoopEngine:
                             context_pack=context_pack,
                             source_workspace=branch_source_workspace,
                         )
+                    except SkipIterationError as exc:
+                        failed_branches += 1
+                        self._archive_exception(run_session.run_id, loop_state.iteration, exc)
+                        continue
                     except Exception as exc:
                         failed_branches += 1
                         self._archive_exception(run_session.run_id, loop_state.iteration, exc)

@@ -8,11 +8,13 @@ This self-correction mechanism enhances the loop by introducing structured excep
 
 ## Design Principles (UPDATED)
 
-1.  **Observability First**: Ensure every failure, including those handled by fallback mechanisms, is explicitly visible in the trace and feedback records.
-2.  **Structural Grace**: Use a dedicated exception hierarchy to distinguish between fatal system errors and recoverable iteration-level failures.
-3.  **Knowledge Accumulation**: Capture and save findings from failed experiments to prevent the agent from repeating the same mistakes in future branches.
-4.  **Feedback Fidelity**: Preserve the full multi-dimensional structure of FC-3 (Reasoning Pipeline) feedback throughout the CoSTEER iterations.
-5.  **Minimal Core Intrusion**: Maintain the integrity of the core loop engine by using thin adapters and scenario-level routing for self-correction logic.
+Five principles from the original RD-Agent drive the changes:
+
+1.  **Exception-Driven Control Flow**: Use typed exceptions (`SkipIterationError`, `CoderError`, `RunnerError`) to distinguish between recoverable and fatal failures, enabling structured routing at each layer.
+2.  **Failed Experiments Enter the Knowledge Base**: Save findings from failed experiments unconditionally, tagged with `success=False` metadata, so the agent learns from mistakes and avoids repeating them.
+3.  **Recovery Granularity Matches Failure Scope**: A coding failure skips one iteration (not the entire run); a runner failure skips the execution step (not the coding step). Each error type is handled at the most appropriate level.
+4.  **Healing Happens After Bookkeeping**: Always archive the failure state and save knowledge BEFORE attempting recovery. This ensures no information is lost even if recovery itself fails.
+5.  **Each Layer Uses Its Most Natural Information Carrier**: The core loop uses exceptions for control flow, scenario plugins use `FeedbackRecord` fields for enrichment, and the memory service uses metadata tags for retrieval filtering.
 
 ## What Was Implemented
 

@@ -216,8 +216,8 @@ class SyntheticResearchScenarioTests(unittest.TestCase):
         """synthetic_research is text-first and non-blocking — placeholder LLM output
         triggers a graceful fallback (proposal.summary used as description) instead of
         raising an exception."""
-        from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
         from data_models import ExperimentNode, Proposal
+        from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 
         raw = "## Findings\n1. TODO: fill in results\n2. TBD"
         coder = SyntheticResearchCoder(

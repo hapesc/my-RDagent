@@ -36,7 +36,7 @@ from llm import (
     proposal_prompt,
 )
 from llm.codegen import CODE_SOURCE_FAILED, CODE_SOURCE_LLM, CODE_SOURCE_TEMPLATE, emit_code_source_event
-from llm.codegen.quality_gate import CodegenQualityGate, QualityResult
+from llm.codegen.quality_gate import QualityResult
 from llm.codegen.validators import (
     compile_check,
     detect_placeholders,

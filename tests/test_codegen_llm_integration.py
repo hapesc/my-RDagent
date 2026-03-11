@@ -10,10 +10,7 @@ pytestmark = pytest.mark.llm
 @pytest.fixture(scope="session")
 def benchmark_results(benchmark_llm_adapter, benchmark_model_config):
     tasks = load_golden_tasks()
-    return {
-        task["task_id"]: run_single_round(task, benchmark_llm_adapter, benchmark_model_config)
-        for task in tasks
-    }
+    return {task["task_id"]: run_single_round(task, benchmark_llm_adapter, benchmark_model_config) for task in tasks}
 
 
 @pytest.mark.parametrize("golden_task", load_golden_tasks(), ids=lambda task: task["task_id"])

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Literal
+from typing import Literal
 
 from llm.codegen.extractors import extract_code_and_metadata
 from llm.codegen.validators import (

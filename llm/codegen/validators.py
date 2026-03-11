@@ -138,10 +138,7 @@ def compile_check(code: str) -> bool:
 
 def has_placeholder(code: str, markers: tuple[str, ...] | None = None) -> bool:
     haystack = code.lower()
-    for marker in markers or _PLACEHOLDER_MARKERS:
-        if marker in haystack:
-            return True
-    return False
+    return any(marker in haystack for marker in markers or _PLACEHOLDER_MARKERS)
 
 
 def has_forbidden_import(code: str, forbidden: list[str]) -> bool:
@@ -156,9 +153,8 @@ def has_forbidden_import(code: str, forbidden: list[str]) -> bool:
             for alias in node.names:
                 if alias.name.split(".", 1)[0] in forbidden_set:
                     return True
-        if isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.split(".", 1)[0] in forbidden_set:
-                return True
+        if isinstance(node, ast.ImportFrom) and node.module and node.module.split(".", 1)[0] in forbidden_set:
+            return True
     return False
 
 

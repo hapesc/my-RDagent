@@ -107,9 +107,9 @@ class LiteLLMProviderTests(unittest.TestCase):
         mock_completion.return_value = _mock_response("mixed output")
         provider = LiteLLMProvider(api_key="sk-test", model="gpt-4o-mini")
         prompt = (
-            'Return EXACTLY two sections:\\n'
+            "Return EXACTLY two sections:\\n"
             '{"artifact_id":"factor_v1","description":"desc","location":"factor.py"}\\n'
-            '```python\\nprint(\"hi\")\\n```'
+            '```python\\nprint("hi")\\n```'
         )
 
         provider.complete(prompt)

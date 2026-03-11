@@ -9,6 +9,7 @@ End-to-end quant integration test: real data (yfinance) + real LLM (gemini-2.5-p
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -32,7 +33,6 @@ TASK_SUMMARY = (
     "Mine a single alpha factor using price/volume data for QQQ, VOO, GOOG, GLD, SLV, SCHD. "
     "The factor should predict next-day returns. Avoid look-ahead bias."
 )
-MAX_LOOPS = 1  # 一次完整循环 (propose → code → run → feedback)
 
 # --------------------------------------------------------------------------- #
 # 日志
@@ -49,7 +49,23 @@ log = logging.getLogger("quant_e2e")
 # --------------------------------------------------------------------------- #
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Quant E2E Integration Test: real data (yfinance) + real LLM (gemini-2.5-pro)"
+    )
+    parser.add_argument(
+        "--max-loops",
+        type=int,
+        default=1,
+        help="Number of loop iterations (default: 1)",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
+    max_loops = args.max_loops
     gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not gemini_api_key:
         log.error("GEMINI_API_KEY is not set. Export it before running this script.")
@@ -59,7 +75,7 @@ def main() -> None:
     log.info("Tickers   : %s", TICKERS)
     log.info("Date range: %s → %s", START_DATE, END_DATE)
     log.info("Model     : gemini/gemini-2.5-pro")
-    log.info("Max loops : %d", MAX_LOOPS)
+    log.info("Max loops : %d", max_loops)
     print()
 
     # ---------------------------------------------------------------------- #
@@ -249,7 +265,7 @@ def main() -> None:
         entry_input={
             "task_summary": TASK_SUMMARY,
             "tickers": TICKERS,
-            "max_loops": MAX_LOOPS,
+            "max_loops": max_loops,
         },
     )
     log.info("      Run session created: %s (status=%s)", session.run_id, session.status)
@@ -258,10 +274,12 @@ def main() -> None:
         loop_ctx = run_service.start_run(
             run_id=RUN_ID,
             task_summary=TASK_SUMMARY,
-            loops_per_call=MAX_LOOPS,
+            loops_per_call=max_loops,
         )
     except RuntimeError as exc:
         log.error("Run failed: %s", exc)
+        summary = {"scenario": "quant", "passed": False, "iterations": 0, "artifact_path": ""}
+        print(json.dumps(summary))
         sys.exit(1)
 
     # ---------------------------------------------------------------------- #
@@ -304,7 +322,16 @@ def main() -> None:
     print()
     log.info("Workspace : %s", WORKSPACE_ROOT)
     log.info("SQLite    : %s", SQLITE_PATH)
+
+    summary = {
+        "scenario": "quant",
+        "passed": True,
+        "iterations": loop_ctx.loop_state.iteration if loop_ctx.loop_state else 0,
+        "artifact_path": str(workspace_path),
+    }
+    print(json.dumps(summary))
     log.info("Done.")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
+from core.correction.feedback_enricher import enrich_feedback_context
 from data_models import (
     CodeArtifact,
     ContextPack,
@@ -25,7 +26,6 @@ from data_models import (
     Score,
     StepState,
 )
-from core.correction.feedback_enricher import enrich_feedback_context
 from evaluation_service.stratified_splitter import StratifiedSplitter
 from llm import (
     LLMAdapter,
@@ -158,7 +158,7 @@ def _extract_quant_ordered_pairs(input_payload: dict[str, Any]) -> list[tuple[st
         return sorted(
             [
                 (str(order_value), data_id)
-                for order_value, data_id in zip(order_values, direct_data_ids)
+                for order_value, data_id in zip(order_values, direct_data_ids, strict=False)
                 if str(data_id).strip()
             ],
             key=lambda item: item[0],

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from core.correction.feedback_enricher import enrich_feedback_context
 from data_models import (
     CodeArtifact,
     ContextPack,
@@ -21,7 +22,6 @@ from data_models import (
     Score,
     StepState,
 )
-from core.correction.feedback_enricher import enrich_feedback_context
 from llm import (
     CodeDraft,
     FeedbackDraft,

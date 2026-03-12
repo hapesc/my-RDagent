@@ -1,21 +1,30 @@
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 from v2.storage.protocols import GraphCheckpointStore
 
-try:
-    from langgraph.checkpoint.base import create_checkpoint, empty_checkpoint
-    from langgraph.checkpoint.memory import MemorySaver
-except ImportError:  # pragma: no cover - exercised via fallback path in tests
-    MemorySaver = None
-    create_checkpoint = None
-    empty_checkpoint = None
+
+def _load_langgraph_checkpoint_symbols() -> tuple[Any | None, Any | None, Any | None]:
+    try:
+        checkpoint_base = importlib.import_module("langgraph.checkpoint.base")
+        checkpoint_memory = importlib.import_module("langgraph.checkpoint.memory")
+    except ImportError:  # pragma: no cover - exercised via fallback path in tests
+        return None, None, None
+    return (
+        getattr(checkpoint_memory, "MemorySaver", None),
+        getattr(checkpoint_base, "create_checkpoint", None),
+        getattr(checkpoint_base, "empty_checkpoint", None),
+    )
+
+
+_MEMORY_SAVER, _CREATE_CHECKPOINT, _EMPTY_CHECKPOINT = _load_langgraph_checkpoint_symbols()
 
 
 class LangGraphCheckpointStore(GraphCheckpointStore):
     def __init__(self, saver: Any | None = None) -> None:
-        self._saver = saver if saver is not None else (MemorySaver() if MemorySaver is not None else None)
+        self._saver = saver if saver is not None else (_MEMORY_SAVER() if _MEMORY_SAVER is not None else None)
         self._fallback: dict[str, dict] = {}
 
     @property
@@ -29,10 +38,14 @@ class LangGraphCheckpointStore(GraphCheckpointStore):
 
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
         current = self._saver.get_tuple(config)
-        base_checkpoint = current.checkpoint if current is not None else empty_checkpoint()
+        if _CREATE_CHECKPOINT is None or _EMPTY_CHECKPOINT is None:
+            self._fallback[thread_id] = dict(data)
+            return
+
+        base_checkpoint = current.checkpoint if current is not None else _EMPTY_CHECKPOINT()
         current_version = base_checkpoint["channel_versions"].get("state")
         next_version = self._saver.get_next_version(current_version, None)
-        checkpoint = create_checkpoint(base_checkpoint, None, step=_extract_step(data))
+        checkpoint = _CREATE_CHECKPOINT(base_checkpoint, None, step=_extract_step(data))
         checkpoint["channel_values"] = {"state": dict(data)}
         checkpoint["channel_versions"] = {**base_checkpoint["channel_versions"], "state": next_version}
         self._saver.put(config, checkpoint, {"source": "update"}, {"state": next_version})

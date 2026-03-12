@@ -7,6 +7,9 @@ from typing import Any
 from llm.codegen.validators import (
     compile_check,
     count_quantitative_claims,
+    function_body_nontrivial,
+    function_has_return,
+    function_uses_parameter,
     has_forbidden_import,
     has_placeholder,
     has_required_signature,
@@ -244,3 +247,74 @@ def test_structural_markers_found() -> None:
 
 def test_structural_markers_missing_numbering() -> None:
     assert has_structural_markers("## Findings\nSome prose here", ["##", "1."]) is False
+
+
+# --- function_uses_parameter ---
+
+
+def test_function_uses_parameter_true():
+    code = "def compute_factor(df):\n    return df['close'].pct_change(5)\n"
+    assert function_uses_parameter(code, "compute_factor", "df") is True
+
+
+def test_function_uses_parameter_false():
+    code = "def compute_factor(df):\n    return 42\n"
+    assert function_uses_parameter(code, "compute_factor", "df") is False
+
+
+def test_function_uses_parameter_identity_return():
+    """Bare `return df` still counts as 'using' the parameter."""
+    code = "def compute_factor(df):\n    return df\n"
+    assert function_uses_parameter(code, "compute_factor", "df") is True
+
+
+def test_function_uses_parameter_missing_function():
+    code = "def other(x):\n    return x\n"
+    assert function_uses_parameter(code, "compute_factor", "df") is False
+
+
+# --- function_has_return ---
+
+
+def test_function_has_return_true():
+    code = "def compute_factor(df):\n    return df\n"
+    assert function_has_return(code, "compute_factor") is True
+
+
+def test_function_has_return_false_pass():
+    code = "def compute_factor(df):\n    pass\n"
+    assert function_has_return(code, "compute_factor") is False
+
+
+def test_function_has_return_false_sideeffect():
+    code = "def compute_factor(df):\n    print(df)\n"
+    assert function_has_return(code, "compute_factor") is False
+
+
+# --- function_body_nontrivial ---
+
+
+def test_body_nontrivial_real_code():
+    code = "def compute_factor(df):\n    return df.groupby('stock_id')['close'].pct_change(5)\n"
+    assert function_body_nontrivial(code, "compute_factor") is True
+
+
+def test_body_nontrivial_rejects_pass():
+    assert function_body_nontrivial("def f(df):\n    pass\n", "f") is False
+
+
+def test_body_nontrivial_rejects_ellipsis():
+    assert function_body_nontrivial("def f(df):\n    ...\n", "f") is False
+
+
+def test_body_nontrivial_rejects_identity_return():
+    assert function_body_nontrivial("def f(df):\n    return df\n", "f") is False
+
+
+def test_body_nontrivial_rejects_return_none():
+    assert function_body_nontrivial("def f(df):\n    return None\n", "f") is False
+
+
+def test_body_nontrivial_accepts_two_line_body():
+    code = "def f(df):\n    x = df + 1\n    return x\n"
+    assert function_body_nontrivial(code, "f") is True

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import importlib
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any, Protocol
 
 from v2.graph.nodes import (
     coding_node,
@@ -13,11 +14,18 @@ from v2.graph.nodes import (
 )
 from v2.state import MainState
 
-if TYPE_CHECKING:
-    from langgraph.graph.state import CompiledStateGraph as CompiledGraph
+
+class CompiledGraph(Protocol):
+    nodes: dict[str, Any]
+
+    def invoke(self, initial_state: dict) -> dict: ...
+
 
 try:
-    from langgraph.graph import END, START, StateGraph
+    langgraph_graph = importlib.import_module("langgraph.graph")
+    END = langgraph_graph.END
+    START = langgraph_graph.START
+    StateGraph = langgraph_graph.StateGraph
 except ModuleNotFoundError:
     START = "__start__"
     END = "__end__"
@@ -69,8 +77,6 @@ except ModuleNotFoundError:
             _ = checkpointer
             return _CompiledGraph(self._nodes, self._edges, self._conditional_edges)
 
-    CompiledGraph = _CompiledGraph
-
 
 def _next_after_record(state: dict) -> str:
     if state.get("loop_iteration", 0) < state.get("max_loops", 1):
@@ -78,7 +84,7 @@ def _next_after_record(state: dict) -> str:
     return END
 
 
-def build_main_graph(checkpointer: Any = None) -> "CompiledGraph":
+def build_main_graph(checkpointer: Any = None) -> CompiledGraph:
     graph = StateGraph(MainState)
 
     graph.add_node("propose", propose_node)

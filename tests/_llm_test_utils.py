@@ -9,9 +9,7 @@ class _CodegenReadyMockProvider(MockLLMProvider):
     def complete(self, prompt: str, model_config=None) -> str:
         prompt_lower = prompt.lower()
         if "quantitative researcher proposing alpha factors" in prompt_lower:
-            return (
-                '{"summary":"5-day momentum factor","constraints":["price-only","no-lookahead"],"virtual_score":0.7}'
-            )
+            return '{"summary":"5-day momentum factor","constraints":["price-only","no-lookahead"],"virtual_score":0.7}'
         if "analyze the following factor backtest results" in prompt_lower:
             return (
                 '{"decision": true, "acceptable": true, "reason": "mock quant feedback", '

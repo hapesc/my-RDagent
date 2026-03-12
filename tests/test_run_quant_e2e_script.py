@@ -89,7 +89,12 @@ def test_quant_e2e_script_invokes_unified_cli(mock_provider_cls, mock_subprocess
 
 @patch("scripts.run_quant_e2e.subprocess.run")
 @patch("scripts.run_quant_e2e.YFinanceDataProvider")
-def test_quant_e2e_script_deletes_temp_csv_on_success(mock_provider_cls, mock_subprocess_run, tmp_path, monkeypatch) -> None:
+def test_quant_e2e_script_deletes_temp_csv_on_success(
+    mock_provider_cls,
+    mock_subprocess_run,
+    tmp_path,
+    monkeypatch,
+) -> None:
     mock_provider = mock_provider_cls.return_value
     mock_provider.load.return_value = _sample_ohlcv()
     mock_subprocess_run.return_value = subprocess.CompletedProcess(args=["python"], returncode=0)
@@ -113,7 +118,12 @@ def test_quant_e2e_script_deletes_temp_csv_on_success(mock_provider_cls, mock_su
 
 @patch("scripts.run_quant_e2e.subprocess.run")
 @patch("scripts.run_quant_e2e.YFinanceDataProvider")
-def test_quant_e2e_script_deletes_temp_csv_on_failure(mock_provider_cls, mock_subprocess_run, tmp_path, monkeypatch) -> None:
+def test_quant_e2e_script_deletes_temp_csv_on_failure(
+    mock_provider_cls,
+    mock_subprocess_run,
+    tmp_path,
+    monkeypatch,
+) -> None:
     mock_provider = mock_provider_cls.return_value
     mock_provider.load.return_value = _sample_ohlcv()
     monkeypatch.setattr(script, "PROJECT_ROOT", tmp_path)

@@ -13,6 +13,7 @@ from typing import Any, NoReturn
 from app.config import REAL_PROVIDER_SAFE_PROFILE
 from app.runtime import build_run_service, build_runtime, resolve_scenario_runtime_profile
 from data_models import model_to_dict
+from scenarios import FileOHLCVDataProvider, QuantConfig
 from service_contracts import (
     ArtifactDescriptor,
     ArtifactListResponse,
@@ -27,7 +28,6 @@ from service_contracts import (
     ServiceContractError,
 )
 from trace_store import TraceTimelineView
-from scenarios import FileOHLCVDataProvider, QuantConfig
 
 
 class ExitCode(IntEnum):

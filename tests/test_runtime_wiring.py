@@ -114,7 +114,10 @@ class TestConfigEnvVars(unittest.TestCase):
         )
 
         self.assertIn(
-            "real provider warning: layer0_n_candidates=4 exceeds conservative profile 1; execution may take a long time",
+            (
+                "real provider warning: layer0_n_candidates=4 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
             config.real_provider_warnings,
         )
 
@@ -133,8 +136,14 @@ class TestConfigEnvVars(unittest.TestCase):
         self.assertEqual(
             config.real_provider_warnings,
             (
-                "real provider warning: costeer_max_rounds=2 exceeds conservative profile 1; execution may take a long time",
-                "real provider warning: sandbox_timeout_sec=240 exceeds conservative profile 120; execution may take a long time",
+                (
+                    "real provider warning: costeer_max_rounds=2 exceeds "
+                    "conservative profile 1; execution may take a long time"
+                ),
+                (
+                    "real provider warning: sandbox_timeout_sec=240 exceeds "
+                    "conservative profile 120; execution may take a long time"
+                ),
             ),
         )
 
@@ -162,7 +171,10 @@ class TestConfigEnvVars(unittest.TestCase):
         )
 
         self.assertIn(
-            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120; execution may take a long time",
+            (
+                "real provider warning: running.timeout_sec=240 exceeds "
+                "conservative profile 120; execution may take a long time"
+            ),
             profile.guardrail_warnings,
         )
 
@@ -190,7 +202,10 @@ class TestConfigEnvVars(unittest.TestCase):
         )
 
         self.assertIn(
-            "real provider warning: proposal.max_retries=2 exceeds conservative profile 1; execution may take a long time",
+            (
+                "real provider warning: proposal.max_retries=2 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
             profile.guardrail_warnings,
         )
 

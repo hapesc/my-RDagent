@@ -258,12 +258,18 @@ class FullLoopIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, int(ExitCode.OK))
         self.assertIn(
-            "WARNING: real provider warning: proposal.max_retries=2 exceeds conservative profile 1; execution may take a long time",
+            (
+                "WARNING: real provider warning: proposal.max_retries=2 "
+                "exceeds conservative profile 1; execution may take a long time"
+            ),
             err.getvalue(),
         )
         payload = json.loads(out.getvalue())
         self.assertIn(
-            "real provider warning: proposal.max_retries=2 exceeds conservative profile 1; execution may take a long time",
+            (
+                "real provider warning: proposal.max_retries=2 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
             payload["run"]["config_snapshot"]["runtime"]["guardrail_warnings"],
         )
 
@@ -298,12 +304,18 @@ class FullLoopIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, int(ExitCode.OK))
         self.assertIn(
-            "WARNING: real provider warning: running.timeout_sec=240 exceeds conservative profile 120; execution may take a long time",
+            (
+                "WARNING: real provider warning: running.timeout_sec=240 "
+                "exceeds conservative profile 120; execution may take a long time"
+            ),
             err.getvalue(),
         )
         payload = json.loads(out.getvalue())
         self.assertIn(
-            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120; execution may take a long time",
+            (
+                "real provider warning: running.timeout_sec=240 exceeds "
+                "conservative profile 120; execution may take a long time"
+            ),
             payload["run"]["config_snapshot"]["runtime"]["guardrail_warnings"],
         )
 

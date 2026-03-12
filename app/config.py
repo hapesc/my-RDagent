@@ -124,9 +124,8 @@ def _validate_real_provider_guardrails(
         if retries > REAL_PROVIDER_SAFE_PROFILE["max_retries"]:
             warnings.append(_build_real_provider_warning(f"{step_name}.max_retries", retries, 1))
 
-    if running_timeout_sec is not None:
-        if running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
-            warnings.append(_build_real_provider_warning("running.timeout_sec", running_timeout_sec, 120))
+    if running_timeout_sec is not None and running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
+        warnings.append(_build_real_provider_warning("running.timeout_sec", running_timeout_sec, 120))
 
     return tuple(warnings)
 

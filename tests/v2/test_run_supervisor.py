@@ -49,3 +49,18 @@ def test_worker_error_marks_run_failed() -> None:
     time.sleep(0.2)
 
     assert sup.get_status(run_id) == RunStatus.FAILED.value
+
+
+def test_resume_run_after_pause_completes() -> None:
+    sup = V2RunSupervisor(run_service=V2RunService())
+
+    sup._run_service._runs["paused-run"] = {
+        "config": {"max_loops": 1},
+        "status": RunStatus.PAUSED.value,
+    }
+    sup._controls["paused-run"] = "pause"
+
+    sup.resume_run("paused-run")
+    time.sleep(0.3)
+
+    assert sup.get_status("paused-run") == RunStatus.COMPLETED.value

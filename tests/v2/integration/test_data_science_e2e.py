@@ -117,3 +117,26 @@ class TestDataScienceE2E:
 
         assert uuid.UUID(run_id).version == 4
         assert ctx.run_service.get_status(run_id) == RunStatus.CREATED.value
+
+    def test_registered_bundle_plugins_are_injected_into_graph(self) -> None:
+        proposer_called: list[bool] = []
+
+        bundle = DataScienceBundle()
+        original_propose = bundle.proposer.propose
+
+        def _spy_propose(state: dict) -> dict:
+            proposer_called.append(True)
+            return original_propose(state)
+
+        bundle.proposer.propose = _spy_propose  # type: ignore[method-assign]
+
+        ctx = build_v2_runtime({"llm_provider": "mock", "max_loops": 1})
+        ctx.plugin_registry.register("data_science", bundle)
+
+        run_id = ctx.run_service.create_run(
+            {"scenario": "data_science", "task_summary": "classify iris", "max_loops": 1}
+        )
+        ctx.run_service.start_run(run_id)
+
+        assert proposer_called, "registered proposer plugin was never called — plugin injection is broken"
+        assert ctx.run_service.get_status(run_id) == RunStatus.COMPLETED.value

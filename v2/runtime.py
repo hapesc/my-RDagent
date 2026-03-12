@@ -42,9 +42,9 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
         model=cast(Any, MockChatModel()),
         max_attempts=int(effective_config.get("max_retries", 3)),
     )
-    run_service = V2RunService()
-    exploration_manager = V2ExplorationManager()
     plugin_registry = PluginRegistry()
+    run_service = V2RunService(plugin_registry=plugin_registry)
+    exploration_manager = V2ExplorationManager()
 
     checkpoint_coordinator: CheckpointBlobCoordinator | None = None
     artifact_root = effective_config.get("artifact_root")

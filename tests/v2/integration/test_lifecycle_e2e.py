@@ -30,7 +30,7 @@ class TestLifecycleE2E:
         assert service.get_status(run_id) == RunStatus.PAUSED.value
 
         service.resume_run(run_id)
-        assert service.get_status(run_id) == RunStatus.RUNNING.value
+        assert service.get_status(run_id) == RunStatus.COMPLETED.value
 
         fresh_run_id = service.create_run({"scenario": "data_science", "max_loops": 1})
         service.start_run(fresh_run_id)

@@ -64,7 +64,11 @@ class V2RunSupervisor:
             if control == "stop":
                 return
 
-            self._run_service.start_run(run_id)
+            current_status = self._run_service.get_status(run_id)
+            if current_status == RunStatus.PAUSED.value:
+                self._run_service.resume_run(run_id)
+            else:
+                self._run_service.start_run(run_id)
         except Exception:
             try:
                 run = self._run_service._runs.get(run_id)

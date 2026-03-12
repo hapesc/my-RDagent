@@ -33,6 +33,7 @@ from planner import Planner, PlannerConfig
 from plugins import PluginRegistry, build_default_registry
 from scenarios import (
     DataScienceV1Config,
+    QuantConfig,
     SyntheticResearchConfig,
     default_data_science_step_overrides,
     default_synthetic_research_step_overrides,
@@ -45,6 +46,10 @@ from service_contracts import (
 )
 
 from .config import REAL_PROVIDER_SAFE_PROFILE, AppConfig, load_config, validate_runtime_guardrails
+
+
+def _is_litellm_chatgpt_auth_eligible_model(model: str) -> bool:
+    return model.startswith("chatgpt/") or model.startswith("gpt-")
 
 
 @dataclass
@@ -95,10 +100,26 @@ class _ReasoningTraceStore:
 
 def _create_llm_provider(config: AppConfig):
     if config.llm_provider == "litellm":
+        model = config.llm_model
+        api_key = config.llm_api_key or ""
+        base_url = config.llm_base_url
+
+        if not api_key:
+            if _is_litellm_chatgpt_auth_eligible_model(model):
+                if model.startswith("gpt-"):
+                    model = f"chatgpt/{model}"
+                base_url = None
+            else:
+                raise RuntimeError(
+                    f"Unknown or missing LLM provider: '{config.llm_provider}'. "
+                    "Set RD_AGENT_LLM_PROVIDER=litellm and provide RD_AGENT_LLM_API_KEY. "
+                    "For LiteLLM ChatGPT auth, use an auth-eligible model such as chatgpt/... or gpt-*."
+                )
+
         return LiteLLMProvider(
-            api_key=config.llm_api_key or "",
-            model=config.llm_model,
-            base_url=config.llm_base_url,
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
         )
     raise RuntimeError(
         f"Unknown or missing LLM provider: '{config.llm_provider}'. "
@@ -200,7 +221,7 @@ def resolve_scenario_runtime_profile(
     )
 
 
-def build_runtime(config_path: str | None = None) -> RuntimeContext:
+def build_runtime(config_path: str | None = None, quant_config: QuantConfig | None = None) -> RuntimeContext:
     config = load_config(config_path=config_path)
     data_science_defaults = _effective_step_overrides(
         default_data_science_step_overrides(config.sandbox_timeout_sec),
@@ -267,6 +288,7 @@ def build_runtime(config_path: str | None = None) -> RuntimeContext:
                 workspace_root=config.workspace_root,
                 default_step_overrides=synthetic_research_defaults,
             ),
+            quant_config,
             llm_adapter=llm_adapter,
             reasoning_pipeline=reasoning_pipeline,
             virtual_evaluator=virtual_evaluator,

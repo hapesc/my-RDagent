@@ -32,6 +32,11 @@ class Task18V1ContractTests(unittest.TestCase):
                 "AGENTRD_WORKSPACE_ROOT": str(tmp_path / "workspaces"),
                 "AGENTRD_TRACE_STORAGE_PATH": str(tmp_path / "trace.jsonl"),
                 "AGENTRD_ALLOW_LOCAL_EXECUTION": "1",
+                "AGENTRD_SANDBOX_TIMEOUT_SEC": "120",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "1",
             },
             clear=False,
         )
@@ -186,6 +191,57 @@ class Task18V1ContractTests(unittest.TestCase):
         self.assertEqual(restored.config_snapshot["step_overrides"]["running"]["timeout_sec"], 12)
         self.assertEqual(restored.config_snapshot["scenario_manifest"]["scenario_name"], "data_science")
         self.assertEqual(restored.entry_input["data_source"], "/tmp/input.csv")
+
+    def test_cli_run_merges_run_defaults_entry_input(self) -> None:
+        tmp_path = Path(self._tmpdir.name)
+        config_path = tmp_path / "run-defaults.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    f"sqlite_path: {tmp_path / 'config-meta.db'}",
+                    "allow_local_execution: true",
+                    "run_defaults:",
+                    "  scenario: data_science",
+                    "  stop_conditions:",
+                    "    max_loops: 2",
+                    "  entry_input:",
+                    "    id_column: row_id",
+                    "    label_column: target",
+                    "  step_overrides:",
+                    "    running:",
+                    "      timeout_sec: 33",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        code, out, err = self._run_cli(
+            [
+                "run",
+                "--config",
+                str(config_path),
+                "--task-summary",
+                "task-18 run defaults",
+                "--data-source",
+                "/tmp/input.csv",
+            ]
+        )
+
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertEqual(err, "")
+        payload = json.loads(out)
+        run_id = payload["run_id"]
+        runtime = build_runtime(config_path=str(config_path))
+        restored = runtime.sqlite_store.get_run(run_id)
+
+        self.assertIsNotNone(restored)
+        assert restored is not None
+        self.assertEqual(restored.entry_input["data_source"], "/tmp/input.csv")
+        self.assertEqual(restored.entry_input["id_column"], "row_id")
+        self.assertEqual(restored.entry_input["label_column"], "target")
+        self.assertEqual(restored.stop_conditions.max_loops, 2)
+        self.assertEqual(restored.config_snapshot["step_overrides"]["running"]["timeout_sec"], 33)
 
     def test_cli_and_ui_share_same_scenario_manifests(self) -> None:
         runtime = build_runtime()

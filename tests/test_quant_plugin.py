@@ -18,7 +18,7 @@ from data_models import (
 from llm import LLMAdapter, LLMAdapterConfig, MockLLMProvider
 from plugins import build_default_registry
 from plugins.contracts import ScenarioContext, UsefulnessGateInput
-from scenarios.quant.data_provider import MockDataProvider
+from scenarios.quant.data_provider import FileOHLCVDataProvider, MockDataProvider
 from scenarios.quant.plugin import (
     QuantCoder,
     QuantConfig,
@@ -82,6 +82,43 @@ class TestQuantScenarioPlugin:
         plugin = QuantScenarioPlugin()
         ctx = plugin.build_context(run_session, {})
         assert ctx.task_summary == "mine alpha factors"
+
+
+class TestFileOHLCVDataProvider:
+    def test_load_csv_returns_required_quant_columns(self, tmp_path):
+        csv_path = tmp_path / "ohlcv.csv"
+        csv_path.write_text(
+            "\n".join(
+                [
+                    "date,stock_id,open,high,low,close,volume",
+                    "2024-01-02,AAPL,185.64,188.44,183.89,185.64,82488700",
+                    "2024-01-02,MSFT,370.87,373.26,366.78,370.87,25258600",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        frame = FileOHLCVDataProvider(str(csv_path)).load()
+
+        assert list(frame.columns) == ["date", "stock_id", "open", "high", "low", "close", "volume"]
+        assert len(frame) == 2
+
+    def test_load_csv_rejects_missing_required_columns(self, tmp_path):
+        csv_path = tmp_path / "bad_ohlcv.csv"
+        csv_path.write_text(
+            "\n".join(
+                [
+                    "date,ticker,open,high,low,close,volume",
+                    "2024-01-02,AAPL,185.64,188.44,183.89,185.64,82488700",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="must contain columns"):
+            FileOHLCVDataProvider(str(csv_path)).load()
 
 
 class TestQuantPrompts:

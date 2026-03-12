@@ -1,4 +1,4 @@
-"""Quant data providers: protocol + YFinance + Mock (test-only)."""
+"""Quant data providers: protocol + file/YFinance + Mock (test-only)."""
 
 from __future__ import annotations
 
@@ -74,6 +74,38 @@ class YFinanceDataProvider:
         ohlcv = pd.concat(frames, ignore_index=True)
         ohlcv = ohlcv.sort_values(["date", "stock_id"]).reset_index(drop=True)
         return ohlcv
+
+
+class FileOHLCVDataProvider:
+    """Local CSV provider for quant runs.
+
+    Expected columns:
+    [date, stock_id, open, high, low, close, volume]
+    """
+
+    _REQUIRED_COLUMNS = ["date", "stock_id", "open", "high", "low", "close", "volume"]
+
+    def __init__(self, csv_path: str) -> None:
+        self._csv_path = csv_path
+
+    def load(self) -> pd.DataFrame:
+        path = pd.io.common.stringify_path(self._csv_path)
+        frame = pd.read_csv(path)
+
+        missing = [column for column in self._REQUIRED_COLUMNS if column not in frame.columns]
+        if missing:
+            raise ValueError(
+                "local quant OHLCV csv must contain columns: "
+                f"{', '.join(self._REQUIRED_COLUMNS)}; missing={', '.join(missing)}"
+            )
+
+        frame = frame[self._REQUIRED_COLUMNS].copy()
+        frame["date"] = pd.to_datetime(frame["date"], errors="raise")
+        frame["stock_id"] = frame["stock_id"].astype(str)
+        for column in ("open", "high", "low", "close", "volume"):
+            frame[column] = pd.to_numeric(frame[column], errors="raise")
+
+        return frame.sort_values(["date", "stock_id"]).reset_index(drop=True)
 
 
 class MockDataProvider:

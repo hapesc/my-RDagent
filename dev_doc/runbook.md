@@ -41,6 +41,19 @@ export RD_AGENT_LLM_API_KEY=your-key-here
 # export AGENTRD_ALLOW_LOCAL_EXECUTION=1
 ```
 
+如果要走 LiteLLM ChatGPT auth：
+
+```bash
+export RD_AGENT_LLM_PROVIDER=litellm
+export RD_AGENT_LLM_MODEL=gpt-5
+unset RD_AGENT_LLM_API_KEY
+```
+
+说明：
+
+- `chatgpt/...` 与裸 `gpt-*` 会在无 API key 时走 ChatGPT auth
+- `openai/...` 仍要求显式 API key
+
 ## Startup Sequence
 
 1. 只做配置解析：
@@ -72,22 +85,13 @@ streamlit run ui/trace_ui.py
 最小 provider smoke，优先使用 `synthetic_research`：
 
 ```bash
-python agentrd_cli.py run \
-  --config ./config.yaml \
-  --scenario synthetic_research \
-  --loops-per-call 1 \
-  --max-loops 1 \
-  --input '{"task_summary":"service smoke","max_loops":1}'
+rdagent run --config ./config.yaml --scenario synthetic_research --task-summary "service smoke"
 ```
 
 执行链路 smoke，验证沙盒或本地执行：
 
 ```bash
-python cli.py \
-  --config ./config.yaml \
-  --scenario data_science \
-  --task "classify iris dataset" \
-  --max-steps 1
+rdagent run --config ./config.yaml --task-summary "classify iris dataset"
 ```
 
 健康检查：
@@ -99,7 +103,7 @@ curl -sS http://127.0.0.1:8000/health
 ## Operational Notes
 
 - **Runtime provider requirement**: `app.startup` 不需要真实 provider，但 CLI/API/control plane 需要。
-- **Real-provider guardrails**: 若使用真实 provider，默认 fan-out 和超时会被收紧到保守值；超出硬上限直接报错。
+- **Real-provider guardrails**: 若使用真实 provider，默认 fan-out 和超时会收紧到保守值；超出保守值会给出“执行时间可能会很久”的 warning。
 - **Asynchronous execution**: `POST /runs` 立即返回，后台执行由 `RunSupervisor` 持有。
 - **State transitions**: `pause` 和 `stop` 是协作式的，会在当前迭代结束后生效。
 - **Crash recovery**: 运行状态保存在 SQLite 和 checkpoint 中，恢复依赖显式 `resume`。
@@ -110,4 +114,4 @@ curl -sS http://127.0.0.1:8000/health
 - **Provider misconfiguration**: 若 `RD_AGENT_LLM_PROVIDER` 缺失或仍为 `mock`，运行时装配直接失败。
 - **Execution backend**: `/health` 会报告 `docker_available` 和 `allow_local_execution`；没有 Docker 且未允许本地执行时，执行后端为 `degraded`。
 - **Storage**: SQLite 路径不存在时，CLI `health-check` 与控制面的 `/health` 都会降级。
-- **Quant scenario**: 默认 runtime 不注入 `QuantConfig.data_provider`，因此量化流程应走自定义装配或 `scripts/run_quant_e2e.py`。
+- **Quant scenario**: CLI 路径现在支持 `--data-source /abs/path/ohlcv.csv` 自动装配文件型 provider；HTTP/API 路径如果需要同等能力，仍建议单独设计 provider 装配方案。

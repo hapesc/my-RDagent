@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout, suppress
 from pathlib import Path
 from unittest.mock import patch
 
@@ -29,6 +29,11 @@ class CLIContractTests(unittest.TestCase):
                 "AGENTRD_WORKSPACE_ROOT": str(tmp_path / "workspaces"),
                 "AGENTRD_TRACE_STORAGE_PATH": str(tmp_path / "trace.jsonl"),
                 "AGENTRD_ALLOW_LOCAL_EXECUTION": "1",
+                "AGENTRD_SANDBOX_TIMEOUT_SEC": "120",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "1",
             },
             clear=False,
         )
@@ -52,6 +57,15 @@ class CLIContractTests(unittest.TestCase):
         help_text = build_parser().format_help()
         for command in ["run", "resume", "pause", "stop", "trace", "ui", "health-check"]:
             self.assertIn(command, help_text)
+
+    def test_run_help_lists_high_frequency_override_flags(self) -> None:
+        out = io.StringIO()
+        with redirect_stdout(out), suppress(SystemExit):
+            build_parser().parse_args(["run", "--help"])
+
+        help_text = out.getvalue()
+        self.assertIn("--task-summary", help_text)
+        self.assertIn("--data-source", help_text)
 
     def test_run_command_accepts_inline_json(self) -> None:
         code, out, err = self._run_cli(
@@ -92,6 +106,46 @@ class CLIContractTests(unittest.TestCase):
         self.assertEqual(err, "")
         payload = json.loads(out)
         self.assertEqual(payload["command"], "run")
+
+    def test_run_command_uses_run_defaults_and_cli_overrides(self) -> None:
+        tmp_path = Path(self._tmpdir.name)
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    f"sqlite_path: {tmp_path / 'config-meta.db'}",
+                    "allow_local_execution: true",
+                    "run_defaults:",
+                    "  scenario: data_science",
+                    "  stop_conditions:",
+                    "    max_loops: 2",
+                    "  entry_input:",
+                    "    id_column: id",
+                    "    label_column: label",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        code, out, err = self._run_cli(
+            [
+                "run",
+                "--config",
+                str(config_path),
+                "--task-summary",
+                "cli defaults test",
+                "--data-source",
+                "/tmp/train.csv",
+            ]
+        )
+
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertEqual(err, "")
+        payload = json.loads(out)
+        self.assertEqual(payload["scenario"], "data_science")
+        self.assertEqual(payload["run"]["stop_conditions"]["max_loops"], 2)
+        self.assertEqual(payload["run"]["config_snapshot"]["scenario"], "data_science")
 
     def test_invalid_input_returns_invalid_args_code(self) -> None:
         code, _out, err = self._run_cli(["run", "--scenario", "data_science", "--input", "not-json"])

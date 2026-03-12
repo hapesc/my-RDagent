@@ -94,8 +94,8 @@ class V2LLMAdapter:
                 return f"SYSTEM: {system}\n\nUSER: {prompt}"
             return prompt
 
-        human_message = getattr(messages_module, "HumanMessage")
-        system_message = getattr(messages_module, "SystemMessage")
+        human_message = messages_module.HumanMessage
+        system_message = messages_module.SystemMessage
         messages: list[Any] = []
         if system:
             messages.append(system_message(content=system))

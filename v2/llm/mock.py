@@ -50,5 +50,5 @@ class FailThenSuccessMock:
             raise self._error_factory()
         return _MockResponse(self._response)
 
-    def with_structured_output(self, _: type[Any]) -> "FailThenSuccessMock":
+    def with_structured_output(self, _: type[Any]) -> FailThenSuccessMock:
         return self

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
 import pytest
+
+worktree_root = Path(__file__).parent.parent
+if str(worktree_root) not in sys.path:
+    sys.path.insert(0, str(worktree_root))
 
 from llm import LLMAdapter, LLMAdapterConfig
 from scripts.real_test_llm import build_test_llm_provider

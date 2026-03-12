@@ -5,7 +5,14 @@ from llm.codegen.quality_gate import CodegenQualityGate
 
 def test_gate_passes_clean_code() -> None:
     result = CodegenQualityGate(scenario="quant").evaluate(
-        raw_output='{"artifact_id":"v1"}\n```python\ndef compute_factor(df):\n    return df\n```'
+        raw_output=(
+            '{"artifact_id":"v1"}\n'
+            "```python\n"
+            "import pandas as pd\n"
+            "def compute_factor(df):\n"
+            '    return df.groupby("stock_id")["close"].pct_change(5)\n'
+            "```"
+        )
     )
     assert result.passed is True
 
@@ -39,7 +46,13 @@ def test_gate_rejects_missing_signature_for_quant() -> None:
 
 def test_gate_returns_extracted_code_on_pass() -> None:
     result = CodegenQualityGate(scenario="quant").evaluate(
-        raw_output="```python\nimport pandas as pd\ndef compute_factor(df):\n    return df\n```"
+        raw_output=(
+            "```python\n"
+            "import pandas as pd\n"
+            "def compute_factor(df):\n"
+            "    return df.groupby('stock_id')['close'].pct_change(5)\n"
+            "```"
+        )
     )
     assert result.passed
     assert result.extracted_code is not None
@@ -177,3 +190,27 @@ def test_gate_passes_structured_text_stored_in_json_artifact_field() -> None:
         )
     )
     assert result.passed is True
+
+
+def test_gate_rejects_trivial_return_df() -> None:
+    result = CodegenQualityGate(scenario="quant").evaluate(
+        raw_output="```python\ndef compute_factor(df):\n    return df\n```"
+    )
+    assert result.passed is False
+    assert any("trivial" in r.lower() for r in result.reasons)
+
+
+def test_gate_rejects_pass_body() -> None:
+    result = CodegenQualityGate(scenario="quant").evaluate(
+        raw_output="```python\ndef compute_factor(df):\n    pass\n```"
+    )
+    assert result.passed is False
+    assert any("return" in r.lower() or "trivial" in r.lower() for r in result.reasons)
+
+
+def test_gate_rejects_unused_parameter() -> None:
+    result = CodegenQualityGate(scenario="quant").evaluate(
+        raw_output="```python\ndef compute_factor(df):\n    return 42\n```"
+    )
+    assert result.passed is False
+    assert any("ignores" in r.lower() or "parameter" in r.lower() for r in result.reasons)

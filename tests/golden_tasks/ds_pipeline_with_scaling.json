@@ -1,0 +1,13 @@
+{
+  "task_id": "ds_pipeline_with_scaling",
+  "scenario": "data_science",
+  "task_summary": "Build a regression pipeline for the Boston-style housing dataset. Use sklearn.datasets.make_regression to generate data, apply StandardScaler, train a Ridge regression model, and output RMSE and R-squared to metrics.json.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "no_placeholder": true,
+    "contains_all_keywords": ["metrics.json"],
+    "contains_any_keyword": ["StandardScaler", "Ridge", "make_regression", "scale"]
+  },
+  "difficulty": "medium"
+}

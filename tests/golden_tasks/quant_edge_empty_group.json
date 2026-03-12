@@ -1,0 +1,14 @@
+{
+  "task_id": "quant_edge_empty_group",
+  "scenario": "quant",
+  "task_summary": "Implement a 10-day VWAP deviation factor. Compute the percentage deviation of the closing price from the 10-day volume-weighted average price. The code must handle stocks with fewer than 10 days of data gracefully (return NaN, not error).",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "has_signature": "compute_factor",
+    "forbidden_imports_absent": ["os", "subprocess", "requests", "sys"],
+    "no_placeholder": true,
+    "contains_any_keyword": ["volume", "rolling", "mean"]
+  },
+  "difficulty": "hard"
+}

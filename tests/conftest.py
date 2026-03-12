@@ -9,18 +9,29 @@ from scripts.real_test_llm import build_test_llm_provider
 from service_contracts import ModelSelectorConfig
 from tests.golden_tasks.benchmark import resolve_benchmark_credentials
 
+# Skip tests/evals/ entirely when deepeval is not installed (e.g. CI only installs [all])
+try:
+    import deepeval  # noqa: F401
+except ImportError:
+    collect_ignore_glob = ["evals/*"]
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--run-llm", action="store_true", help="Run LLM-backed benchmark tests")
+    parser.addoption("--run-evals", action="store_true", help="Run DeepEval evaluation tests")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    if config.getoption("--run-llm"):
-        return
-    skip = pytest.mark.skip(reason="need --run-llm to run")
-    for item in items:
-        if "llm" in item.keywords:
-            item.add_marker(skip)
+    if not config.getoption("--run-llm"):
+        skip = pytest.mark.skip(reason="need --run-llm to run")
+        for item in items:
+            if "llm" in item.keywords:
+                item.add_marker(skip)
+    if not config.getoption("--run-evals"):
+        skip_eval = pytest.mark.skip(reason="need --run-evals to run")
+        for item in items:
+            if "eval" in item.keywords:
+                item.add_marker(skip_eval)
 
 
 @pytest.fixture(scope="session")

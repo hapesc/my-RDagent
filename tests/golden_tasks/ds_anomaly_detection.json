@@ -1,0 +1,13 @@
+{
+  "task_id": "ds_anomaly_detection",
+  "scenario": "data_science",
+  "task_summary": "Build an anomaly detection pipeline. Generate a synthetic 2D dataset with 5% outliers using sklearn.datasets.make_blobs, train an Isolation Forest model, and output precision and recall for anomaly detection to metrics.json.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "no_placeholder": true,
+    "contains_all_keywords": ["metrics.json"],
+    "contains_any_keyword": ["IsolationForest", "anomaly", "outlier", "make_blobs"]
+  },
+  "difficulty": "medium"
+}

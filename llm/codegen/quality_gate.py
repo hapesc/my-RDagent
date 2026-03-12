@@ -8,6 +8,9 @@ from llm.codegen.extractors import extract_code_and_metadata
 from llm.codegen.validators import (
     compile_check,
     count_quantitative_claims,
+    function_body_nontrivial,
+    function_has_return,
+    function_uses_parameter,
     has_forbidden_import,
     has_placeholder,
     has_required_signature,
@@ -55,6 +58,23 @@ _SCENARIO_CONFIGS: dict[str, ScenarioQualityConfig] = {
         code_config=CodeQualityConfig(
             required_signature="compute_factor",
             forbidden_imports=["os", "subprocess", "requests", "sys"],
+            custom_validators=[
+                lambda code: (
+                    "compute_factor ignores its df parameter"
+                    if not function_uses_parameter(code, "compute_factor", "df")
+                    else None
+                ),
+                lambda code: (
+                    "compute_factor has no return statement"
+                    if not function_has_return(code, "compute_factor")
+                    else None
+                ),
+                lambda code: (
+                    "compute_factor body is trivial (pass/return df/...)"
+                    if not function_body_nontrivial(code, "compute_factor")
+                    else None
+                ),
+            ],
         ),
     ),
     "data_science": ScenarioQualityConfig(

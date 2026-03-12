@@ -1,0 +1,13 @@
+{
+  "task_id": "synthetic_methodology_review",
+  "scenario": "synthetic_research",
+  "task_summary": "Write a structured review of cross-validation methodologies. Compare k-fold, stratified k-fold, leave-one-out, and time-series split. Report computational cost trade-offs and when each method is most appropriate. Include specific numerical examples.",
+  "artifact_type": "structured_text",
+  "expected_properties": {
+    "no_placeholder": true,
+    "min_length_chars": 400,
+    "has_structure": true,
+    "contains_any_keyword": ["k-fold", "cross-validation", "stratified", "time-series"]
+  },
+  "difficulty": "medium"
+}

@@ -1,0 +1,13 @@
+{
+  "task_id": "synthetic_edge_narrow_topic",
+  "scenario": "synthetic_research",
+  "task_summary": "Write a structured analysis of the impact of batch normalization layer placement (before vs after activation) on training stability in residual networks. Include specific convergence metrics and loss curve behavior.",
+  "artifact_type": "structured_text",
+  "expected_properties": {
+    "no_placeholder": true,
+    "min_length_chars": 300,
+    "has_structure": true,
+    "contains_any_keyword": ["batch normalization", "activation", "residual", "convergence"]
+  },
+  "difficulty": "hard"
+}

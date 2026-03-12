@@ -1,0 +1,14 @@
+{
+  "task_id": "quant_mean_reversion",
+  "scenario": "quant",
+  "task_summary": "Implement a mean-reversion factor. Compute the z-score of the current closing price relative to the 20-day rolling mean and standard deviation for each stock.",
+  "artifact_type": "code",
+  "expected_properties": {
+    "compiles": true,
+    "has_signature": "compute_factor",
+    "forbidden_imports_absent": ["os", "subprocess", "requests", "sys"],
+    "no_placeholder": true,
+    "contains_any_keyword": ["rolling", "mean", "std", "zscore"]
+  },
+  "difficulty": "medium"
+}

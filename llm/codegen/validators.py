@@ -193,3 +193,57 @@ def _split_sentences(text: str) -> list[str]:
         return chunks
     stripped = text.strip()
     return [stripped] if stripped else []
+
+
+def function_uses_parameter(code: str, function_name: str, param_name: str) -> bool:
+    """Check if the named function references the given parameter in its body."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name == function_name):
+            continue
+        return any(isinstance(child, ast.Name) and child.id == param_name for child in ast.walk(node))
+    return False
+
+
+def function_has_return(code: str, function_name: str) -> bool:
+    """Check if the named function contains at least one return statement."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name == function_name):
+            continue
+        return any(isinstance(child, ast.Return) for child in ast.walk(node))
+    return False
+
+
+def function_body_nontrivial(code: str, function_name: str) -> bool:
+    """Check the function body is not just pass / ... / return <param> / return None."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name == function_name):
+            continue
+        body = node.body
+        if len(body) != 1:
+            return True  # multi-statement body is non-trivial
+        stmt = body[0]
+        if isinstance(stmt, ast.Pass):
+            return False
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and stmt.value.value is ...:
+            return False
+        if isinstance(stmt, ast.Return):
+            if stmt.value is None:
+                return False
+            if isinstance(stmt.value, ast.Constant) and stmt.value.value is None:
+                return False
+            if isinstance(stmt.value, ast.Name) and node.args.args and stmt.value.id == node.args.args[0].arg:
+                return False
+        return True
+    return False

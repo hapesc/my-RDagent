@@ -1,9 +1,10 @@
 """
-End-to-end data_science integration test: OpenCode Kimi K2.5, local execution enabled.
+End-to-end data_science integration test with auth-first LiteLLM backend selection.
 走完整 loop engine 一次循环。
 
 用法:
-    export OPENCODE_API=<your_key>
+    export RD_AGENT_TEST_LLM_BACKEND=chatgpt  # optional, prefers ChatGPT subscription auth
+    # or export OPENCODE_API=<your_key>        # fallback path
     python scripts/run_data_science_e2e.py
 """
 
@@ -56,16 +57,20 @@ def main() -> None:
     args = parse_args()
     max_loops = args.max_loops
 
-    from scripts.real_test_llm import TEST_LLM_DISPLAY_NAME, build_test_llm_provider, get_test_llm_api_key
+    from scripts.real_test_llm import build_test_llm_provider, resolve_test_llm_backend
 
-    api_key = get_test_llm_api_key()
-    if not api_key:
-        log.error("No OpenCode-compatible API key is set. Export OPENCODE_API or RD_AGENT_LLM_API_KEY.")
+    backend = resolve_test_llm_backend()
+    if backend.mode != "chatgpt_auth" and not backend.api_key:
+        log.error(
+            "No test LLM backend available. Either export RD_AGENT_TEST_LLM_BACKEND=chatgpt "
+            "after LiteLLM ChatGPT login, or export OPENCODE_API / RD_AGENT_LLM_API_KEY."
+        )
         sys.exit(1)
 
     log.info("=== Data Science E2E Integration Test ===")
     log.info("Task      : %s", TASK_SUMMARY)
-    log.info("Model     : %s", TEST_LLM_DISPLAY_NAME)
+    log.info("Backend   : %s", backend.display_name)
+    log.info("Model     : %s", backend.model)
     log.info("Max loops : %d", max_loops)
     print()
 
@@ -74,8 +79,8 @@ def main() -> None:
     # ---------------------------------------------------------------------- #
     from llm import LLMAdapter, LLMAdapterConfig
 
-    log.info("[1/4] Building LLM adapter (%s)...", TEST_LLM_DISPLAY_NAME)
-    provider = build_test_llm_provider(api_key)
+    log.info("[1/4] Building LLM adapter (%s)...", backend.display_name)
+    provider = build_test_llm_provider(backend.api_key)
     llm_adapter = LLMAdapter(
         provider=provider,
         config=LLMAdapterConfig(max_retries=2),

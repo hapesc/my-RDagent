@@ -51,6 +51,10 @@ class LiteLLMProvider:
     def _is_thinking_model(model: str) -> bool:
         return any(model.startswith(p) for p in _THINKING_MODEL_PREFIXES)
 
+    @staticmethod
+    def _is_chatgpt_subscription_model(model: str) -> bool:
+        return model.startswith("chatgpt/")
+
     def complete(self, prompt: str, model_config: ModelSelectorConfig | None = None) -> str:
         model = self._model
         temperature = self._temperature
@@ -81,7 +85,7 @@ class LiteLLMProvider:
             kwargs["base_url"] = self._base_url
         if temperature is not None:
             kwargs["temperature"] = temperature
-        if max_tokens is not None:
+        if max_tokens is not None and not self._is_chatgpt_subscription_model(model):
             kwargs["max_tokens"] = max_tokens
         kwargs["timeout"] = timeout
 

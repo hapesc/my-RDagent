@@ -13,6 +13,7 @@ from typing import Any, NoReturn
 from app.config import REAL_PROVIDER_SAFE_PROFILE
 from app.runtime import build_run_service, build_runtime, resolve_scenario_runtime_profile
 from data_models import model_to_dict
+from scenarios import FileOHLCVDataProvider, QuantConfig
 from service_contracts import (
     ArtifactDescriptor,
     ArtifactListResponse,
@@ -71,10 +72,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Create a new run session from scenario input.",
     )
     run_parser.add_argument("--config", default=None, help="Path to YAML config file")
-    run_parser.add_argument("--scenario", required=True, help="Scenario plugin name")
-    run_parser.add_argument("--input", required=True, help="Inline JSON payload or path to JSON file")
+    run_parser.add_argument("--scenario", default=None, help="Scenario plugin name")
+    run_parser.add_argument("--task-summary", default=None, help="Task summary for this run")
+    run_parser.add_argument("--data-source", default=None, help="Local data path for data_science runs")
+    run_parser.add_argument("--input", default=None, help="Inline JSON payload or path to JSON file")
     run_parser.add_argument("--loops-per-call", default=1, type=int, help="Iterations to execute now")
-    run_parser.add_argument("--max-loops", default=1, type=int, help="Max loops for this run")
+    run_parser.add_argument("--max-loops", default=None, type=int, help="Max loops for this run")
 
     resume_parser = subparsers.add_parser(
         "resume",
@@ -139,7 +142,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _load_json_input(raw: str) -> dict[str, Any]:
+def _load_json_input(raw: str | None) -> dict[str, Any]:
+    if raw is None:
+        return {}
     path: Path | None = None
     try:
         candidate = Path(raw)
@@ -181,6 +186,70 @@ def _load_json_input(raw: str) -> dict[str, Any]:
     return payload
 
 
+def _merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    result = dict(base)
+    for key, value in override.items():
+        if isinstance(result.get(key), dict) and isinstance(value, dict):
+            result[key] = _merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _normalize_stop_condition_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    result = dict(payload)
+    stop_conditions = dict(result.get("stop_conditions", {}))
+    for key in ("max_loops", "max_steps", "max_duration_sec"):
+        if result.get(key) is not None:
+            stop_conditions[key] = result[key]
+    if stop_conditions:
+        result["stop_conditions"] = stop_conditions
+    return result
+
+
+def _build_run_payload(args: argparse.Namespace, runtime) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    run_defaults = runtime.config.run_defaults
+    if run_defaults.scenario is not None:
+        payload["scenario"] = run_defaults.scenario
+    if run_defaults.stop_conditions:
+        payload["stop_conditions"] = dict(run_defaults.stop_conditions)
+    if run_defaults.step_overrides:
+        payload["step_overrides"] = dict(run_defaults.step_overrides)
+    if run_defaults.entry_input:
+        payload["entry_input"] = dict(run_defaults.entry_input)
+
+    payload = _merge_dicts(payload, _load_json_input(args.input))
+
+    if args.scenario is not None:
+        payload["scenario"] = args.scenario
+    if args.task_summary is not None:
+        payload["task_summary"] = args.task_summary
+    if args.data_source is not None:
+        payload["entry_input"] = _merge_dicts(dict(payload.get("entry_input", {})), {"data_source": args.data_source})
+    if args.max_loops is not None:
+        payload["max_loops"] = args.max_loops
+
+    if "scenario" not in payload or payload["scenario"] in (None, ""):
+        payload["scenario"] = runtime.config.default_scenario
+
+    return _normalize_stop_condition_aliases(payload)
+
+
+def _maybe_build_quant_runtime(config_path: str | None, payload: dict[str, Any]):
+    scenario = payload.get("scenario")
+    if scenario != "quant":
+        return build_runtime(config_path=config_path)
+
+    entry_input = dict(payload.get("entry_input", {}))
+    data_source = entry_input.get("data_source")
+    if not isinstance(data_source, str) or not data_source.strip():
+        return build_runtime(config_path=config_path)
+
+    quant_config = QuantConfig(data_provider=FileOHLCVDataProvider(data_source.strip()))
+    return build_runtime(config_path=config_path, quant_config=quant_config)
+
+
 def _print_json(payload: dict[str, Any], stream=None) -> None:
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=stream or sys.stdout)
 
@@ -208,7 +277,7 @@ _RUN_REQUEST_RESERVED_KEYS = {
 def _build_entry_input(payload: dict[str, Any]) -> dict[str, Any]:
     explicit_entry_input = dict(payload.get("entry_input", {}))
     passthrough = {key: value for key, value in payload.items() if key not in _RUN_REQUEST_RESERVED_KEYS}
-    return {**explicit_entry_input, **passthrough}
+    return {**passthrough, **explicit_entry_input}
 
 
 def _require_scenario_manifest(runtime, scenario: str):
@@ -293,13 +362,13 @@ def _list_run_artifacts(runtime, run_id: str) -> list[str]:
 
 
 def _handle_run(args: argparse.Namespace) -> int:
-    payload = _load_json_input(args.input)
     runtime = build_runtime(config_path=args.config)
+    payload = _build_run_payload(args, runtime)
+    runtime = _maybe_build_quant_runtime(args.config, payload)
     request = RunCreateRequest.from_dict(
         {
             **payload,
-            "scenario": args.scenario,
-            "max_loops": payload.get("max_loops", args.max_loops),
+            "scenario": payload.get("scenario", runtime.config.default_scenario),
         }
     )
     manifest = _require_scenario_manifest(runtime, request.scenario)

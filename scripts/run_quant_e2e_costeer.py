@@ -1,12 +1,13 @@
 """
-End-to-end demo: multi-round CoSTEER with real stock data + gemini-2.5-pro.
+End-to-end demo: multi-round CoSTEER with real stock data + auth-first LiteLLM backend selection.
 
 This script shows how CoSTEER iteratively improves factor code across
 multiple rounds within each loop iteration. Compare with run_quant_e2e.py
 which uses costeer_max_rounds=1 (single-shot).
 
 Usage:
-    export GEMINI_API_KEY=<your_key>
+    export RD_AGENT_TEST_LLM_BACKEND=chatgpt  # optional, prefers ChatGPT subscription auth
+    # or export OPENCODE_API=<your_key>        # fallback path
     python scripts/run_quant_e2e_costeer.py
 """
 
@@ -14,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sys
 import uuid
 from pathlib import Path
@@ -42,28 +42,30 @@ log = logging.getLogger("quant_e2e_costeer")
 
 
 def main() -> None:
-    gemini_api_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not gemini_api_key:
-        log.error("GEMINI_API_KEY is not set. Export it before running this script.")
+    from scripts.real_test_llm import build_test_llm_provider, resolve_test_llm_backend
+
+    backend = resolve_test_llm_backend()
+    if backend.mode != "chatgpt_auth" and not backend.api_key:
+        log.error(
+            "No test LLM backend available. Either export RD_AGENT_TEST_LLM_BACKEND=chatgpt "
+            "after LiteLLM ChatGPT login, or export OPENCODE_API / RD_AGENT_LLM_API_KEY."
+        )
         sys.exit(1)
 
     log.info("=== Quant E2E — Multi-round CoSTEER Demo ===")
     log.info("Tickers          : %s", TICKERS)
     log.info("Date range       : %s → %s", START_DATE, END_DATE)
-    log.info("Model            : gemini/gemini-2.5-pro")
+    log.info("Backend          : %s", backend.display_name)
+    log.info("Model            : %s", backend.model)
     log.info("Max loops        : %d", MAX_LOOPS)
     log.info("CoSTEER rounds   : %d (per loop iteration)", COSTEER_MAX_ROUNDS)
     print()
 
     # 1. LLM adapter
     from llm import LLMAdapter, LLMAdapterConfig
-    from llm.providers.litellm_provider import LiteLLMProvider
 
-    log.info("[1/5] Building LLM adapter (gemini-2.5-pro)...")
-    provider = LiteLLMProvider(
-        api_key=gemini_api_key,
-        model="gemini/gemini-2.5-pro",
-    )
+    log.info("[1/5] Building LLM adapter (%s)...", backend.display_name)
+    provider = build_test_llm_provider(backend.api_key)
     llm_adapter = LLMAdapter(
         provider=provider,
         config=LLMAdapterConfig(max_retries=2),

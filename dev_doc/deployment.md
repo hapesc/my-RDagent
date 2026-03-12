@@ -36,13 +36,23 @@ log_level: INFO
 
 ## 3. 配置真实 LLM Provider
 
-部署态运行 `cli.py`、`agentrd_cli.py` 和 API 服务都要求真实 provider：
+部署态运行 `agentrd_cli.py` 和 API 服务都要求真实 provider：
 
 ```bash
 export RD_AGENT_LLM_PROVIDER=litellm
 export RD_AGENT_LLM_MODEL=openai/gpt-4o-mini
 export RD_AGENT_LLM_API_KEY=your-llm-api-key
 ```
+
+如果你要使用 LiteLLM ChatGPT auth：
+
+```bash
+export RD_AGENT_LLM_PROVIDER=litellm
+export RD_AGENT_LLM_MODEL=gpt-5
+unset RD_AGENT_LLM_API_KEY
+```
+
+这种模式下，第一次真实请求会触发 LiteLLM 的 ChatGPT device flow 登录。
 
 如果服务器上没有 Docker，但你仍要跑 `data_science` 场景：
 
@@ -67,22 +77,13 @@ python agentrd_cli.py health-check --config ./config.yaml --verbose
 3. 做一次最小 provider smoke：
 
 ```bash
-python agentrd_cli.py run \
-  --config ./config.yaml \
-  --scenario synthetic_research \
-  --loops-per-call 1 \
-  --max-loops 1 \
-  --input '{"task_summary":"deployment smoke","max_loops":1}'
+rdagent run --config ./config.yaml --scenario synthetic_research --task-summary "deployment smoke"
 ```
 
 4. 如果还要验证执行后端，再加一次：
 
 ```bash
-python cli.py \
-  --config ./config.yaml \
-  --scenario data_science \
-  --task "classify iris dataset" \
-  --max-steps 1
+rdagent run --config ./config.yaml --task-summary "classify iris dataset"
 ```
 
 ## 5. 启动服务
@@ -121,9 +122,9 @@ python agentrd_cli.py resume --config ./config.yaml --run-id <RUN_ID> --loops-pe
 
 ## 7. 量化场景部署约束
 
-默认 runtime 会注册 `quant` manifest，但不会自动配置 `QuantConfig.data_provider`。因此：
+默认 runtime 会注册 `quant` manifest。对于 CLI 路径：
 
-- `GET /scenarios` 会列出 `quant`
-- 但直接用默认 CLI 或 API 创建 quant run，执行阶段通常会因缺少 data provider 失败
+- `rdagent run --scenario quant --data-source /abs/path/ohlcv.csv` 会自动构建文件型 quant data provider
+- 本地文件必须是固定 OHLCV CSV 格式：`date,stock_id,open,high,low,close,volume`
 
-如果你的部署目标包含量化场景，需要在自定义 runtime 中注入 `QuantConfig(data_provider=...)`，或者沿用 `scripts/run_quant_e2e.py` 的装配方式。
+如果你的部署目标包含量化场景的 HTTP/API 创建路径，仍然建议补充显式 provider 装配策略，因为当前自动 provider 装配是面向 CLI 的本地文件路径。

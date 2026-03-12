@@ -24,7 +24,7 @@ The platform runs an autonomous loop:
 Important runtime constraint:
 
 - `app.startup` can validate config without an LLM provider
-- `cli.py`, `agentrd_cli.py`, `app.runtime.build_runtime()`, and the FastAPI control plane require `RD_AGENT_LLM_PROVIDER=litellm`
+- `agentrd_cli.py`, `app.runtime.build_runtime()`, and the FastAPI control plane require `RD_AGENT_LLM_PROVIDER=litellm`
 - Runtime mock providers still exist in tests, but there is no mock fallback for normal runs
 
 ## Install
@@ -71,36 +71,148 @@ Notes:
 
 - `AGENTRD_ALLOW_LOCAL_EXECUTION=1` is only needed when Docker is unavailable and the selected scenario executes code locally
 - when a real provider is enabled, unspecified defaults are narrowed to a conservative guardrail profile during runtime assembly
+- for `litellm`, there are two supported runtime modes:
+  - API key mode: keep `RD_AGENT_LLM_API_KEY` set and use your normal provider/model path
+  - ChatGPT auth mode: leave `RD_AGENT_LLM_API_KEY` empty and set `RD_AGENT_LLM_MODEL` to `chatgpt/...` or a bare `gpt-*` model such as `gpt-5`
+- bare `gpt-*` models are routed through LiteLLM ChatGPT auth only when `RD_AGENT_LLM_API_KEY` is empty
 - exact config fields are documented in [`dev_doc/configuration.md`](dev_doc/configuration.md)
 
 ## Run a Simple Experiment
 
-Quick CLI:
+The only supported run entrypoint is:
 
 ```bash
-python cli.py \
+rdagent run --config ./config.yaml ...
+```
+
+Equivalent source invocation:
+
+```bash
+python agentrd_cli.py run --config ./config.yaml ...
+```
+
+Recommended `config.yaml` structure for stable run settings:
+
+```yaml
+run_defaults:
+  scenario: data_science
+  stop_conditions:
+    max_loops: 1
+    max_duration_sec: 300
+  step_overrides:
+    running:
+      timeout_sec: 120
+  entry_input:
+    id_column: id
+    label_column: label
+```
+
+For `data_science` runs that need a local dataset file, keep stable defaults in `config.yaml` and override only high-frequency fields from CLI:
+
+```bash
+rdagent run \
+  --config ./config.yaml \
+  --task-summary "classify iris from local csv" \
+  --data-source /absolute/path/to/train.csv
+```
+
+Legacy advanced path remains available:
+
+```bash
+rdagent run \
   --config ./config.yaml \
   --scenario data_science \
-  --task "classify iris dataset" \
-  --max-steps 1
+  --input '{
+    "task_summary":"classify iris from local csv",
+    "entry_input":{"data_source":"/absolute/path/to/train.csv"},
+    "max_loops":1
+  }'
 ```
 
-Full JSON-oriented CLI:
+`data_science` also understands optional split-related fields in the same payload:
+
+- `id_column`
+- `label_column`
+- `train_ratio`
+- `test_ratio`
+- `split_seed` or `seed`
+
+Current execution caveat:
+
+- the default Docker execution backend mounts only the generated workspace, not an arbitrary host data path
+- a host file path in `data_source` therefore works reliably only when the run actually executes locally, or when you provide your own runtime/backend wiring
+- supported file formats for split-manifest inference are `.csv`, `.jsonl`, and `.ndjson`
+
+Recommended `synthetic_research` path:
 
 ```bash
-python agentrd_cli.py run \
+rdagent run \
   --config ./config.yaml \
   --scenario synthetic_research \
-  --loops-per-call 1 \
-  --max-loops 1 \
-  --input '{"task_summary":"summarize recent trends in evaluation benchmarks","max_loops":1}'
+  --task-summary "write a short brief about evaluation benchmark failure modes"
 ```
+
+If you want to seed the run with explicit topics:
+
+```bash
+rdagent run \
+  --config ./config.yaml \
+  --scenario synthetic_research \
+  --input '{
+    "task_summary":"write a short brief about evaluation benchmark failure modes",
+    "reference_topics":["evaluation", "benchmarking", "failure analysis"],
+    "max_loops":1
+  }'
+```
+
+`synthetic_research` is the easiest built-in scenario for first-time validation because it does not depend on a dataset path or code-execution sandbox.
+
+Recommended `quant` path with a local OHLCV CSV:
+
+```bash
+rdagent run \
+  --config ./config.yaml \
+  --scenario quant \
+  --task-summary "mine a momentum factor from local OHLCV data" \
+  --data-source /absolute/path/to/ohlcv.csv
+```
+
+The local quant CSV format is fixed and must contain exactly these columns:
+
+```text
+date,stock_id,open,high,low,close,volume
+```
+
+Example:
+
+```csv
+date,stock_id,open,high,low,close,volume
+2021-07-01,AAPL,136.60,137.33,135.76,136.96,52485800
+2021-07-01,MSFT,271.60,272.00,269.60,271.40,17887700
+```
+
+Notes for `quant`:
+
+- only local CSV input is supported through the default CLI path
+- the file must provide OHLCV rows, one `(date, stock_id)` observation per line
+- the runtime still requires a real LLM provider, but it now auto-builds a file-based quant data provider when `--data-source` is present
+- `python scripts/run_quant_e2e.py` remains useful when you want a yfinance-based wrapper that fetches OHLCV first and then delegates to the same unified CLI path
+
+The script now acts as a wrapper over `agentrd run`, not a second runtime entrypoint. It accepts:
+
+- `--tickers`
+- `--start-date`
+- `--end-date`
+- `--task-summary`
+- `--max-loops`
+
+Use `quant` when you want alpha-factor mining over OHLCV data; use `data_science` for general local dataset experiments and `synthetic_research` for brief/report generation.
 
 Inspect traces:
 
 ```bash
-python agentrd_cli.py trace --run-id <RUN_ID> --format table
-python agentrd_cli.py health-check --verbose
+rdagent trace --run-id <RUN_ID> --format table
+rdagent health-check --verbose
 ```
 
 ## Start the Control Plane
@@ -149,7 +261,9 @@ Common fields:
 | `AGENTRD_ALLOW_LOCAL_EXECUTION` | `false` | Local execution fallback when Docker is unavailable |
 | `RD_AGENT_LLM_PROVIDER` | `mock` in config loader | Must be `litellm` for real runtime entrypoints |
 | `RD_AGENT_LLM_MODEL` | `gpt-4o-mini` | Default model identifier |
-| `RD_AGENT_COSTEER_MAX_ROUNDS` | `3` | CoSTEER round cap before real-provider guardrails are applied |
+| `RD_AGENT_COSTEER_MAX_ROUNDS` | `1` | CoSTEER round cap before real-provider guardrails are applied |
+
+`run_defaults` in `config.yaml` is merged into `rdagent run` before CLI flags and `--input` overrides are applied.
 
 ## Testing
 

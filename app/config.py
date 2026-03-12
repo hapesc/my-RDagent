@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -39,10 +39,22 @@ class AppConfig:
     debug_max_epochs: int = 5
     enable_hypothesis_storage: bool = False
     use_llm_planning: bool = False
+    run_defaults: RunDefaultsConfig = field(default_factory=lambda: RunDefaultsConfig())
     uses_real_llm_provider: bool = False
     real_provider_warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RunDefaultsConfig:
+    scenario: str | None = None
+    stop_conditions: dict[str, Any] = field(default_factory=dict)
+    step_overrides: dict[str, Any] = field(default_factory=dict)
+    entry_input: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -54,17 +66,16 @@ REAL_PROVIDER_SAFE_PROFILE: dict[str, int] = {
     "max_retries": 1,
 }
 
-_REAL_PROVIDER_WARNING_LIMITS: dict[str, int] = {
-    "layer0_n_candidates": 2,
-    "layer0_k_forward": 2,
-    "costeer_max_rounds": 2,
-    "sandbox_timeout_sec": 300,
-    "max_retries": 1,
-}
-
 
 def uses_real_llm_provider(provider: str) -> bool:
     return provider.strip().lower() not in {"", "mock"}
+
+
+def _build_real_provider_warning(field_name: str, value: int, safe_limit: int) -> str:
+    return (
+        f"real provider warning: {field_name}={value} exceeds conservative profile {safe_limit}; "
+        "execution may take a long time"
+    )
 
 
 def _validate_positive_config_fields(values: Mapping[str, int]) -> None:
@@ -101,13 +112,8 @@ def _validate_real_provider_guardrails(
     ):
         value = int(getattr(config, field_name))
         safe_limit = REAL_PROVIDER_SAFE_PROFILE[field_name]
-        warning_limit = _REAL_PROVIDER_WARNING_LIMITS[field_name]
-        if value > warning_limit:
-            raise ValueError(
-                f"real provider guardrail violation: {field_name}={value} exceeds hard limit {warning_limit}"
-            )
         if value > safe_limit:
-            warnings.append(f"real provider warning: {field_name}={value} exceeds conservative profile {safe_limit}")
+            warnings.append(_build_real_provider_warning(field_name, value, safe_limit))
 
     if config.layer0_k_forward > config.layer0_n_candidates:
         raise ValueError("real provider guardrail violation: layer0_k_forward must be <= layer0_n_candidates")
@@ -115,20 +121,11 @@ def _validate_real_provider_guardrails(
     for step_name, retries in step_max_retries or ():
         if retries is None:
             continue
-        if retries > _REAL_PROVIDER_WARNING_LIMITS["max_retries"]:
-            raise ValueError(
-                f"real provider guardrail violation: {step_name}.max_retries={retries} exceeds hard limit 1"
-            )
+        if retries > REAL_PROVIDER_SAFE_PROFILE["max_retries"]:
+            warnings.append(_build_real_provider_warning(f"{step_name}.max_retries", retries, 1))
 
-    if running_timeout_sec is not None:
-        if running_timeout_sec > _REAL_PROVIDER_WARNING_LIMITS["sandbox_timeout_sec"]:
-            raise ValueError(
-                f"real provider guardrail violation: running.timeout_sec={running_timeout_sec} exceeds hard limit 300"
-            )
-        if running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
-            warnings.append(
-                f"real provider warning: running.timeout_sec={running_timeout_sec} exceeds conservative profile 120"
-            )
+    if running_timeout_sec is not None and running_timeout_sec > REAL_PROVIDER_SAFE_PROFILE["sandbox_timeout_sec"]:
+        warnings.append(_build_real_provider_warning("running.timeout_sec", running_timeout_sec, 120))
 
     return tuple(warnings)
 
@@ -317,13 +314,56 @@ _ENV_BINDINGS: dict[str, tuple[str, Callable[[Mapping[str, str], str, Any], Any]
 
 
 def _merge_yaml(merged: dict[str, Any], yaml_values: Mapping[str, Any], sources: dict[str, str]) -> None:
-    unknown = [key for key in yaml_values if key not in _YAML_CASTERS]
+    unknown = [key for key in yaml_values if key not in _YAML_CASTERS and key != "run_defaults"]
     if unknown:
         raise ValueError(f"unknown config keys in yaml: {', '.join(sorted(unknown))}")
     for key, raw in yaml_values.items():
+        if key == "run_defaults":
+            continue
         caster = _YAML_CASTERS[key]
         merged[key] = caster(raw)
         sources[key] = "yaml"
+
+
+def _parse_run_defaults(raw: Any) -> RunDefaultsConfig:
+    if raw is None:
+        return RunDefaultsConfig()
+    if not isinstance(raw, dict):
+        raise ValueError("run_defaults must be a YAML object")
+
+    unknown = sorted(set(raw.keys()) - {"scenario", "stop_conditions", "step_overrides", "entry_input"})
+    if unknown:
+        raise ValueError(f"unknown run_defaults keys in yaml: {', '.join(unknown)}")
+
+    scenario = raw.get("scenario")
+    if scenario is not None:
+        scenario = str(scenario)
+
+    stop_conditions = raw.get("stop_conditions") or {}
+    if not isinstance(stop_conditions, dict):
+        raise ValueError("run_defaults.stop_conditions must be an object")
+    normalized_stop_conditions: dict[str, Any] = {}
+    for key in ("max_loops", "max_steps", "max_duration_sec"):
+        if key not in stop_conditions or stop_conditions[key] is None:
+            continue
+        normalized_stop_conditions[key] = int(stop_conditions[key])
+        if normalized_stop_conditions[key] <= 0:
+            raise ValueError(f"run_defaults.stop_conditions.{key} must be > 0")
+
+    step_overrides = raw.get("step_overrides") or {}
+    if not isinstance(step_overrides, dict):
+        raise ValueError("run_defaults.step_overrides must be an object")
+
+    entry_input = raw.get("entry_input") or {}
+    if not isinstance(entry_input, dict):
+        raise ValueError("run_defaults.entry_input must be an object")
+
+    return RunDefaultsConfig(
+        scenario=scenario,
+        stop_conditions=normalized_stop_conditions,
+        step_overrides=dict(step_overrides),
+        entry_input=dict(entry_input),
+    )
 
 
 def _apply_env_overrides(merged: dict[str, Any], env_map: Mapping[str, str], sources: dict[str, str]) -> None:
@@ -351,9 +391,11 @@ def load_config(
     if config_path is not None and not resolved_path.exists():
         raise FileNotFoundError(f"config file not found: {resolved_path}")
 
-    _merge_yaml(merged, _load_yaml_values(resolved_path), sources)
+    yaml_values = _load_yaml_values(resolved_path)
+    _merge_yaml(merged, yaml_values, sources)
     _apply_env_overrides(merged, env_map, sources)
     _apply_real_provider_defaults(merged, sources)
+    run_defaults = _parse_run_defaults(yaml_values.get("run_defaults"))
 
     _validate_positive_config_fields(
         {
@@ -391,7 +433,14 @@ def load_config(
         debug_max_epochs=merged["debug_max_epochs"],
         enable_hypothesis_storage=merged["enable_hypothesis_storage"],
         use_llm_planning=merged["use_llm_planning"],
+        run_defaults=run_defaults,
         uses_real_llm_provider=uses_real_provider,
     )
     warnings = _validate_real_provider_guardrails(base_config)
-    return AppConfig(**{**base_config.to_dict(), "real_provider_warnings": warnings})
+    return AppConfig(
+        **{
+            **base_config.to_dict(),
+            "run_defaults": run_defaults,
+            "real_provider_warnings": warnings,
+        }
+    )

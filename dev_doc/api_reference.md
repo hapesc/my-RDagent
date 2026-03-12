@@ -1,6 +1,6 @@
 # Control Plane API Reference
 
-当前控制面由 `app/control_plane.py` 提供，接口列表如下：
+当前控制面由 `app/control_plane.py` 提供，接口列表如下。命令行运行入口统一为 `rdagent run` / `python agentrd_cli.py run`，不再推荐 `cli.py`。
 
 - `POST /runs`
 - `GET /runs/{run_id}`
@@ -50,6 +50,49 @@
 - `scenario` 和 `task_summary` 必填
 - 也支持把 `max_loops`、`max_duration_sec` 放在顶层，`RunCreateRequest.from_dict()` 会兼容读取
 - `step_overrides` 只允许 `proposal`、`coding`、`running`、`feedback`
+- 除保留字段外，顶层其他键会被透传到 `entry_input`
+
+### `data_science` file input
+
+`data_science` 场景读取文件时，推荐直接把 `data_source` 放在顶层请求体，CLI 会把它透传到 `entry_input`：
+
+```json
+{
+  "scenario": "data_science",
+  "task_summary": "classify local csv",
+  "data_source": "/absolute/path/to/train.csv",
+  "id_column": "id",
+  "label_column": "label",
+  "stop_conditions": {
+    "max_loops": 1,
+    "max_duration_sec": 300
+  }
+}
+```
+
+等价写法：
+
+```json
+{
+  "scenario": "data_science",
+  "task_summary": "classify local csv",
+  "entry_input": {
+    "data_source": "/absolute/path/to/train.csv",
+    "id_column": "id",
+    "label_column": "label"
+  },
+  "stop_conditions": {
+    "max_loops": 1,
+    "max_duration_sec": 300
+  }
+}
+```
+
+当前约束：
+
+- `data_source` 仅在场景代码里作为路径字符串读取，不是文件上传接口
+- split-manifest 推断支持 `.csv`、`.jsonl`、`.ndjson`
+- 默认 Docker 执行后端只挂载 workspace，不自动挂载任意宿主机文件路径，因此本地绝对路径在默认 Docker 路径下并不可靠
 
 响应体是 `RunSummaryResponse`：
 

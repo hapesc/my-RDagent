@@ -103,24 +103,31 @@ class TestConfigEnvVars(unittest.TestCase):
         self.assertEqual(config.layer0_n_candidates, 7)
         self.assertEqual(config.layer0_k_forward, 4)
 
-    def test_real_provider_hard_limit_rejects_unsafe_layer0_override(self):
-        with self.assertRaisesRegex(
-            ValueError,
-            "real provider guardrail violation: layer0_n_candidates=4 exceeds hard limit 2",
-        ):
-            load_config(
-                {
-                    "RD_AGENT_LLM_PROVIDER": "litellm",
-                    "RD_AGENT_LLM_API_KEY": "test-key",
-                    "RD_AGENT_LAYER0_N_CANDIDATES": "4",
-                }
-            )
+    def test_real_provider_warns_for_large_layer0_override_without_blocking(self):
+        config = load_config(
+            {
+                "RD_AGENT_LLM_PROVIDER": "litellm",
+                "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "4",
+            }
+        )
+
+        self.assertIn(
+            (
+                "real provider warning: layer0_n_candidates=4 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
+            config.real_provider_warnings,
+        )
 
     def test_real_provider_warns_on_non_conservative_but_allowed_settings(self):
         config = load_config(
             {
                 "RD_AGENT_LLM_PROVIDER": "litellm",
                 "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
                 "RD_AGENT_COSTEER_MAX_ROUNDS": "2",
                 "AGENTRD_SANDBOX_TIMEOUT_SEC": "240",
             }
@@ -129,8 +136,14 @@ class TestConfigEnvVars(unittest.TestCase):
         self.assertEqual(
             config.real_provider_warnings,
             (
-                "real provider warning: costeer_max_rounds=2 exceeds conservative profile 1",
-                "real provider warning: sandbox_timeout_sec=240 exceeds conservative profile 120",
+                (
+                    "real provider warning: costeer_max_rounds=2 exceeds "
+                    "conservative profile 1; execution may take a long time"
+                ),
+                (
+                    "real provider warning: sandbox_timeout_sec=240 exceeds "
+                    "conservative profile 120; execution may take a long time"
+                ),
             ),
         )
 
@@ -139,6 +152,8 @@ class TestConfigEnvVars(unittest.TestCase):
             {
                 "RD_AGENT_LLM_PROVIDER": "litellm",
                 "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
             }
         )
         with patch_runtime_llm_provider():
@@ -156,15 +171,20 @@ class TestConfigEnvVars(unittest.TestCase):
         )
 
         self.assertIn(
-            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            (
+                "real provider warning: running.timeout_sec=240 exceeds "
+                "conservative profile 120; execution may take a long time"
+            ),
             profile.guardrail_warnings,
         )
 
-    def test_resolve_scenario_runtime_profile_rejects_dangerous_step_retry_override(self):
+    def test_resolve_scenario_runtime_profile_warns_for_large_step_retry_override(self):
         config = load_config(
             {
                 "RD_AGENT_LLM_PROVIDER": "litellm",
                 "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
             }
         )
         with patch_runtime_llm_provider():
@@ -175,15 +195,19 @@ class TestConfigEnvVars(unittest.TestCase):
             manifest.default_step_overrides,
         )
 
-        with self.assertRaisesRegex(
-            ValueError,
-            "real provider guardrail violation: proposal.max_retries=2 exceeds hard limit 1",
-        ):
-            resolve_scenario_runtime_profile(
-                config,
-                defaults,
-                StepOverrideConfig.from_dict({"proposal": {"max_retries": 2}}),
-            )
+        profile = resolve_scenario_runtime_profile(
+            config,
+            defaults,
+            StepOverrideConfig.from_dict({"proposal": {"max_retries": 2}}),
+        )
+
+        self.assertIn(
+            (
+                "real provider warning: proposal.max_retries=2 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
+            profile.guardrail_warnings,
+        )
 
 
 class TestRuntimeWiring(unittest.TestCase):

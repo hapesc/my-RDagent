@@ -172,6 +172,8 @@ class FullLoopIntegrationTests(unittest.TestCase):
             {
                 "RD_AGENT_LLM_PROVIDER": "litellm",
                 "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
             },
             clear=False,
         ):
@@ -185,6 +187,8 @@ class FullLoopIntegrationTests(unittest.TestCase):
             {
                 "RD_AGENT_LLM_PROVIDER": "litellm",
                 "RD_AGENT_LLM_API_KEY": "test-key",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
             },
             clear=False,
         ):
@@ -223,7 +227,7 @@ class FullLoopIntegrationTests(unittest.TestCase):
         self.assertIsInstance(step_config["running"]["timeout_sec"], int)
         self.assertGreater(step_config["running"]["timeout_sec"], 0)
 
-    def test_cli_rejects_dangerous_real_provider_retry_override(self) -> None:
+    def test_cli_warns_for_large_real_provider_retry_override(self) -> None:
         with patch.dict(
             os.environ,
             {
@@ -234,7 +238,11 @@ class FullLoopIntegrationTests(unittest.TestCase):
         ):
             out = StringIO()
             err = StringIO()
-            with redirect_stdout(out), redirect_stderr(err):
+            with (
+                patch("app.runtime._create_llm_provider", return_value=MockLLMProvider()),
+                redirect_stdout(out),
+                redirect_stderr(err),
+            ):
                 code = cli_main(
                     [
                         "run",
@@ -248,12 +256,21 @@ class FullLoopIntegrationTests(unittest.TestCase):
                     ]
                 )
 
-        self.assertEqual(code, int(ExitCode.INVALID_ARGS))
-        payload = json.loads(err.getvalue())
-        self.assertEqual(payload["error"]["code"], "invalid_request")
+        self.assertEqual(code, int(ExitCode.OK))
         self.assertIn(
-            "real provider guardrail violation: proposal.max_retries=2 exceeds hard limit 1",
-            payload["error"]["message"],
+            (
+                "WARNING: real provider warning: proposal.max_retries=2 "
+                "exceeds conservative profile 1; execution may take a long time"
+            ),
+            err.getvalue(),
+        )
+        payload = json.loads(out.getvalue())
+        self.assertIn(
+            (
+                "real provider warning: proposal.max_retries=2 exceeds "
+                "conservative profile 1; execution may take a long time"
+            ),
+            payload["run"]["config_snapshot"]["runtime"]["guardrail_warnings"],
         )
 
     def test_cli_warns_for_allowed_real_provider_timeout_override(self) -> None:
@@ -287,12 +304,18 @@ class FullLoopIntegrationTests(unittest.TestCase):
 
         self.assertEqual(code, int(ExitCode.OK))
         self.assertIn(
-            "WARNING: real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            (
+                "WARNING: real provider warning: running.timeout_sec=240 "
+                "exceeds conservative profile 120; execution may take a long time"
+            ),
             err.getvalue(),
         )
         payload = json.loads(out.getvalue())
         self.assertIn(
-            "real provider warning: running.timeout_sec=240 exceeds conservative profile 120",
+            (
+                "real provider warning: running.timeout_sec=240 exceeds "
+                "conservative profile 120; execution may take a long time"
+            ),
             payload["run"]["config_snapshot"]["runtime"]["guardrail_warnings"],
         )
 

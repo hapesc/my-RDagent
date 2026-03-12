@@ -142,7 +142,7 @@
 
 ### 8.2 CLI 能力
 
-当前仓库对外公开的是两层 CLI：
+当前仓库对外公开的正式运行入口是 `agentrd_cli.py` / 安装后的 `rdagent`：
 
 - `python3 agentrd_cli.py run`
 - `python3 agentrd_cli.py resume`
@@ -151,9 +151,8 @@
 - `python3 agentrd_cli.py trace`
 - `python3 agentrd_cli.py ui`
 - `python3 agentrd_cli.py health-check`
-- `python3 cli.py --task ...`（quick-start wrapper）
 
-其中 `agentrd_cli.py` 是完整控制面 CLI，`cli.py` 是面向快速启动的简化入口。
+其中 `agentrd_cli.py run` 是唯一受支持的运行入口；`cli.py` 已弃用。
 
 ### 7.2 配置能力
 
@@ -381,7 +380,7 @@ Data Science 是当前更偏“执行型”的场景，额外体现为：
 以下内容在代码和文档间仍可能存在进一步澄清空间，后续如要形成正式 spec，建议单独确认：
 
 - `data_science` 场景与更广义“研发代理平台”品牌表述的边界
-- quick-start CLI (`cli.py`) 与完整控制面 CLI (`agentrd_cli.py`) 的长期维护分工
+- 弃用的 `cli.py` shim 最终移除时间点
 - Streamlit UI 与 FastAPI 控制面的产品边界是否继续保持当前双入口形态
 - FC-4/FC-5/FC-6 相关能力在文档中的“实现存在”与“默认启用”边界
 
@@ -392,7 +391,6 @@ Data Science 是当前更偏“执行型”的场景，额外体现为：
 - `README.md`
 - `pyproject.toml`
 - `agentrd_cli.py`
-- `cli.py`
 - `app/runtime.py`
 - `app/api_main.py`
 - `app/control_plane.py`

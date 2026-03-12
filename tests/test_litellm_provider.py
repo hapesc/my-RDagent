@@ -25,6 +25,13 @@ def _mock_response(content: str) -> SimpleNamespace:
 
 
 class LiteLLMProviderTests(unittest.TestCase):
+    def test_chatgpt_subscription_model_detection_only_matches_chatgpt_prefix(self) -> None:
+        from llm.providers.litellm_provider import LiteLLMProvider
+
+        self.assertTrue(LiteLLMProvider._is_chatgpt_subscription_model("chatgpt/gpt-5.3-codex"))
+        self.assertFalse(LiteLLMProvider._is_chatgpt_subscription_model("gpt-5"))
+        self.assertFalse(LiteLLMProvider._is_chatgpt_subscription_model("openai/gpt-4o-mini"))
+
     def test_provider_satisfies_llmprovider_protocol(self) -> None:
         from llm.providers.litellm_provider import LiteLLMProvider
 
@@ -99,6 +106,36 @@ class LiteLLMProviderTests(unittest.TestCase):
             response_format={"type": "json_object"},
             stream=False,
         )
+
+    @patch("litellm.completion")
+    def test_complete_omits_max_tokens_for_chatgpt_subscription_models(self, mock_completion) -> None:
+        from llm.providers.litellm_provider import LiteLLMProvider
+
+        mock_completion.return_value = _mock_response("json output")
+        provider = LiteLLMProvider(
+            api_key="",
+            model="chatgpt/gpt-5.3-codex",
+        )
+        model_config = ModelSelectorConfig(
+            provider="litellm",
+            model="chatgpt/gpt-5.3-codex",
+            temperature=0.3,
+            max_tokens=256,
+            max_retries=5,
+        )
+
+        result = provider.complete("return json", model_config=model_config)
+
+        self.assertEqual(result, "json output")
+        kwargs = mock_completion.call_args.kwargs
+        self.assertEqual(kwargs["model"], "chatgpt/gpt-5.3-codex")
+        self.assertEqual(kwargs["messages"], [{"role": "user", "content": "return json"}])
+        self.assertEqual(kwargs["temperature"], 0.3)
+        self.assertEqual(kwargs["timeout"], 60)
+        self.assertEqual(kwargs["response_format"], {"type": "json_object"})
+        self.assertEqual(kwargs["stream"], False)
+        self.assertNotIn("api_key", kwargs)
+        self.assertNotIn("max_tokens", kwargs)
 
     @patch("litellm.completion")
     def test_complete_does_not_force_json_mode_for_mixed_json_and_code_prompt(self, mock_completion) -> None:

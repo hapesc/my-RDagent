@@ -28,6 +28,11 @@ class CLIIntegrationTests(unittest.TestCase):
                 "AGENTRD_WORKSPACE_ROOT": str(tmp_path / "workspaces"),
                 "AGENTRD_TRACE_STORAGE_PATH": str(tmp_path / "trace.jsonl"),
                 "AGENTRD_ALLOW_LOCAL_EXECUTION": "1",
+                "AGENTRD_SANDBOX_TIMEOUT_SEC": "120",
+                "RD_AGENT_LLM_PROVIDER": "mock",
+                "RD_AGENT_LAYER0_N_CANDIDATES": "1",
+                "RD_AGENT_LAYER0_K_FORWARD": "1",
+                "RD_AGENT_COSTEER_MAX_ROUNDS": "1",
             },
             clear=False,
         )
@@ -156,6 +161,42 @@ class CLIIntegrationTests(unittest.TestCase):
         self.assertIn(fork_branch_id, trace_payload["branch_heads"])
         self.assertEqual(len(trace_payload["nodes"]), 1)
         self.assertEqual(trace_payload["nodes"][0]["parent_node_id"], main_head)
+
+    def test_quant_run_accepts_local_ohlcv_file_via_data_source(self) -> None:
+        csv_path = Path(self._tmpdir.name) / "ohlcv.csv"
+        lines = ["date,stock_id,open,high,low,close,volume"]
+        base_dates = [f"2021-06-{day:02d}" for day in range(21, 31)] + [f"2021-07-{day:02d}" for day in range(1, 16)]
+        for date_index, trade_date in enumerate(base_dates):
+            for stock_index in range(12):
+                stock_id = f"STOCK_{stock_index:03d}"
+                base_price = 100 + stock_index * 3 + date_index * 0.8
+                open_price = base_price
+                high_price = base_price + 1.5
+                low_price = base_price - 1.5
+                close_price = base_price + ((stock_index % 3) - 1) * 0.4
+                volume = 1000000 + stock_index * 10000 + date_index * 1000
+                lines.append(
+                    f"{trade_date},{stock_id},{open_price:.2f},{high_price:.2f},{low_price:.2f},{close_price:.2f},{volume}"
+                )
+        csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        code, out, err = self._run_cli(
+            [
+                "run",
+                "--scenario",
+                "quant",
+                "--task-summary",
+                "mine a momentum factor from local OHLCV data",
+                "--data-source",
+                str(csv_path),
+            ]
+        )
+
+        self.assertEqual(code, int(ExitCode.OK))
+        self.assertEqual(err, "")
+        payload = json.loads(out)
+        self.assertEqual(payload["scenario"], "quant")
+        self.assertEqual(payload["run"]["scenario"], "quant")
 
 
 if __name__ == "__main__":

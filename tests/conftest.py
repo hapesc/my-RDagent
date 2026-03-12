@@ -9,6 +9,12 @@ from scripts.real_test_llm import build_test_llm_provider
 from service_contracts import ModelSelectorConfig
 from tests.golden_tasks.benchmark import resolve_benchmark_credentials
 
+# Skip tests/evals/ entirely when deepeval is not installed (e.g. CI only installs [all])
+try:
+    import deepeval  # noqa: F401
+except ImportError:
+    collect_ignore_glob = ["evals/*"]
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--run-llm", action="store_true", help="Run LLM-backed benchmark tests")

@@ -15,6 +15,25 @@ class LangSmithExperimentClient(Protocol):
         ...
 
 
+class NullLangSmithExperimentClient:
+    """No-op client used when upload plumbing is enabled without a real client."""
+
+    def ensure_dataset(self, *, dataset_name: str, description: str) -> dict[str, Any]:
+        return {
+            "dataset_id": f"local-{dataset_name}",
+            "dataset_name": dataset_name,
+            "description": description,
+        }
+
+    def create_experiment(self, *, dataset_id: str, experiment_name: str, metadata: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "experiment_id": f"local-{experiment_name}",
+            "experiment_name": experiment_name,
+            "dataset_id": dataset_id,
+            "metadata": metadata,
+        }
+
+
 class LangSmithBackend:
     def __init__(self, client: LangSmithExperimentClient) -> None:
         self._client = client

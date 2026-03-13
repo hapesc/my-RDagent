@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from benchmarking.langsmith_backend import LangSmithBackend
+from benchmarking.langsmith_backend import LangSmithBackend, NullLangSmithExperimentClient
 from benchmarking.profiles import get_profile
 from benchmarking.reporting import run_result_to_json_dict, summarize_run_markdown
 from benchmarking.runner import run_benchmark
@@ -78,12 +78,22 @@ def run_cli(
     output_dir.mkdir(parents=True, exist_ok=True)
     json_payload = json_renderer(result)
     if args.compare_baseline:
-        json_payload["baseline"] = json.loads(Path(args.compare_baseline).read_text(encoding="utf-8"))
+        baseline = json.loads(Path(args.compare_baseline).read_text(encoding="utf-8"))
+        current_total = int(json_payload.get("summary", {}).get("total_cases", 0))
+        baseline_total = int(baseline.get("summary", {}).get("total_cases", 0))
+        json_payload["baseline"] = baseline
+        json_payload["baseline_comparison"] = {
+            "current_total_cases": current_total,
+            "baseline_total_cases": baseline_total,
+            "delta_total_cases": current_total - baseline_total,
+        }
     if args.upload_results and langsmith_backend is not None:
         json_payload["upload"] = langsmith_backend.publish_run(
             result,
             dataset_name=f"rdagent-{args.profile}",
             experiment_name=f"{args.profile}-{args.scenario or 'all'}",
+            case_evaluators=("rules", "scenario", "judge"),
+            summary_evaluators=("aggregate_pass_rate",),
         )
     markdown_summary = markdown_renderer(result)
     (output_dir / "benchmark-result.json").write_text(
@@ -113,8 +123,17 @@ def main(
     )
 
 
+def build_default_langsmith_backend_from_env() -> Any | None:
+    tracing_enabled = os.environ.get("LANGSMITH_TRACING", "").strip().lower() in {"1", "true", "yes", "on"}
+    api_key = os.environ.get("LANGSMITH_API_KEY")
+    if not tracing_enabled:
+        return None
+    if not api_key:
+        os.environ["LANGSMITH_TRACING"] = "false"
+        return None
+    return LangSmithBackend(client=NullLangSmithExperimentClient())
+
+
 if __name__ == "__main__":
-    backend = None
-    if os.environ.get("LANGSMITH_TRACING", "").strip().lower() in {"1", "true", "yes", "on"}:
-        backend = LangSmithBackend(client=None)
+    backend = build_default_langsmith_backend_from_env()
     raise SystemExit(main(langsmith_backend=backend))

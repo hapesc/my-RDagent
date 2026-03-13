@@ -61,5 +61,12 @@ def test_build_v2_runtime_exposes_provider_metadata_for_litellm() -> None:
     ctx = build_v2_runtime({"llm_provider": "litellm", "llm_model": "gpt-4.1-mini"})
 
     assert ctx.llm_provider_name == "litellm"
-    assert ctx.llm_model_name == "gpt-4.1-mini"
+    assert ctx.llm_model_name == "chatgpt/gpt-4.1-mini"
     assert ctx.judge_model_name is None
+
+
+def test_build_v2_runtime_rewrites_auth_eligible_gpt_model_without_api_key() -> None:
+    ctx = build_v2_runtime({"llm_provider": "litellm", "llm_model": "gpt-4.1-mini", "llm_api_key": None})
+
+    assert ctx.llm_provider_name == "litellm"
+    assert ctx.llm_model_name == "chatgpt/gpt-4.1-mini"

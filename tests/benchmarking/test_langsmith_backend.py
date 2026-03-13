@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from benchmarking.langsmith_backend import LangSmithBackend
+from benchmarking.langsmith_backend import LangSmithBackend, NullLangSmithExperimentClient
 from benchmarking.result_schema import BenchmarkCaseResult, BenchmarkRunResult, FailureBucket
 
 
@@ -97,6 +97,27 @@ class LangSmithBackendTests(unittest.TestCase):
                 dataset_name="rdagent-smoke",
                 experiment_name="smoke-fail",
             )
+
+    def test_null_client_produces_stable_local_publish_handles(self) -> None:
+        backend = LangSmithBackend(client=NullLangSmithExperimentClient())
+        run_result = BenchmarkRunResult(
+            run_id="run-backend-local",
+            profile="smoke",
+            scenario="data_science",
+            case_results=[],
+            summary={"total_cases": 0},
+        )
+
+        result = backend.publish_run(
+            run_result,
+            dataset_name="rdagent-smoke",
+            experiment_name="smoke-local",
+            case_evaluators=("rules",),
+            summary_evaluators=("aggregate_pass_rate",),
+        )
+
+        self.assertEqual(result["dataset"]["dataset_id"], "local-rdagent-smoke")
+        self.assertEqual(result["experiment"]["experiment_id"], "local-smoke-local")
 
 
 if __name__ == "__main__":

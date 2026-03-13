@@ -27,6 +27,10 @@ REAL_PROVIDER_SAFE_PROFILE: dict[str, int] = {
 }
 
 
+def _is_chatgpt_auth_eligible_model(model: str) -> bool:
+    return model.startswith("chatgpt/") or model.startswith("gpt-")
+
+
 @dataclass
 class V2RuntimeContext:
     config: dict[str, Any]
@@ -52,12 +56,25 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
     llm_provider_name = str(effective_config.get("llm_provider", "mock"))
     llm_model_name = str(effective_config.get("llm_model", "gpt-4o-mini"))
     if llm_provider_name == "litellm":
+        api_key = effective_config.get("llm_api_key")
+        base_url = effective_config.get("llm_base_url")
+        if not api_key:
+            if _is_chatgpt_auth_eligible_model(llm_model_name):
+                if llm_model_name.startswith("gpt-"):
+                    llm_model_name = f"chatgpt/{llm_model_name}"
+                base_url = None
+                api_key = "chatgpt-auth-placeholder"
+            else:
+                raise RuntimeError(
+                    "Unknown or missing LLM provider: 'litellm'. "
+                    "Set RD_AGENT_LLM_API_KEY or use a chatgpt/* or gpt-* auth-eligible model."
+                )
         model = cast(
             Any,
             ChatOpenAI(
                 model=llm_model_name,
-                api_key=effective_config.get("llm_api_key"),
-                base_url=effective_config.get("llm_base_url"),
+                api_key=api_key,
+                base_url=base_url,
             ),
         )
     else:

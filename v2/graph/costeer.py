@@ -64,10 +64,15 @@ def evaluate_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
     round_number = int(state.get("round_number", 0)) + 1
     score = feedback.get("score", 0.0)
 
+    MAX_OUTPUT_CHARS = 1000
+    truncated_result = dict(run_result)
+    if "output" in truncated_result:
+        truncated_result["output"] = str(truncated_result["output"])[:MAX_OUTPUT_CHARS]
+
     new_entry = {
         "round": round_number,
         "code": code_result,
-        "result": run_result,
+        "result": truncated_result,
         "score": score,
     }
 

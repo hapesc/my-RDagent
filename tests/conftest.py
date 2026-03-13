@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from pathlib import Path
@@ -15,10 +16,9 @@ from scripts.real_test_llm import build_test_llm_provider
 from service_contracts import ModelSelectorConfig
 from tests.golden_tasks.benchmark import resolve_benchmark_credentials
 
-
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--run-llm", action="store_true", help="Run LLM-backed benchmark tests")
-    parser.addoption("--run-evals", action="store_true", help="Run DeepEval evaluation tests")
+    parser.addoption("--run-evals", action="store_true", help="Run legacy evaluation regression tests")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

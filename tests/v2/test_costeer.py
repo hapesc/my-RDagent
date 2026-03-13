@@ -141,3 +141,35 @@ def test_costeer_max_rounds_zero_executes_zero_rounds() -> None:
     assert coder.calls == 0
     assert runner.calls == 0
     assert evaluator.calls == 0
+
+
+def test_evaluate_node_truncates_long_execution_output() -> None:
+    from v2.graph.costeer import evaluate_node
+
+    long_output = "x" * 5000
+
+    class _LongOutputEval:
+        def evaluate(self, experiment: dict, result: dict) -> dict:
+            return {"score": 0.5, "acceptable": False}
+
+    state = _initial_state(max_rounds=1)
+    state["run_result"] = {"success": True, "output": long_output}
+    state["code_result"] = {"code": "test"}
+    result = evaluate_node(state, evaluator_plugin=_LongOutputEval())
+    entry = result["improvement_history"][0]
+    assert len(entry["result"].get("output", "")) <= 1000
+
+
+def test_evaluate_node_preserves_short_output() -> None:
+    from v2.graph.costeer import evaluate_node
+
+    class _ShortOutputEval:
+        def evaluate(self, experiment: dict, result: dict) -> dict:
+            return {"score": 0.8, "acceptable": True}
+
+    state = _initial_state(max_rounds=1)
+    state["run_result"] = {"success": True, "output": "ok"}
+    state["code_result"] = {"code": "test"}
+    result = evaluate_node(state, evaluator_plugin=_ShortOutputEval())
+    entry = result["improvement_history"][0]
+    assert entry["result"]["output"] == "ok"

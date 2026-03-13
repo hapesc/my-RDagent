@@ -27,7 +27,8 @@ class MemoryServiceConfig:
     max_context_items: int = 10
     index_backend: str = "in_memory"
     db_path: str = ":memory:"
-    enable_hypothesis_storage: bool = False
+    enable_hypothesis_storage: bool = True
+    kernel_weights: dict[str, float] | None = None
 
 
 class MemoryService:

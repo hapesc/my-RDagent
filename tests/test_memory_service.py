@@ -17,7 +17,7 @@ class MemoryServiceTests(unittest.TestCase):
 
             service.write_memory("LLM timeout", {"error_type": "timeout"})
 
-            self.assertEqual(service.get_memory_stats(), {"items": 1})
+            self.assertEqual(service.get_memory_stats(), {"items": 1, "hypothesis_count": 0})
 
     def test_write_and_query(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

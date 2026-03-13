@@ -131,12 +131,12 @@ def _create_llm_provider(config: AppConfig):
 def _create_memory_service(config: AppConfig, llm_adapter: LLMAdapter) -> MemoryService:
     mem_config = MemoryServiceConfig(
         enable_hypothesis_storage=config.enable_hypothesis_storage,
+        kernel_weights=getattr(config, "kernel_weights", None),
     )
-    if config.enable_hypothesis_storage:
-        kernel = InteractionKernel()
-        selector = HypothesisSelector(kernel, llm_adapter=llm_adapter)
-        return MemoryService(mem_config, hypothesis_selector=selector, interaction_kernel=kernel)
-    return MemoryService(mem_config)
+    # Always create kernel + selector; selector degrades gracefully without LLM
+    kernel = InteractionKernel(**(mem_config.kernel_weights or {}))
+    selector = HypothesisSelector(kernel, llm_adapter=llm_adapter)
+    return MemoryService(mem_config, hypothesis_selector=selector, interaction_kernel=kernel)
 
 
 def _effective_step_overrides(defaults: StepOverrideConfig, config: AppConfig) -> StepOverrideConfig:

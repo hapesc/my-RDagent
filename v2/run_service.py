@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import uuid
 from collections.abc import Callable
 from typing import Any
@@ -15,11 +16,18 @@ class _CooperativePauseRequested(Exception):
 
 
 class V2RunService:
-    def __init__(self, plugin_registry: Any = None, checkpoint_coordinator: Any = None) -> None:
+    def __init__(
+        self,
+        plugin_registry: Any = None,
+        checkpoint_coordinator: Any = None,
+        runtime_metadata: dict[str, Any] | None = None,
+    ) -> None:
         self._runs: dict[str, dict[str, Any]] = {}
         self._plugin_registry = plugin_registry
         self.checkpoint_coordinator = checkpoint_coordinator
         self._pause_probe: Callable[[str], bool] | None = None
+        self._runtime_metadata = dict(runtime_metadata or {})
+        self._run_payloads: dict[str, dict[str, Any]] = {}
 
     def set_pause_probe(self, pause_probe: Callable[[str], bool] | None) -> None:
         self._pause_probe = pause_probe
@@ -41,10 +49,12 @@ class V2RunService:
             self._execute(run_id, run)
             if run["status"] == RunStatus.RUNNING.value:
                 run["status"] = RunStatus.COMPLETED.value
+            self._refresh_payload_status(run_id)
         except _CooperativePauseRequested:
             return
         except Exception:
             run["status"] = RunStatus.FAILED.value
+            self._refresh_payload_status(run_id)
             raise
 
     def pause_run(self, run_id: str) -> None:
@@ -85,10 +95,12 @@ class V2RunService:
             )
             if run["status"] == RunStatus.RUNNING.value:
                 run["status"] = RunStatus.COMPLETED.value
+            self._refresh_payload_status(run_id)
         except _CooperativePauseRequested:
             return
         except Exception:
             run["status"] = RunStatus.FAILED.value
+            self._refresh_payload_status(run_id)
             raise
 
     def stop_run(self, run_id: str) -> None:
@@ -96,6 +108,7 @@ class V2RunService:
         if run["status"] not in {RunStatus.RUNNING.value, RunStatus.PAUSED.value}:
             raise ValueError(f"Cannot stop run in status {run['status']}")
         run["status"] = RunStatus.STOPPED.value
+        self._refresh_payload_status(run_id)
 
     def fork_run(self, run_id: str) -> str:
         source_run = self._require_run(run_id)
@@ -110,6 +123,12 @@ class V2RunService:
     def get_status(self, run_id: str) -> str:
         run = self._require_run(run_id)
         return str(run["status"])
+
+    def get_run_payload(self, run_id: str) -> dict[str, Any] | None:
+        payload = self._run_payloads.get(run_id)
+        if payload is None:
+            return None
+        return deepcopy(payload)
 
     def _resolve_plugins(self, run: dict[str, Any]) -> dict[str, Any]:
         config = run["config"]
@@ -176,6 +195,7 @@ class V2RunService:
                     state=pending,
                 )
                 run["latest_checkpoint_id"] = ckpt_id
+                self._run_payloads[run_id] = self._build_payload(run_id, run, pending)
 
             # Apply updates to our accumulated state.
             accumulated_state.update(event[node_name])
@@ -204,7 +224,9 @@ class V2RunService:
                     state=pending,
                 )
                 run["latest_checkpoint_id"] = ckpt_id
+                self._run_payloads[run_id] = self._build_payload(run_id, run, pending)
             run["status"] = RunStatus.PAUSED.value
+            self._refresh_payload_status(run_id)
             raise _CooperativePauseRequested()
 
         # Save final checkpoint (next_node=None means graph is done).
@@ -216,6 +238,9 @@ class V2RunService:
                 state=pending,
             )
             run["latest_checkpoint_id"] = ckpt_id
+            self._run_payloads[run_id] = self._build_payload(run_id, run, pending)
+        elif pending is not None:
+            self._run_payloads[run_id] = self._build_payload(run_id, run, pending)
 
     def _transition(self, run_id: str, expected: str, target: str, action: str) -> None:
         run = self._require_run(run_id)
@@ -228,6 +253,37 @@ class V2RunService:
         if run is None:
             raise KeyError(f"run not found: {run_id}")
         return run
+
+    def _build_payload(self, run_id: str, run: dict[str, Any], pending: dict[str, Any]) -> dict[str, Any]:
+        state = dict(pending.get("state", {}))
+        return {
+            "run_id": run_id,
+            "scenario": run["config"].get("scenario"),
+            "status": run["status"],
+            "loop_iteration": pending.get("loop_iteration"),
+            "final_state": {
+                "loop_status": run["status"],
+                "last_completed_node": pending.get("last_completed_node"),
+                "next_node": pending.get("next_node"),
+                "state": state,
+            },
+            "artifacts": {
+                "checkpoint_id": run.get("latest_checkpoint_id"),
+                "code_result": state.get("code_result"),
+                "run_result": state.get("run_result"),
+            },
+            "runtime": dict(self._runtime_metadata),
+        }
+
+    def _refresh_payload_status(self, run_id: str) -> None:
+        payload = self._run_payloads.get(run_id)
+        if payload is None:
+            return
+        run = self._require_run(run_id)
+        payload["status"] = run["status"]
+        final_state = payload.get("final_state")
+        if isinstance(final_state, dict):
+            final_state["loop_status"] = run["status"]
 
 
 __all__ = ["V2RunService"]

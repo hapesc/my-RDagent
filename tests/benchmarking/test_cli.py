@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -73,6 +74,74 @@ class BenchmarkCliTests(unittest.TestCase):
             self.assertEqual(calls["runner"], 1)
             self.assertTrue((Path(tmpdir) / "benchmark-result.json").exists())
             self.assertTrue((Path(tmpdir) / "benchmark-summary.md").exists())
+
+    def test_main_reads_compare_baseline_and_persists_comparison(self) -> None:
+        def fake_runner(**kwargs):
+            return BenchmarkRunResult(
+                run_id="run-cli-2",
+                profile="smoke",
+                scenario="data_science",
+                case_results=[],
+                summary={"total_cases": 0},
+            )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline_path = Path(tmpdir) / "baseline.json"
+            baseline_path.write_text(json.dumps({"summary": {"total_cases": 3}}), encoding="utf-8")
+
+            exit_code = main(
+                [
+                    "--profile",
+                    "smoke",
+                    "--scenario",
+                    "data_science",
+                    "--output-dir",
+                    tmpdir,
+                    "--compare-baseline",
+                    str(baseline_path),
+                ],
+                benchmark_runner=fake_runner,
+            )
+
+            self.assertEqual(exit_code, 0)
+            payload = json.loads((Path(tmpdir) / "benchmark-result.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["baseline"]["summary"]["total_cases"], 3)
+
+    def test_main_uploads_results_when_backend_is_provided(self) -> None:
+        calls = {"upload": 0}
+
+        class FakeBackend:
+            def publish_run(self, result, **kwargs):
+                _ = result
+                calls["upload"] += 1
+                return {"experiment": {"experiment_id": "exp-1"}, **kwargs}
+
+        def fake_runner(**kwargs):
+            return BenchmarkRunResult(
+                run_id="run-cli-3",
+                profile="smoke",
+                scenario="data_science",
+                case_results=[],
+                summary={"total_cases": 0},
+            )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exit_code = main(
+                [
+                    "--profile",
+                    "smoke",
+                    "--scenario",
+                    "data_science",
+                    "--output-dir",
+                    tmpdir,
+                    "--upload-results",
+                ],
+                benchmark_runner=fake_runner,
+                langsmith_backend=FakeBackend(),
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(calls["upload"], 1)
 
 
 if __name__ == "__main__":

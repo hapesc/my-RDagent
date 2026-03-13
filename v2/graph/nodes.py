@@ -141,7 +141,7 @@ def running_node(state: dict, *, runner_plugin: Any = None) -> dict:
         }
 
 
-def feedback_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
+def feedback_node(state: dict, *, evaluator_plugin: Any = None, memory_write_fn: Any = None) -> dict:
     plugin: Any = evaluator_plugin or _DefaultMockEvaluatorPlugin()
     experiment = state.get("experiment", {})
     run_result = state.get("run_result", {})
@@ -152,6 +152,25 @@ def feedback_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
         except TypeError:
             feedback = plugin.evaluate(run_result)
         estimated = _estimate_tokens(feedback)
+
+        # Auto-persist knowledge after evaluation
+        write_fn = memory_write_fn or (lambda item, meta: None)
+        proposal = state.get("proposal") or {}
+        try:
+            from v2.graph.knowledge import persist_knowledge
+
+            persist_knowledge(
+                write_fn=write_fn,
+                iteration=state.get("loop_iteration", 0),
+                hypothesis=proposal.get("summary") or proposal.get("hypothesis", ""),
+                score=feedback.get("score"),
+                acceptable=feedback.get("acceptable", False),
+                reason=feedback.get("reason", ""),
+                scenario="default",
+            )
+        except Exception:
+            pass  # knowledge persistence should never break the main loop
+
         return {
             "feedback": feedback,
             "step_state": "RECORD",

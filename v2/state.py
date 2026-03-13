@@ -61,6 +61,7 @@ class MainState(TypedDict):
     iteration_history: Annotated[list[dict], sliding_window_reducer]
     context_notes: list[dict] | None
     workspace_path: str | None
+    past_knowledge: list[dict] | None
 
 
 class CoSTEERState(MainState):

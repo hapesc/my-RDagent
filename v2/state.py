@@ -16,6 +16,8 @@ class MainState(TypedDict):
     feedback: dict | None
     metrics: list[dict] | None
     error: str | None
+    tokens_used: Annotated[int, operator.add]
+    token_budget: int
 
 
 class CoSTEERState(MainState):

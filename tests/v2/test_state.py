@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator
 import sys
-from typing import Union, get_args, get_origin, get_type_hints
+from typing import Annotated, Union, get_args, get_origin, get_type_hints
 
 from v2.state import CoSTEERState, ExplorationState, MainState
 
@@ -57,6 +57,18 @@ def test_costeer_state_extends_main_state_and_has_reducer() -> None:
     annotated_args = get_args(reducer_annotated)
     assert annotated_args[0] == list[dict]
     assert annotated_args[1] is operator.add
+
+
+def test_main_state_has_token_tracking_fields() -> None:
+    hints = get_type_hints(MainState, include_extras=True)
+    assert "tokens_used" in hints
+    assert "token_budget" in hints
+
+    meta = hints["tokens_used"]
+    assert get_origin(meta) is Annotated
+    args = get_args(meta)
+    assert args[0] is int
+    assert args[1] is operator.add
 
 
 def test_exploration_state_supports_dag_parent_branches() -> None:

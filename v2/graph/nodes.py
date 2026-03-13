@@ -81,13 +81,36 @@ def coding_node(
     try:
         from v2.graph.costeer import build_costeer_subgraph
 
+        subgraph_input = {
+            "run_id": state.get("run_id", ""),
+            "loop_iteration": state.get("loop_iteration", 0),
+            "max_loops": state.get("max_loops", 1),
+            "step_state": "CODING",
+            "proposal": state.get("proposal"),
+            "experiment": state.get("experiment"),
+            "code_result": state.get("code_result"),
+            "run_result": None,
+            "feedback": None,
+            "metrics": None,
+            "error": None,
+            "tokens_used": 0,
+            "token_budget": 0,
+            "iteration_history": [],
+            "round_number": 0,
+            "max_rounds": 3,
+            "code_candidates": [],
+            "best_candidate": None,
+            "improvement_history": [],
+        }
+
         subgraph = build_costeer_subgraph(
             coder_plugin=coder_plugin,
             runner_plugin=runner_plugin,
             evaluator_plugin=evaluator_plugin,
         )
-        result = subgraph.invoke(state)
-        code_result = result.get("best_candidate", {})
+        result = subgraph.invoke(subgraph_input)
+
+        code_result = result.get("best_candidate") or {}
         estimated = _estimate_tokens(code_result)
         return {
             "code_result": code_result,

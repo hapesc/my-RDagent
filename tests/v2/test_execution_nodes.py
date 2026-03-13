@@ -49,6 +49,7 @@ def test_coding_node_invokes_costeer_and_sets_step_state_to_running() -> None:
             "feedback": None,
             "metrics": [],
             "error": None,
+            "iteration_history": [],
         }
     )
 
@@ -138,6 +139,7 @@ def test_record_node_increments_iteration_and_appends_metrics() -> None:
             "step_state": "RECORD",
             "feedback": {"score": 0.75, "decision": "accept"},
             "metrics": [],
+            "proposal": {"hypothesis": "test hypothesis"},
         }
     )
 
@@ -145,4 +147,12 @@ def test_record_node_increments_iteration_and_appends_metrics() -> None:
         "loop_iteration": 3,
         "metrics": [{"iteration": 2, "score": 0.75}],
         "step_state": "COMPLETED",
+        "iteration_history": [
+            {
+                "iteration": 3,
+                "hypothesis": "test hypothesis",
+                "score": 0.75,
+                "outcome": "accept",
+            }
+        ],
     }

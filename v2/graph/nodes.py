@@ -121,16 +121,22 @@ def record_node(state: dict) -> dict:
     previous_iteration = int(state.get("loop_iteration", 0))
     loop_iteration = previous_iteration + 1
     metrics = list(state.get("metrics") or [])
-    metrics.append(
-        {
-            "iteration": previous_iteration,
-            "score": (state.get("feedback") or {}).get("score", 0.0),
-        }
-    )
+    feedback = state.get("feedback") or {}
+    proposal = state.get("proposal") or {}
+    score = feedback.get("score", 0.0)
+    metrics.append({"iteration": previous_iteration, "score": score})
+
+    entry = {
+        "iteration": loop_iteration,
+        "hypothesis": proposal.get("hypothesis") or proposal.get("summary", ""),
+        "score": score,
+        "outcome": feedback.get("decision", "unknown"),
+    }
     return {
         "loop_iteration": loop_iteration,
         "metrics": metrics,
         "step_state": "COMPLETED",
+        "iteration_history": [entry],
     }
 
 

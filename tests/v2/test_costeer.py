@@ -49,6 +49,7 @@ def _initial_state(max_rounds: int, round_number: int = 0) -> dict:
         "feedback": None,
         "metrics": None,
         "error": None,
+        "iteration_history": [],
         "round_number": round_number,
         "max_rounds": max_rounds,
         "code_candidates": [],

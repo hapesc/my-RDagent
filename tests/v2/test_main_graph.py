@@ -18,6 +18,7 @@ def _initial_state(max_loops: int = 1) -> dict:
         "feedback": None,
         "metrics": None,
         "error": None,
+        "iteration_history": [],
     }
 
 
@@ -77,3 +78,14 @@ def test_main_graph_stream_emits_event_per_node() -> None:
     executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
     assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record"]
+
+
+def test_main_graph_accumulates_iteration_history():
+    from langgraph.checkpoint.memory import MemorySaver
+
+    state = _initial_state(max_loops=2)
+    graph = build_main_graph(checkpointer=MemorySaver())
+    config = {"configurable": {"thread_id": "history-test"}}
+    result = graph.invoke(state, config)
+    assert len(result.get("iteration_history", [])) >= 2
+    assert result["iteration_history"][-1]["iteration"] >= 1

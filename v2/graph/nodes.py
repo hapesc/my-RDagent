@@ -57,12 +57,8 @@ def propose_node(state: dict, *, proposer_plugin: Any = None) -> dict:
 
 
 def experiment_setup_node(state: dict) -> dict:
-    try:
-        proposal = state.get("proposal")
-        experiment = {"proposal": proposal}
-    except Exception as exc:
-        return {"error": str(exc), "tokens_used": 0}
-
+    proposal = state.get("proposal")
+    experiment = {"proposal": proposal}
     return {
         "experiment": experiment,
         "step_state": "CODING",
@@ -97,7 +93,7 @@ def coding_node(
             "token_budget": 0,
             "iteration_history": [],
             "round_number": 0,
-            "max_rounds": 3,
+            "max_rounds": state.get("costeer_max_rounds", 3),
             "code_candidates": [],
             "best_candidate": None,
             "improvement_history": [],

@@ -1,43 +1,5 @@
 from __future__ import annotations
 
-from v2.state import CoSTEERInput, CoSTEEROutput
-
-
-def test_costeer_input_has_required_fields() -> None:
-    inp = CoSTEERInput(
-        proposal_summary="test",
-        initial_code="print(1)",
-        scenario_context={},
-        max_rounds=3,
-    )
-    assert inp["proposal_summary"] == "test"
-    assert inp["initial_code"] == "print(1)"
-    assert inp["scenario_context"] == {}
-    assert inp["max_rounds"] == 3
-
-
-def test_costeer_output_has_required_fields() -> None:
-    out = CoSTEEROutput(
-        final_code="print(42)",
-        feedback_summary="improved",
-        rounds_used=2,
-        best_score=0.85,
-    )
-    assert out["final_code"] == "print(42)"
-    assert out["feedback_summary"] == "improved"
-    assert out["rounds_used"] == 2
-    assert out["best_score"] == 0.85
-
-
-def test_costeer_output_best_score_allows_none() -> None:
-    out = CoSTEEROutput(
-        final_code="print(42)",
-        feedback_summary="no improvement",
-        rounds_used=0,
-        best_score=None,
-    )
-    assert out["best_score"] is None
-
 
 def test_coding_node_does_not_leak_internal_state() -> None:
     from v2.graph.nodes import coding_node

@@ -20,7 +20,7 @@ def persist_knowledge(
         "iteration": str(iteration),
         "outcome": outcome,
         "scenario": scenario,
-        "score": str(score or 0),
+        "score": str(score if score is not None else 0),
     }
     write_fn(item, metadata)
 

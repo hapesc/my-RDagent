@@ -189,6 +189,7 @@ class V2RunService:
                     "max_loops": int(run_config.get("max_loops", 1)),
                     "tokens_used": 0,
                     "token_budget": int(run_config.get("token_budget", 0)),
+                    "costeer_max_rounds": int(run_config.get("costeer_max_rounds", 3)),
                 }
                 if run_config.get("task_summary"):
                     input_state["task_summary"] = run_config["task_summary"]
@@ -219,7 +220,7 @@ class V2RunService:
             # Apply updates to our accumulated state.
             node_updates = event[node_name]
             if node_updates:
-                accumulated_state.update(node_updates)
+                accumulated_state = {**accumulated_state, **node_updates}
 
             pending = {
                 "run_id": run_id,

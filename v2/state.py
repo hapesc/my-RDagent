@@ -61,29 +61,22 @@ class MainState(TypedDict):
     iteration_history: Annotated[list[dict], sliding_window_reducer]
     context_notes: list[dict] | None
     workspace_path: str | None
-    past_knowledge: list[dict] | None
 
 
 class CoSTEERState(MainState):
+    """Internal state for the CoSTEER code-refinement subgraph.
+
+    Inherits from MainState so the subgraph can read parent context
+    (e.g. proposal, experiment) but CoSTEER-specific keys (round_number,
+    code_candidates, improvement_history, best_candidate) never leak
+    back into the main graph — coding_node extracts only ``best_candidate``
+    and returns it as ``code_result``.
+    """
     round_number: int
     max_rounds: int
     code_candidates: Annotated[list[dict], operator.add]
     best_candidate: dict | None
     improvement_history: Annotated[list[dict], capped_feedback_reducer]
-
-
-class CoSTEERInput(TypedDict):
-    proposal_summary: str
-    initial_code: str
-    scenario_context: dict
-    max_rounds: int
-
-
-class CoSTEEROutput(TypedDict):
-    final_code: str
-    feedback_summary: str
-    rounds_used: int
-    best_score: float | None
 
 
 class ExplorationState(TypedDict):
@@ -96,8 +89,6 @@ class ExplorationState(TypedDict):
 __all__ = [
     "MainState",
     "CoSTEERState",
-    "CoSTEERInput",
-    "CoSTEEROutput",
     "ExplorationState",
     "sliding_window_reducer",
     "HISTORY_WINDOW_SIZE",

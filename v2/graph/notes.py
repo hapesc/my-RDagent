@@ -9,6 +9,8 @@ RUN_STATE_FILENAME = "RUN_STATE.json"
 
 def _build_run_state(state: dict[str, Any]) -> dict[str, Any]:
     """Extract key fields from the graph state for persistence."""
+    proposal = state.get("proposal") or {}
+    feedback = state.get("feedback") or {}
     return {
         "run_id": state.get("run_id"),
         "loop_iteration": state.get("loop_iteration"),
@@ -16,6 +18,11 @@ def _build_run_state(state: dict[str, Any]) -> dict[str, Any]:
         "step_state": state.get("step_state"),
         "tokens_used": state.get("tokens_used"),
         "token_budget": state.get("token_budget"),
+        "goal": state.get("task_summary", ""),
+        "current_hypothesis": proposal.get("hypothesis") or proposal.get("summary", ""),
+        "latest_score": feedback.get("score"),
+        "latest_decision": feedback.get("decision"),
+        "latest_reason": feedback.get("reason", ""),
         "iteration_history": state.get("iteration_history", []),
         "error": state.get("error"),
     }

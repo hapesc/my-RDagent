@@ -65,7 +65,11 @@ class TestDataScienceE2E:
         events = list(graph.stream(state, config, stream_mode="updates"))
         executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
-        assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record", "record_notes"]
+        expected = [
+            "propose", "experiment_setup", "coding",
+            "running", "feedback", "record", "record_notes",
+        ]
+        assert executed_nodes == expected
 
     def test_costeer_subgraph_invoked(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import v2.graph.costeer as costeer_module

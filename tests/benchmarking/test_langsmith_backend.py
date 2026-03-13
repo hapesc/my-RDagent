@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import unittest
 
-from benchmarking.langsmith_backend import LangSmithBackend, NullLangSmithExperimentClient
+from benchmarking.langsmith_backend import (
+    HostedLangSmithExperimentClient,
+    LangSmithBackend,
+    NullLangSmithExperimentClient,
+)
 from benchmarking.result_schema import BenchmarkCaseResult, BenchmarkRunResult, FailureBucket
 
 
@@ -118,6 +122,42 @@ class LangSmithBackendTests(unittest.TestCase):
 
         self.assertEqual(result["dataset"]["dataset_id"], "local-rdagent-smoke")
         self.assertEqual(result["experiment"]["experiment_id"], "local-smoke-local")
+
+    def test_hosted_client_adapter_normalizes_sdk_objects(self) -> None:
+        class Dataset:
+            id = "dataset-hosted"
+            name = "rdagent-hosted"
+            description = "hosted dataset"
+
+        class Project:
+            id = "project-hosted"
+            name = "smoke-hosted"
+
+        class FakeSdkClient:
+            def read_dataset(self, *, dataset_name: str):
+                _ = dataset_name
+                raise RuntimeError("not found")
+
+            def create_dataset(self, dataset_name: str, *, description: str):
+                _ = (dataset_name, description)
+                return Dataset()
+
+            def create_project(self, project_name: str, *, metadata: dict, upsert: bool, reference_dataset_id: str):
+                _ = (project_name, metadata, upsert, reference_dataset_id)
+                return Project()
+
+        client = HostedLangSmithExperimentClient(FakeSdkClient())
+        dataset = client.ensure_dataset(dataset_name="rdagent-hosted", description="hosted dataset")
+        experiment = client.create_experiment(
+            dataset_id="dataset-hosted",
+            experiment_name="smoke-hosted",
+            metadata={"profile": "smoke"},
+        )
+
+        self.assertEqual(dataset["dataset_id"], "dataset-hosted")
+        self.assertEqual(dataset["dataset_name"], "rdagent-hosted")
+        self.assertEqual(experiment["experiment_id"], "project-hosted")
+        self.assertEqual(experiment["experiment_name"], "smoke-hosted")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from benchmarking.langsmith_backend import LangSmithBackend, NullLangSmithExperimentClient
+from benchmarking.langsmith_backend import (
+    HostedLangSmithExperimentClient,
+    LangSmithBackend,
+    NullLangSmithExperimentClient,
+)
 from benchmarking.profiles import get_profile
 from benchmarking.reporting import run_result_to_json_dict, summarize_run_markdown
 from benchmarking.runner import run_benchmark
@@ -131,7 +135,12 @@ def build_default_langsmith_backend_from_env() -> Any | None:
     if not api_key:
         os.environ["LANGSMITH_TRACING"] = "false"
         return None
-    return LangSmithBackend(client=NullLangSmithExperimentClient())
+    try:
+        from langsmith import Client
+    except Exception:
+        return LangSmithBackend(client=NullLangSmithExperimentClient())
+
+    return LangSmithBackend(client=HostedLangSmithExperimentClient(Client()))
 
 
 if __name__ == "__main__":

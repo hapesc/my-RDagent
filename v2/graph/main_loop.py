@@ -30,6 +30,7 @@ def build_main_graph(
     coder_plugin: Any = None,
     runner_plugin: Any = None,
     evaluator_plugin: Any = None,
+    memory_write_fn: Any = None,
 ) -> Any:
     graph = StateGraph(MainState)
 
@@ -40,7 +41,10 @@ def build_main_graph(
         partial(coding_node, coder_plugin=coder_plugin, runner_plugin=runner_plugin, evaluator_plugin=evaluator_plugin),
     )
     graph.add_node("running", partial(running_node, runner_plugin=runner_plugin))
-    graph.add_node("feedback", partial(feedback_node, evaluator_plugin=evaluator_plugin))
+    graph.add_node(
+        "feedback",
+        partial(feedback_node, evaluator_plugin=evaluator_plugin, memory_write_fn=memory_write_fn),
+    )
     graph.add_node("record", record_node)
 
     graph.add_edge(START, "propose")

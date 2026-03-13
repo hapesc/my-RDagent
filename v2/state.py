@@ -59,6 +59,7 @@ class MainState(TypedDict):
     tokens_used: Annotated[int, operator.add]
     token_budget: int
     iteration_history: Annotated[list[dict], sliding_window_reducer]
+    past_knowledge: list[dict] | None
 
 
 class CoSTEERState(MainState):

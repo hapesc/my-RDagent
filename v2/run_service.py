@@ -201,7 +201,7 @@ class V2RunService:
         pending: dict[str, Any] | None = None
         paused = False
 
-        for event in graph.stream(input_state, config, stream_mode="updates"):
+        for event in graph.stream(input_state, config, stream_mode="updates", durability="async"):
             node_name = list(event.keys())[0]
             if node_name.startswith("__"):
                 continue

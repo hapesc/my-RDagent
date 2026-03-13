@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from langgraph.checkpoint.memory import MemorySaver
+
 from v2.graph.main_loop import build_main_graph
 
 
@@ -21,11 +23,11 @@ def _initial_state(max_loops: int = 1) -> dict:
 
 def test_main_graph_compiles_and_contains_six_nodes() -> None:
     graph = build_main_graph()
-    nodes = list(graph.nodes.keys()) if hasattr(graph, "nodes") else []
+    node_names = {n for n in graph.get_graph().nodes if not n.startswith("__")}
 
-    assert len(nodes) >= 6
+    assert len(node_names) >= 6
     for expected in ["propose", "experiment_setup", "coding", "running", "feedback", "record"]:
-        assert expected in nodes
+        assert expected in node_names
 
 
 def test_main_graph_invoke_completes_for_pass_through_nodes() -> None:
@@ -44,104 +46,34 @@ def test_main_graph_conditional_edge_loops_for_max_loops_two() -> None:
 
 
 def test_main_graph_can_resume_from_specific_node() -> None:
-    graph = build_main_graph()
-    call_order: list[str] = []
+    checkpointer = MemorySaver()
+    graph = build_main_graph(checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": "resume-test"}}
 
-    def _recording_node(name: str):
-        def _node(_state: dict) -> dict:
-            call_order.append(name)
-            if name == "record":
-                return {"loop_iteration": 1}
-            return {}
+    state = _initial_state(max_loops=1)
+    state["proposal"] = {"id": "p1"}
+    state["experiment"] = {"id": "e1"}
 
-        return _node
+    graph.update_state(config, state, as_node="experiment_setup")
+    snapshot = graph.get_state(config)
+    assert "coding" in snapshot.next
 
-    for node_name in ["propose", "experiment_setup", "coding", "running", "feedback", "record"]:
-        graph.nodes[node_name] = _recording_node(node_name)
+    events = list(graph.stream(None, config, stream_mode="updates"))
+    executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
+    assert "propose" not in executed_nodes
+    assert "experiment_setup" not in executed_nodes
+    assert "coding" in executed_nodes
+    assert "running" in executed_nodes
+    assert "feedback" in executed_nodes
+    assert "record" in executed_nodes
 
-    result = graph.invoke(_initial_state(max_loops=1), start_node="coding")
 
-    assert result["loop_iteration"] == 1
-    assert call_order == ["coding", "running", "feedback", "record"]
+def test_main_graph_stream_emits_event_per_node() -> None:
+    checkpointer = MemorySaver()
+    graph = build_main_graph(checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": "stream-test"}}
 
+    events = list(graph.stream(_initial_state(max_loops=1), config, stream_mode="updates"))
+    executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
-def test_main_graph_invokes_checkpoint_hook_after_each_successful_node() -> None:
-    graph = build_main_graph()
-    checkpoint_calls: list[tuple[str, str | None, dict]] = []
-
-    def _recording_node(name: str, updates: dict):
-        def _node(_state: dict) -> dict:
-            return dict(updates)
-
-        return _node
-
-    graph.nodes["propose"] = _recording_node("propose", {"proposal": {"id": "p1"}})
-    graph.nodes["experiment_setup"] = _recording_node("experiment_setup", {"experiment": {"id": "e1"}})
-    graph.nodes["coding"] = _recording_node("coding", {"code_result": {"id": "c1"}})
-    graph.nodes["running"] = _recording_node("running", {"run_result": {"id": "r1"}})
-    graph.nodes["feedback"] = _recording_node("feedback", {"feedback": {"id": "f1"}})
-    graph.nodes["record"] = _recording_node("record", {"loop_iteration": 1, "metrics": {"score": 1.0}})
-
-    result = graph.invoke(
-        _initial_state(max_loops=1),
-        checkpoint_hook=lambda last_completed_node, next_node, state_snapshot: checkpoint_calls.append(
-            (last_completed_node, next_node, state_snapshot)
-        ),
-    )
-
-    assert result["loop_iteration"] == 1
-    assert checkpoint_calls == [
-        ("propose", "experiment_setup", {**_initial_state(max_loops=1), "proposal": {"id": "p1"}}),
-        (
-            "experiment_setup",
-            "coding",
-            {**_initial_state(max_loops=1), "proposal": {"id": "p1"}, "experiment": {"id": "e1"}},
-        ),
-        (
-            "coding",
-            "running",
-            {
-                **_initial_state(max_loops=1),
-                "proposal": {"id": "p1"},
-                "experiment": {"id": "e1"},
-                "code_result": {"id": "c1"},
-            },
-        ),
-        (
-            "running",
-            "feedback",
-            {
-                **_initial_state(max_loops=1),
-                "proposal": {"id": "p1"},
-                "experiment": {"id": "e1"},
-                "code_result": {"id": "c1"},
-                "run_result": {"id": "r1"},
-            },
-        ),
-        (
-            "feedback",
-            "record",
-            {
-                **_initial_state(max_loops=1),
-                "proposal": {"id": "p1"},
-                "experiment": {"id": "e1"},
-                "code_result": {"id": "c1"},
-                "run_result": {"id": "r1"},
-                "feedback": {"id": "f1"},
-            },
-        ),
-        (
-            "record",
-            None,
-            {
-                **_initial_state(max_loops=1),
-                "proposal": {"id": "p1"},
-                "experiment": {"id": "e1"},
-                "code_result": {"id": "c1"},
-                "run_result": {"id": "r1"},
-                "feedback": {"id": "f1"},
-                "loop_iteration": 1,
-                "metrics": {"score": 1.0},
-            },
-        ),
-    ]
+    assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record"]

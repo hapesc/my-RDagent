@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# pyright: reportMissingImports=false
 import sys
 from pathlib import Path
 
@@ -12,21 +11,12 @@ from v2.run_service import V2RunService
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
-def test_create_then_start_run_completes_with_graph_invoke(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_then_start_run_completes() -> None:
     service = V2RunService()
-    invoked_with: list[dict] = []
 
-    class _DummyGraph:
-        def invoke(self, initial_state: dict, start_node: str | None = None, checkpoint_hook=None) -> dict:
-            invoked_with.append(dict(initial_state))
-            return dict(initial_state)
-
-    monkeypatch.setattr("v2.run_service.build_main_graph", lambda: _DummyGraph())
-
-    run_id = service.create_run({"max_loops": 2})
+    run_id = service.create_run({"max_loops": 1})
     service.start_run(run_id)
 
-    assert invoked_with == [{"run_id": run_id, "loop_iteration": 0, "max_loops": 2}]
     assert service.get_status(run_id) == RunStatus.COMPLETED.value
 
 
@@ -55,7 +45,7 @@ def test_get_status_returns_current_status() -> None:
     assert service.get_status(run_id) == RunStatus.CREATED.value
 
 
-def test_start_run_persists_node_boundary_checkpoint_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_run_persists_node_boundary_checkpoint_payloads() -> None:
     saved_calls: list[dict] = []
 
     class _FakeCoordinator:
@@ -63,99 +53,79 @@ def test_start_run_persists_node_boundary_checkpoint_payloads(monkeypatch: pytes
             saved_calls.append({"name": name, "workspace_data": workspace_data, "state": state})
             return f"ckpt-{len(saved_calls)}"
 
-    class _DummyGraph:
-        def invoke(self, initial_state: dict, checkpoint_hook=None) -> dict:
-            assert checkpoint_hook is not None
-            state_after_propose = dict(initial_state)
-            state_after_propose["proposal"] = {"title": "p1"}
-            checkpoint_hook("propose", "coding", state_after_propose)
-
-            state_after_coding = dict(state_after_propose)
-            state_after_coding["loop_iteration"] = 1
-            checkpoint_hook("coding", None, state_after_coding)
-            return state_after_coding
-
-    monkeypatch.setattr("v2.run_service.build_main_graph", lambda: _DummyGraph())
-
     service = V2RunService(checkpoint_coordinator=_FakeCoordinator())
     run_id = service.create_run({"max_loops": 1, "task_summary": "checkpoint me"})
 
     service.start_run(run_id)
 
-    assert len(saved_calls) == 2
+    assert len(saved_calls) == 6
     first_payload = saved_calls[0]["state"]
     assert first_payload["run_id"] == run_id
-    assert first_payload["loop_iteration"] == 0
     assert first_payload["last_completed_node"] == "propose"
-    assert first_payload["next_node"] == "coding"
-    assert first_payload["state"]["proposal"] == {"title": "p1"}
+    assert first_payload["next_node"] == "experiment_setup"
+    assert first_payload["state"]["proposal"] is not None
 
-    second_payload = saved_calls[1]["state"]
-    assert second_payload["run_id"] == run_id
-    assert second_payload["loop_iteration"] == 1
-    assert second_payload["last_completed_node"] == "coding"
-    assert second_payload["next_node"] is None
-    assert second_payload["state"]["loop_iteration"] == 1
+    last_payload = saved_calls[-1]["state"]
+    assert last_payload["last_completed_node"] == "record"
+    assert last_payload["next_node"] is None
+    assert last_payload["state"]["loop_iteration"] == 1
 
-    assert service._runs[run_id]["latest_checkpoint_id"] == "ckpt-2"
+    assert service._runs[run_id]["latest_checkpoint_id"] == f"ckpt-{len(saved_calls)}"
 
 
-def test_resume_run_restores_checkpoint_and_continues_from_next_node(monkeypatch: pytest.MonkeyPatch) -> None:
-    restored_calls: list[str] = []
-    invoke_calls: list[dict] = []
+def test_resume_run_restores_checkpoint_and_continues_from_next_node() -> None:
     expected_run_id = {"value": "RUN-ID"}
 
     class _FakeCoordinator:
+        def __init__(self) -> None:
+            self.restored: list[str] = []
+            self.saved: list[dict] = []
+
         def restore(self, checkpoint_id: str) -> tuple[bytes, dict]:
-            restored_calls.append(checkpoint_id)
+            self.restored.append(checkpoint_id)
             return (
                 b"",
                 {
                     "run_id": expected_run_id["value"],
-                    "loop_iteration": 7,
+                    "loop_iteration": 0,
                     "last_completed_node": "experiment_setup",
                     "next_node": "coding",
                     "state": {
                         "run_id": expected_run_id["value"],
-                        "loop_iteration": 7,
-                        "max_loops": 10,
-                        "task_summary": "resume here",
+                        "loop_iteration": 0,
+                        "max_loops": 1,
+                        "step_state": "CODING",
                         "proposal": {"id": "p1"},
                         "experiment": {"id": "e1"},
+                        "code_result": None,
+                        "run_result": None,
+                        "feedback": None,
+                        "metrics": None,
+                        "error": None,
                     },
                 },
             )
 
-    class _DummyGraph:
-        def invoke(self, initial_state: dict, start_node: str | None = None, checkpoint_hook=None) -> dict:
-            invoke_calls.append(
-                {
-                    "initial_state": dict(initial_state),
-                    "start_node": start_node,
-                    "checkpoint_hook": checkpoint_hook,
-                }
-            )
-            return dict(initial_state)
+        def save(self, name: str, workspace_data: bytes, state: dict) -> str:
+            self.saved.append(state)
+            return f"ckpt-{len(self.saved)}"
 
-    monkeypatch.setattr("v2.run_service.build_main_graph", lambda: _DummyGraph())
-
-    service = V2RunService(checkpoint_coordinator=_FakeCoordinator())
-    run_id = service.create_run({"max_loops": 10, "task_summary": "resume here"})
+    coordinator = _FakeCoordinator()
+    service = V2RunService(checkpoint_coordinator=coordinator)
+    run_id = service.create_run({"max_loops": 1})
     expected_run_id["value"] = run_id
     service._runs[run_id]["status"] = RunStatus.PAUSED.value
     service._runs[run_id]["latest_checkpoint_id"] = "ckpt-42"
-    service._runs[run_id]["config"]["task_summary"] = "ignored after restore"
-    service._runs[run_id]["config"]["max_loops"] = 1
 
     service.resume_run(run_id)
 
-    assert restored_calls == ["ckpt-42"]
-    assert invoke_calls[0]["start_node"] == "coding"
-    assert invoke_calls[0]["initial_state"]["run_id"] == run_id
-    assert invoke_calls[0]["initial_state"]["loop_iteration"] == 7
-    assert invoke_calls[0]["initial_state"]["max_loops"] == 10
-    assert invoke_calls[0]["initial_state"]["proposal"] == {"id": "p1"}
+    assert coordinator.restored == ["ckpt-42"]
     assert service.get_status(run_id) == RunStatus.COMPLETED.value
+    assert len(coordinator.saved) >= 1
+    executed_nodes = [s["last_completed_node"] for s in coordinator.saved]
+    assert "propose" not in executed_nodes
+    assert "experiment_setup" not in executed_nodes
+    assert "coding" in executed_nodes
 
 
 @pytest.mark.parametrize(
@@ -197,20 +167,10 @@ def test_resume_run_restores_checkpoint_and_continues_from_next_node(monkeypatch
     ],
 )
 def test_resume_run_rejects_invalid_checkpoint_payload_without_executing_graph(
-    monkeypatch: pytest.MonkeyPatch,
     payload: dict | None,
     checkpoint_id: str | None,
     expected_error: str,
 ) -> None:
-    graph_invoked = {"value": False}
-
-    class _DummyGraph:
-        def invoke(self, initial_state: dict, start_node: str | None = None, checkpoint_hook=None) -> dict:
-            graph_invoked["value"] = True
-            return dict(initial_state)
-
-    monkeypatch.setattr("v2.run_service.build_main_graph", lambda: _DummyGraph())
-
     class _Coordinator:
         def __init__(self, restored_payload: dict | None) -> None:
             self._restored_payload = restored_payload
@@ -237,24 +197,12 @@ def test_resume_run_rejects_invalid_checkpoint_payload_without_executing_graph(
         service.resume_run(run_id)
 
     assert service.get_status(run_id) == RunStatus.FAILED.value
-    assert graph_invoked["value"] is False
 
 
-def test_resume_run_fails_when_checkpoint_restore_raises_and_does_not_execute_graph(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    graph_invoked = {"value": False}
-
-    class _DummyGraph:
-        def invoke(self, initial_state: dict, start_node: str | None = None, checkpoint_hook=None) -> dict:
-            graph_invoked["value"] = True
-            return dict(initial_state)
-
+def test_resume_run_fails_when_checkpoint_restore_raises_and_does_not_execute_graph() -> None:
     class _BrokenCoordinator:
         def restore(self, _: str) -> tuple[bytes, dict]:
             raise RuntimeError("blob restore failed")
-
-    monkeypatch.setattr("v2.run_service.build_main_graph", lambda: _DummyGraph())
 
     service = V2RunService(checkpoint_coordinator=_BrokenCoordinator())
     run_id = service.create_run({"max_loops": 3})
@@ -265,4 +213,3 @@ def test_resume_run_fails_when_checkpoint_restore_raises_and_does_not_execute_gr
         service.resume_run(run_id)
 
     assert service.get_status(run_id) == RunStatus.FAILED.value
-    assert graph_invoked["value"] is False

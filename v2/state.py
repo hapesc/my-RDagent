@@ -14,14 +14,14 @@ class MainState(TypedDict):
     code_result: dict | None
     run_result: dict | None
     feedback: dict | None
-    metrics: dict | None
+    metrics: list[dict] | None
     error: str | None
 
 
 class CoSTEERState(MainState):
     round_number: int
     max_rounds: int
-    code_candidates: list[dict]
+    code_candidates: Annotated[list[dict], operator.add]
     best_candidate: dict | None
     improvement_history: Annotated[list[dict], operator.add]
 

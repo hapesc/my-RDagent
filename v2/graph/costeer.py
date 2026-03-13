@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
 
-from v2.graph.main_loop import END, START, CompiledGraph, StateGraph
+from langgraph.graph import END, START, StateGraph
+
 from v2.state import CoSTEERState
 
 
@@ -25,35 +27,32 @@ class _DefaultMockEvaluatorPlugin:
         return {"score": 0.0, "acceptable": False}
 
 
-def code_generate_node(state: dict) -> dict:
-    coder = state.get("_coder_plugin") or _DefaultMockCoderPlugin()
+def code_generate_node(state: dict, *, coder_plugin: Any = None) -> dict:
+    coder = coder_plugin or _DefaultMockCoderPlugin()
     experiment = state.get("experiment") or {}
     proposal = state.get("proposal") or {}
     code = coder.develop(experiment=experiment, proposal=proposal)
 
-    code_candidates = list(state.get("code_candidates") or [])
-    code_candidates.append(code)
-
     return {
         "code_result": code,
-        "code_candidates": code_candidates,
+        "code_candidates": [code],
     }
 
 
-def run_code_node(state: dict) -> dict:
-    runner = state.get("_runner_plugin") or _DefaultMockRunnerPlugin()
+def run_code_node(state: dict, *, runner_plugin: Any = None) -> dict:
+    runner = runner_plugin or _DefaultMockRunnerPlugin()
     code_result = state.get("code_result") or {}
     run_result = runner.run(code_result)
     return {"run_result": run_result}
 
 
-def evaluate_node(state: dict) -> dict:
+def evaluate_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
     run_result = state.get("run_result")
     code_result = state.get("code_result")
     if run_result is None or code_result is None:
         return {}
 
-    evaluator: Any = state.get("_evaluator_plugin") or _DefaultMockEvaluatorPlugin()
+    evaluator: Any = evaluator_plugin or _DefaultMockEvaluatorPlugin()
     experiment = state.get("experiment") or {}
 
     evaluate_fn = evaluator.evaluate
@@ -65,23 +64,21 @@ def evaluate_node(state: dict) -> dict:
     round_number = int(state.get("round_number", 0)) + 1
     score = feedback.get("score", 0.0)
 
-    history = list(state.get("improvement_history") or [])
-    history.append(
-        {
-            "round": round_number,
-            "code": code_result,
-            "result": run_result,
-            "score": score,
-        }
-    )
+    new_entry = {
+        "round": round_number,
+        "code": code_result,
+        "result": run_result,
+        "score": score,
+    }
 
-    best_candidate = max(history, key=lambda item: item.get("score", float("-inf"))) if history else None
+    current_best = state.get("best_candidate")
+    best = new_entry if current_best is None or score >= current_best.get("score", float("-inf")) else current_best
 
     return {
         "feedback": feedback,
         "round_number": round_number,
-        "improvement_history": history,
-        "best_candidate": best_candidate,
+        "improvement_history": [new_entry],
+        "best_candidate": best,
     }
 
 
@@ -91,12 +88,18 @@ def _should_continue(state: dict) -> str:
     return "code_generate_node"
 
 
-def build_costeer_subgraph(checkpointer: Any = None) -> CompiledGraph:
+def build_costeer_subgraph(
+    *,
+    checkpointer: Any = None,
+    coder_plugin: Any = None,
+    runner_plugin: Any = None,
+    evaluator_plugin: Any = None,
+) -> Any:
     graph = StateGraph(CoSTEERState)
 
-    graph.add_node("code_generate_node", code_generate_node)
-    graph.add_node("run_code_node", run_code_node)
-    graph.add_node("evaluate_node", evaluate_node)
+    graph.add_node("code_generate_node", partial(code_generate_node, coder_plugin=coder_plugin))
+    graph.add_node("run_code_node", partial(run_code_node, runner_plugin=runner_plugin))
+    graph.add_node("evaluate_node", partial(evaluate_node, evaluator_plugin=evaluator_plugin))
 
     graph.add_edge(START, "evaluate_node")
     graph.add_edge("code_generate_node", "run_code_node")

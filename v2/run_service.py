@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
+
+from langgraph.checkpoint.memory import MemorySaver
 
 from v2.graph.main_loop import build_main_graph
 from v2.models import RunStatus
@@ -70,11 +72,17 @@ class V2RunService:
             if not isinstance(restored_state, dict):
                 raise ValueError("Invalid recovery payload: missing state")
 
+            last_completed_node = recovered_payload.get("last_completed_node")
             next_node = recovered_payload.get("next_node")
             if next_node is None:
                 raise ValueError("Invalid recovery payload: next_node is None")
 
-            self._execute(run_id, run, initial_state=restored_state, start_node=str(next_node))
+            self._execute(
+                run_id,
+                run,
+                initial_state=restored_state,
+                resume_as_node=str(last_completed_node),
+            )
             if run["status"] == RunStatus.RUNNING.value:
                 run["status"] = RunStatus.COMPLETED.value
         except _CooperativePauseRequested:
@@ -103,69 +111,111 @@ class V2RunService:
         run = self._require_run(run_id)
         return str(run["status"])
 
+    def _resolve_plugins(self, run: dict[str, Any]) -> dict[str, Any]:
+        config = run["config"]
+        scenario = config.get("scenario")
+        plugins: dict[str, Any] = {}
+        if scenario and self._plugin_registry is not None:
+            try:
+                bundle = self._plugin_registry.get(scenario)
+                plugins["proposer_plugin"] = bundle.proposer
+                plugins["coder_plugin"] = bundle.coder
+                plugins["runner_plugin"] = bundle.runner
+                plugins["evaluator_plugin"] = bundle.evaluator
+            except KeyError:
+                pass
+        return plugins
+
     def _execute(
         self,
         run_id: str,
         run: dict[str, Any],
         *,
         initial_state: dict[str, Any] | None = None,
-        start_node: str | None = None,
+        resume_as_node: str | None = None,
     ) -> None:
-        graph = build_main_graph()
-        config = run["config"]
-        if initial_state is None:
-            graph_state: dict[str, Any] = {
-                "run_id": run_id,
-                "loop_iteration": 0,
-                "max_loops": int(config.get("max_loops", 1)),
-            }
-            if config.get("task_summary"):
-                graph_state["task_summary"] = config["task_summary"]
+        checkpointer = MemorySaver()
+        plugins = self._resolve_plugins(run)
+        graph = build_main_graph(checkpointer=checkpointer, **plugins)
+        config: dict[str, Any] = {"configurable": {"thread_id": run_id}}
+
+        if resume_as_node is not None:
+            graph.update_state(config, initial_state, as_node=resume_as_node)
+            input_state = None
+            accumulated_state = dict(initial_state) if initial_state else {}
         else:
-            graph_state = dict(initial_state)
-
-        scenario = config.get("scenario")
-        if scenario and self._plugin_registry is not None:
-            try:
-                bundle = self._plugin_registry.get(scenario)
-                graph_state["_proposer_plugin"] = bundle.proposer
-                graph_state["_coder_plugin"] = bundle.coder
-                graph_state["_runner_plugin"] = bundle.runner
-                graph_state["_evaluator_plugin"] = bundle.evaluator
-            except KeyError:
-                pass
-
-        def _checkpoint_hook(last_completed_node: str, next_node: str | None, state_snapshot: dict[str, Any]) -> None:
-            if self.checkpoint_coordinator is not None:
-                payload = {
+            if initial_state is None:
+                run_config = run["config"]
+                input_state: dict[str, Any] = {
                     "run_id": run_id,
-                    "loop_iteration": int(state_snapshot.get("loop_iteration", 0)),
-                    "last_completed_node": last_completed_node,
-                    "next_node": next_node,
-                    "state": dict(state_snapshot),
+                    "loop_iteration": 0,
+                    "max_loops": int(run_config.get("max_loops", 1)),
                 }
-                checkpoint_id = self.checkpoint_coordinator.save(
-                    name=f"run-{run_id}-node-{last_completed_node}",
+                if run_config.get("task_summary"):
+                    input_state["task_summary"] = run_config["task_summary"]
+            else:
+                input_state = dict(initial_state)
+            accumulated_state = dict(input_state)
+
+        # Deferred checkpoint approach: save node N's checkpoint when node N+1 starts.
+        # This lets us set next_node accurately.
+        pending: dict[str, Any] | None = None
+        paused = False
+
+        for event in graph.stream(input_state, config, stream_mode="updates"):
+            node_name = list(event.keys())[0]
+            if node_name.startswith("__"):
+                continue
+
+            # Save checkpoint for the PREVIOUS node (we now know its next_node).
+            if pending is not None and self.checkpoint_coordinator is not None:
+                pending["next_node"] = node_name
+                ckpt_id = self.checkpoint_coordinator.save(
+                    name=f"run-{run_id}-node-{pending['last_completed_node']}",
                     workspace_data=b"",
-                    state=payload,
+                    state=pending,
                 )
-                run["latest_checkpoint_id"] = checkpoint_id
+                run["latest_checkpoint_id"] = ckpt_id
 
+            # Apply updates to our accumulated state.
+            accumulated_state.update(event[node_name])
+
+            pending = {
+                "run_id": run_id,
+                "loop_iteration": int(accumulated_state.get("loop_iteration", 0)),
+                "last_completed_node": node_name,
+                "state": dict(accumulated_state),
+            }
+
+            # Cooperative pause check.
             if self._pause_probe is not None and self._pause_probe(run_id):
-                run["status"] = RunStatus.PAUSED.value
-                raise _CooperativePauseRequested()
+                paused = True
+                break
 
-        invoke_fn = self._as_invoke(graph)
-        if start_node is None:
-            invoke_fn(graph_state, checkpoint_hook=_checkpoint_hook)
-        else:
-            invoke_fn(graph_state, start_node=start_node, checkpoint_hook=_checkpoint_hook)
+        if paused:
+            # After breaking the stream, get_state() returns correct next info.
+            snapshot = graph.get_state(config)
+            next_nodes = snapshot.next
+            if pending is not None and self.checkpoint_coordinator is not None:
+                pending["next_node"] = next_nodes[0] if next_nodes else None
+                ckpt_id = self.checkpoint_coordinator.save(
+                    name=f"run-{run_id}-node-{pending['last_completed_node']}-pause",
+                    workspace_data=b"",
+                    state=pending,
+                )
+                run["latest_checkpoint_id"] = ckpt_id
+            run["status"] = RunStatus.PAUSED.value
+            raise _CooperativePauseRequested()
 
-    def _as_invoke(self, graph: Any) -> Callable[..., dict[str, Any]]:
-        invoke = getattr(graph, "invoke", None)
-        if not callable(invoke):
-            raise TypeError("Compiled graph does not provide callable invoke")
-        return cast(Callable[..., dict[str, Any]], invoke)
+        # Save final checkpoint (next_node=None means graph is done).
+        if pending is not None and self.checkpoint_coordinator is not None:
+            pending["next_node"] = None
+            ckpt_id = self.checkpoint_coordinator.save(
+                name=f"run-{run_id}-node-{pending['last_completed_node']}",
+                workspace_data=b"",
+                state=pending,
+            )
+            run["latest_checkpoint_id"] = ckpt_id
 
     def _transition(self, run_id: str, expected: str, target: str, action: str) -> None:
         run = self._require_run(run_id)

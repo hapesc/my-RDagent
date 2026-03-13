@@ -12,6 +12,11 @@ class _MockRunnerPlugin:
         return {"success": True, "output": "runner output", "code": code}
 
 
+class _FailingRunnerPlugin:
+    def run(self, code: dict) -> dict:
+        raise RuntimeError("forced error")
+
+
 class _MockEvaluatorPlugin:
     def __init__(self) -> None:
         self.calls: list[tuple[dict, dict]] = []
@@ -60,8 +65,8 @@ def test_running_node_calls_runner_plugin_and_stores_run_result() -> None:
         {
             "step_state": "RUNNING",
             "code_result": {"code": "print('hello')"},
-            "_runner_plugin": runner,
-        }
+        },
+        runner_plugin=runner,
     )
 
     assert runner.seen_code == {"code": "print('hello')"}
@@ -72,19 +77,18 @@ def test_running_node_calls_runner_plugin_and_stores_run_result() -> None:
     }
 
 
-def test_running_node_handles_forced_error_gracefully() -> None:
+def test_running_node_handles_plugin_error_gracefully() -> None:
     result = running_node(
         {
             "step_state": "RUNNING",
             "code_result": {"code": "print('hello')"},
-            "_force_runner_error": True,
-        }
+        },
+        runner_plugin=_FailingRunnerPlugin(),
     )
 
-    assert result == {
-        "run_result": {"success": False, "error": "forced error"},
-        "step_state": "FEEDBACK",
-    }
+    assert result["run_result"]["success"] is False
+    assert "forced error" in result["run_result"]["error"]
+    assert result["step_state"] == "FEEDBACK"
 
 
 def test_feedback_node_calls_evaluator_plugin_and_stores_feedback() -> None:
@@ -95,8 +99,8 @@ def test_feedback_node_calls_evaluator_plugin_and_stores_feedback() -> None:
             "step_state": "FEEDBACK",
             "experiment": {"task": "benchmark"},
             "run_result": {"success": True, "output": "ok"},
-            "_evaluator_plugin": evaluator,
-        }
+        },
+        evaluator_plugin=evaluator,
     )
 
     assert evaluator.calls == [({"task": "benchmark"}, {"success": True, "output": "ok"})]
@@ -115,8 +119,8 @@ def test_feedback_node_falls_back_to_single_argument_evaluate() -> None:
             "step_state": "FEEDBACK",
             "experiment": {"task": "benchmark"},
             "run_result": {"success": True, "output": "ok"},
-            "_evaluator_plugin": evaluator,
-        }
+        },
+        evaluator_plugin=evaluator,
     )
 
     assert evaluator.calls == [{"success": True, "output": "ok"}]

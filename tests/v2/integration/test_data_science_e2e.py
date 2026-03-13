@@ -31,36 +31,37 @@ class TestDataScienceE2E:
 
         assert ctx.run_service.get_status(run_id) == RunStatus.COMPLETED.value
 
-    def test_all_six_stages_execute(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        executed_nodes: list[str] = []
-        graph = build_main_graph()
-        expected_nodes = ["propose", "experiment_setup", "coding", "running", "feedback", "record"]
+    def test_all_six_stages_execute(self) -> None:
+        from langgraph.checkpoint.memory import MemorySaver
 
-        for node_name in expected_nodes:
-            original_fn = graph.nodes[node_name]
-
-            def _wrapped(state: dict, *, _name: str = node_name, _fn=original_fn) -> dict:
-                executed_nodes.append(_name)
-                return _fn(state)
-
-            graph.nodes[node_name] = _wrapped
-
-        monkeypatch.setattr("v2.run_service.build_main_graph", lambda: graph)
-
-        ctx = build_v2_runtime({"llm_provider": "mock", "max_loops": 1})
-        ctx.plugin_registry.register("data_science", DataScienceBundle())
-        run_id = ctx.run_service.create_run(
-            {
-                "scenario": "data_science",
-                "task_summary": "classify iris",
-                "max_loops": 1,
-            }
+        bundle = DataScienceBundle()
+        graph = build_main_graph(
+            checkpointer=MemorySaver(),
+            proposer_plugin=bundle.proposer,
+            coder_plugin=bundle.coder,
+            runner_plugin=bundle.runner,
+            evaluator_plugin=bundle.evaluator,
         )
+        config = {"configurable": {"thread_id": "ds-stages"}}
 
-        ctx.run_service.start_run(run_id)
+        state = {
+            "run_id": "ds-stages",
+            "task_summary": "classify iris",
+            "loop_iteration": 0,
+            "max_loops": 1,
+            "step_state": "CREATED",
+            "proposal": None,
+            "experiment": None,
+            "code_result": None,
+            "run_result": None,
+            "feedback": None,
+            "metrics": None,
+            "error": None,
+        }
+        events = list(graph.stream(state, config, stream_mode="updates"))
+        executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
-        assert executed_nodes == expected_nodes
-        assert ctx.run_service.get_status(run_id) == RunStatus.COMPLETED.value
+        assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record"]
 
     def test_costeer_subgraph_invoked(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import v2.graph.costeer as costeer_module
@@ -74,14 +75,22 @@ class TestDataScienceE2E:
 
         monkeypatch.setattr(costeer_module, "build_costeer_subgraph", _wrapped_build_costeer_subgraph)
 
-        graph = build_main_graph()
+        bundle = DataScienceBundle()
+        graph = build_main_graph(coder_plugin=bundle.coder)
         final_state = graph.invoke(
             {
                 "run_id": "costeer-e2e",
                 "task_summary": "classify iris",
                 "loop_iteration": 0,
                 "max_loops": 1,
-                "_coder_plugin": DataScienceBundle().coder,
+                "step_state": "CREATED",
+                "proposal": None,
+                "experiment": None,
+                "code_result": None,
+                "run_result": None,
+                "feedback": None,
+                "metrics": None,
+                "error": None,
             }
         )
 
@@ -96,6 +105,14 @@ class TestDataScienceE2E:
                 "task_summary": "classify iris",
                 "loop_iteration": 0,
                 "max_loops": 1,
+                "step_state": "CREATED",
+                "proposal": None,
+                "experiment": None,
+                "code_result": None,
+                "run_result": None,
+                "feedback": None,
+                "metrics": None,
+                "error": None,
             }
         )
 

@@ -26,11 +26,8 @@ class _DefaultMockEvaluatorPlugin:
         return {"score": 0.5, "decision": "continue", "reason": "mock"}
 
 
-def propose_node(state: dict) -> dict:
-    if state.get("_force_llm_error"):
-        return {"error": "forced error"}
-
-    plugin = state.get("_proposer_plugin") or _DefaultMockProposerPlugin()
+def propose_node(state: dict, *, proposer_plugin: Any = None) -> dict:
+    plugin = proposer_plugin or _DefaultMockProposerPlugin()
     try:
         proposal = plugin.propose(state)
     except Exception as exc:
@@ -57,11 +54,21 @@ def experiment_setup_node(state: dict) -> dict:
     }
 
 
-def coding_node(state: dict) -> dict:
+def coding_node(
+    state: dict,
+    *,
+    coder_plugin: Any = None,
+    runner_plugin: Any = None,
+    evaluator_plugin: Any = None,
+) -> dict:
     try:
         from v2.graph.costeer import build_costeer_subgraph
 
-        subgraph = build_costeer_subgraph()
+        subgraph = build_costeer_subgraph(
+            coder_plugin=coder_plugin,
+            runner_plugin=runner_plugin,
+            evaluator_plugin=evaluator_plugin,
+        )
         result = subgraph.invoke(state)
         return {
             "code_result": result.get("best_candidate", {}),
@@ -72,14 +79,8 @@ def coding_node(state: dict) -> dict:
         return {"error": str(exc)}
 
 
-def running_node(state: dict) -> dict:
-    if state.get("_force_runner_error"):
-        return {
-            "run_result": {"success": False, "error": "forced error"},
-            "step_state": "FEEDBACK",
-        }
-
-    plugin = state.get("_runner_plugin") or _DefaultMockRunnerPlugin()
+def running_node(state: dict, *, runner_plugin: Any = None) -> dict:
+    plugin = runner_plugin or _DefaultMockRunnerPlugin()
     try:
         run_result = plugin.run(state.get("code_result", {}))
         return {
@@ -94,8 +95,8 @@ def running_node(state: dict) -> dict:
         }
 
 
-def feedback_node(state: dict) -> dict:
-    plugin: Any = state.get("_evaluator_plugin") or _DefaultMockEvaluatorPlugin()
+def feedback_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
+    plugin: Any = evaluator_plugin or _DefaultMockEvaluatorPlugin()
     experiment = state.get("experiment", {})
     run_result = state.get("run_result", {})
 

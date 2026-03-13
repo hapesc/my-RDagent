@@ -62,19 +62,13 @@ def test_costeer_single_round_records_history_and_best_candidate() -> None:
     runner = _MockRunnerPlugin()
     evaluator = _MockEvaluatorPlugin(scores=[0.6])
 
-    graph = build_costeer_subgraph()
-    result = graph.invoke(
-        {
-            **_initial_state(max_rounds=1),
-            "_coder_plugin": coder,
-            "_runner_plugin": runner,
-            "_evaluator_plugin": evaluator,
-        }
+    graph = build_costeer_subgraph(
+        coder_plugin=coder,
+        runner_plugin=runner,
+        evaluator_plugin=evaluator,
     )
+    result = graph.invoke(_initial_state(max_rounds=1))
 
-    assert "code_generate_node" in graph.nodes
-    assert "run_code_node" in graph.nodes
-    assert "evaluate_node" in graph.nodes
     assert result["round_number"] == 1
     assert len(result["improvement_history"]) == 1
     assert result["improvement_history"][0] == {
@@ -92,15 +86,12 @@ def test_costeer_multi_round_appends_history_and_selects_highest_score() -> None
     runner = _MockRunnerPlugin()
     evaluator = _MockEvaluatorPlugin(scores=[0.6, 0.9, 0.7])
 
-    graph = build_costeer_subgraph()
-    result = graph.invoke(
-        {
-            **_initial_state(max_rounds=3),
-            "_coder_plugin": coder,
-            "_runner_plugin": runner,
-            "_evaluator_plugin": evaluator,
-        }
+    graph = build_costeer_subgraph(
+        coder_plugin=coder,
+        runner_plugin=runner,
+        evaluator_plugin=evaluator,
     )
+    result = graph.invoke(_initial_state(max_rounds=3))
 
     assert result["round_number"] == 3
     assert len(result["improvement_history"]) == 3
@@ -115,15 +106,12 @@ def test_costeer_honors_round_number_boundary_condition() -> None:
     runner = _MockRunnerPlugin()
     evaluator = _MockEvaluatorPlugin(scores=[0.8])
 
-    graph = build_costeer_subgraph()
-    result = graph.invoke(
-        {
-            **_initial_state(max_rounds=2, round_number=1),
-            "_coder_plugin": coder,
-            "_runner_plugin": runner,
-            "_evaluator_plugin": evaluator,
-        }
+    graph = build_costeer_subgraph(
+        coder_plugin=coder,
+        runner_plugin=runner,
+        evaluator_plugin=evaluator,
     )
+    result = graph.invoke(_initial_state(max_rounds=2, round_number=1))
 
     assert result["round_number"] == 2
     assert len(result["improvement_history"]) == 1
@@ -137,16 +125,13 @@ def test_costeer_max_rounds_zero_executes_zero_rounds() -> None:
     runner = _MockRunnerPlugin()
     evaluator = _MockEvaluatorPlugin(scores=[])
 
-    graph = build_costeer_subgraph()
-    initial = _initial_state(max_rounds=0)
-    result = graph.invoke(
-        {
-            **initial,
-            "_coder_plugin": coder,
-            "_runner_plugin": runner,
-            "_evaluator_plugin": evaluator,
-        }
+    graph = build_costeer_subgraph(
+        coder_plugin=coder,
+        runner_plugin=runner,
+        evaluator_plugin=evaluator,
     )
+    initial = _initial_state(max_rounds=0)
+    result = graph.invoke(initial)
 
     assert result["round_number"] == 0
     assert result["improvement_history"] == []

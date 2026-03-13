@@ -20,8 +20,8 @@ def test_propose_node_generates_proposal_and_updates_step_state() -> None:
         {
             "run_id": "test-run",
             "step_state": "PROPOSING",
-            "_proposer_plugin": _MockProposerPlugin(),
-        }
+        },
+        proposer_plugin=_MockProposerPlugin(),
     )
 
     assert result == {
@@ -31,28 +31,29 @@ def test_propose_node_generates_proposal_and_updates_step_state() -> None:
     }
 
 
-def test_propose_node_returns_forced_error_without_raising() -> None:
-    result = propose_node(
-        {
-            "run_id": "test-run",
-            "step_state": "PROPOSING",
-            "_force_llm_error": True,
-        }
-    )
-
-    assert result == {"error": "forced error"}
-
-
 def test_propose_node_returns_error_when_plugin_fails() -> None:
     result = propose_node(
         {
             "run_id": "test-run",
             "step_state": "PROPOSING",
-            "_proposer_plugin": _FailingProposerPlugin(),
-        }
+        },
+        proposer_plugin=_FailingProposerPlugin(),
     )
 
     assert result == {"error": "plugin boom"}
+
+
+def test_propose_node_uses_default_mock_when_no_plugin() -> None:
+    result = propose_node(
+        {
+            "run_id": "test-run",
+            "step_state": "PROPOSING",
+        },
+    )
+
+    assert result["proposal"] is not None
+    assert result["step_state"] == "EXPERIMENT_READY"
+    assert result["error"] is None
 
 
 def test_experiment_setup_node_converts_proposal_to_experiment_and_updates_step_state() -> None:

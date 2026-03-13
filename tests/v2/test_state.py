@@ -29,7 +29,7 @@ def test_main_state_has_required_fields() -> None:
     assert _is_optional_of(hints["code_result"], dict)
     assert _is_optional_of(hints["run_result"], dict)
     assert _is_optional_of(hints["feedback"], dict)
-    assert _is_optional_of(hints["metrics"], dict)
+    assert _is_optional_of(hints["metrics"], list[dict])
     assert _is_optional_of(hints["error"], str)
 
 
@@ -37,10 +37,20 @@ def test_costeer_state_extends_main_state_and_has_reducer() -> None:
     hints = get_type_hints(CoSTEERState)
     assert hints["round_number"] is int
     assert hints["max_rounds"] is int
-    assert hints["code_candidates"] == list[dict]
+    assert hints["code_candidates"] == list[dict]  # resolved without extras strips Annotated
     assert _is_optional_of(hints["best_candidate"], dict)
 
     resolved_hints = get_type_hints(CoSTEERState, include_extras=True)
+
+    # code_candidates reducer
+    code_cand_annotated = resolved_hints["code_candidates"]
+    assert get_origin(code_cand_annotated) is not None
+    assert get_origin(code_cand_annotated).__name__ == "Annotated"
+    code_cand_args = get_args(code_cand_annotated)
+    assert code_cand_args[0] == list[dict]
+    assert code_cand_args[1] is operator.add
+
+    # improvement_history reducer
     reducer_annotated = resolved_hints["improvement_history"]
     assert get_origin(reducer_annotated) is not None
     assert get_origin(reducer_annotated).__name__ == "Annotated"

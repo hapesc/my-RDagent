@@ -39,6 +39,7 @@ quant = [
 # V2 LangGraph/LangChain orchestration layer (optional — pure-Python shim used when absent)
 v2 = [
     "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
     "langchain-core>=0.3.0",
 ]
 
@@ -77,6 +78,7 @@ all = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
     "langchain-core>=0.3.0",
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",

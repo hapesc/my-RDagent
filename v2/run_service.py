@@ -96,6 +96,7 @@ class V2RunService:
                 run,
                 initial_state=restored_state,
                 resume_as_node=str(last_completed_node),
+                expected_next_node=str(next_node),
             )
             if run["status"] == RunStatus.RUNNING.value:
                 run["status"] = RunStatus.COMPLETED.value
@@ -147,6 +148,7 @@ class V2RunService:
         *,
         initial_state: dict[str, Any] | None = None,
         resume_as_node: str | None = None,
+        expected_next_node: str | None = None,
     ) -> None:
         use_sqlite = (
             _HAS_SQLITE_SAVER
@@ -156,12 +158,22 @@ class V2RunService:
             conn = sqlite3.connect(self._sqlite_path, check_same_thread=False)
             checkpointer = SqliteSaver(conn)
             try:
-                self._run_graph(run_id, run, checkpointer, initial_state=initial_state, resume_as_node=resume_as_node)
+                self._run_graph(
+                    run_id, run, checkpointer,
+                    initial_state=initial_state,
+                    resume_as_node=resume_as_node,
+                    expected_next_node=expected_next_node,
+                )
             finally:
                 conn.close()
         else:
             checkpointer = MemorySaver()
-            self._run_graph(run_id, run, checkpointer, initial_state=initial_state, resume_as_node=resume_as_node)
+            self._run_graph(
+                run_id, run, checkpointer,
+                initial_state=initial_state,
+                resume_as_node=resume_as_node,
+                expected_next_node=expected_next_node,
+            )
 
     def _run_graph(
         self,
@@ -171,6 +183,7 @@ class V2RunService:
         *,
         initial_state: dict[str, Any] | None = None,
         resume_as_node: str | None = None,
+        expected_next_node: str | None = None,
     ) -> None:
         plugins = self._resolve_plugins(run)
         graph = build_main_graph(checkpointer=checkpointer, **plugins)
@@ -181,6 +194,7 @@ class V2RunService:
             input_state = None
             accumulated_state = dict(initial_state) if initial_state else {}
         else:
+            expected_next_node = None  # only meaningful for resume path
             if initial_state is None:
                 run_config = run["config"]
                 input_state: dict[str, Any] = {
@@ -206,6 +220,15 @@ class V2RunService:
             node_name = list(event.keys())[0]
             if node_name.startswith("__"):
                 continue
+
+            # On resume, verify the first executed node matches the checkpoint's next_node.
+            if expected_next_node is not None:
+                if node_name != expected_next_node:
+                    raise ValueError(
+                        f"Resume integrity check failed: checkpoint says next_node={expected_next_node!r}, "
+                        f"but graph executed {node_name!r}"
+                    )
+                expected_next_node = None  # check only once
 
             # Save checkpoint for the PREVIOUS node (we now know its next_node).
             if pending is not None and self.checkpoint_coordinator is not None:

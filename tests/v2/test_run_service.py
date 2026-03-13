@@ -254,3 +254,54 @@ def test_existing_tests_unaffected_by_sqlite_path_parameter() -> None:
     run_id = service.create_run({"max_loops": 1})
     service.start_run(run_id)
     assert service.get_status(run_id) == RunStatus.COMPLETED.value
+
+
+def test_resume_integrity_check_rejects_mismatched_next_node() -> None:
+    """If the checkpoint's next_node doesn't match what the graph actually executes, raise."""
+
+    class _MismatchCoordinator:
+        def __init__(self, run_id_ref: dict) -> None:
+            self._run_id_ref = run_id_ref
+
+        def restore(self, _: str) -> tuple[bytes, dict]:
+            return (
+                b"",
+                {
+                    "run_id": self._run_id_ref["value"],
+                    "loop_iteration": 0,
+                    "last_completed_node": "experiment_setup",
+                    # Deliberately wrong: real successor of experiment_setup is "coding"
+                    "next_node": "running",
+                    "state": {
+                        "run_id": self._run_id_ref["value"],
+                        "loop_iteration": 0,
+                        "max_loops": 1,
+                        "step_state": "CODING",
+                        "proposal": {"id": "p1"},
+                        "experiment": {"id": "e1"},
+                        "code_result": None,
+                        "run_result": None,
+                        "feedback": None,
+                        "metrics": None,
+                        "error": None,
+                        "tokens_used": 0,
+                        "token_budget": 0,
+                    },
+                },
+            )
+
+        def save(self, name: str, workspace_data: bytes, state: dict) -> str:
+            return "ckpt-fake"
+
+    run_id_ref: dict = {"value": ""}
+    coordinator = _MismatchCoordinator(run_id_ref)
+    service = V2RunService(checkpoint_coordinator=coordinator)
+    run_id = service.create_run({"max_loops": 1})
+    run_id_ref["value"] = run_id
+    service._runs[run_id]["status"] = RunStatus.PAUSED.value
+    service._runs[run_id]["latest_checkpoint_id"] = "ckpt-42"
+
+    with pytest.raises(ValueError, match="Resume integrity check failed"):
+        service.resume_run(run_id)
+
+    assert service.get_status(run_id) == RunStatus.FAILED.value

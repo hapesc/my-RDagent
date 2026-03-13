@@ -57,6 +57,8 @@ class TestDataScienceE2E:
             "feedback": None,
             "metrics": None,
             "error": None,
+            "tokens_used": 0,
+            "token_budget": 0,
         }
         events = list(graph.stream(state, config, stream_mode="updates"))
         executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
@@ -91,6 +93,8 @@ class TestDataScienceE2E:
                 "feedback": None,
                 "metrics": None,
                 "error": None,
+                "tokens_used": 0,
+                "token_budget": 0,
             }
         )
 
@@ -113,6 +117,8 @@ class TestDataScienceE2E:
                 "feedback": None,
                 "metrics": None,
                 "error": None,
+                "tokens_used": 0,
+                "token_budget": 0,
             }
         )
 

@@ -102,6 +102,8 @@ def test_resume_run_restores_checkpoint_and_continues_from_next_node() -> None:
                         "feedback": None,
                         "metrics": None,
                         "error": None,
+                        "tokens_used": 0,
+                        "token_budget": 0,
                     },
                 },
             )

@@ -150,6 +150,8 @@ class V2RunService:
                     "run_id": run_id,
                     "loop_iteration": 0,
                     "max_loops": int(run_config.get("max_loops", 1)),
+                    "tokens_used": 0,
+                    "token_budget": int(run_config.get("token_budget", 0)),
                 }
                 if run_config.get("task_summary"):
                     input_state["task_summary"] = run_config["task_summary"]

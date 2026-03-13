@@ -14,6 +14,7 @@ from v2.graph.nodes import (
     record_node,
     running_node,
 )
+from v2.graph.notes import record_notes_node
 from v2.state import MainState
 
 
@@ -42,6 +43,7 @@ def build_main_graph(
     graph.add_node("running", partial(running_node, runner_plugin=runner_plugin))
     graph.add_node("feedback", partial(feedback_node, evaluator_plugin=evaluator_plugin))
     graph.add_node("record", record_node)
+    graph.add_node("record_notes", record_notes_node)
 
     graph.add_edge(START, "propose")
     graph.add_conditional_edges("propose", budget_check, {"continue": "experiment_setup", "over_budget": END})
@@ -49,7 +51,8 @@ def build_main_graph(
     graph.add_conditional_edges("coding", budget_check, {"continue": "running", "over_budget": END})
     graph.add_edge("running", "feedback")
     graph.add_conditional_edges("feedback", budget_check, {"continue": "record", "over_budget": END})
-    graph.add_conditional_edges("record", _next_after_record)
+    graph.add_edge("record", "record_notes")
+    graph.add_conditional_edges("record_notes", _next_after_record)
 
     return graph.compile(checkpointer=checkpointer)
 

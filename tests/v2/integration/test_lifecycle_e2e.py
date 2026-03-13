@@ -202,3 +202,4 @@ class TestLifecycleE2E:
         assert "running" in resume_nodes
         assert "feedback" in resume_nodes
         assert "record" in resume_nodes
+        assert "record_notes" in resume_nodes

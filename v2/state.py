@@ -59,6 +59,8 @@ class MainState(TypedDict):
     tokens_used: Annotated[int, operator.add]
     token_budget: int
     iteration_history: Annotated[list[dict], sliding_window_reducer]
+    context_notes: list[dict] | None
+    workspace_path: str | None
 
 
 class CoSTEERState(MainState):

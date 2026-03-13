@@ -52,6 +52,8 @@ def test_coding_node_invokes_costeer_and_sets_step_state_to_running() -> None:
             "tokens_used": 0,
             "token_budget": 0,
             "iteration_history": [],
+            "context_notes": None,
+            "workspace_path": None,
         }
     )
 

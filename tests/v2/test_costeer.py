@@ -52,6 +52,8 @@ def _initial_state(max_rounds: int, round_number: int = 0) -> dict:
         "tokens_used": 0,
         "token_budget": 0,
         "iteration_history": [],
+        "context_notes": None,
+        "workspace_path": None,
         "round_number": round_number,
         "max_rounds": max_rounds,
         "code_candidates": [],

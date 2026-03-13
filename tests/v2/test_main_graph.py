@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 from langgraph.checkpoint.memory import MemorySaver
 
 from v2.graph.main_loop import build_main_graph
@@ -21,15 +24,17 @@ def _initial_state(max_loops: int = 1) -> dict:
         "tokens_used": 0,
         "token_budget": 0,
         "iteration_history": [],
+        "context_notes": None,
+        "workspace_path": None,
     }
 
 
-def test_main_graph_compiles_and_contains_six_nodes() -> None:
+def test_main_graph_compiles_and_contains_seven_nodes() -> None:
     graph = build_main_graph()
     node_names = {n for n in graph.get_graph().nodes if not n.startswith("__")}
 
-    assert len(node_names) >= 6
-    for expected in ["propose", "experiment_setup", "coding", "running", "feedback", "record"]:
+    assert len(node_names) >= 7
+    for expected in ["propose", "experiment_setup", "coding", "running", "feedback", "record", "record_notes"]:
         assert expected in node_names
 
 
@@ -69,6 +74,7 @@ def test_main_graph_can_resume_from_specific_node() -> None:
     assert "running" in executed_nodes
     assert "feedback" in executed_nodes
     assert "record" in executed_nodes
+    assert "record_notes" in executed_nodes
 
 
 def test_main_graph_stream_emits_event_per_node() -> None:
@@ -79,7 +85,7 @@ def test_main_graph_stream_emits_event_per_node() -> None:
     events = list(graph.stream(_initial_state(max_loops=1), config, stream_mode="updates"))
     executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
-    assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record"]
+    assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record", "record_notes"]
 
 
 def test_main_graph_stops_early_when_over_budget() -> None:
@@ -120,3 +126,13 @@ def test_main_graph_accumulates_iteration_history():
     result = graph.invoke(state, config)
     assert len(result.get("iteration_history", [])) >= 2
     assert result["iteration_history"][-1]["iteration"] >= 1
+
+
+def test_main_graph_writes_run_state_json() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        state = _initial_state(max_loops=1)
+        state["workspace_path"] = tmp
+        state["context_notes"] = None
+        graph = build_main_graph()
+        graph.invoke(state)
+        assert (Path(tmp) / "RUN_STATE.json").exists()

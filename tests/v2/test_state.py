@@ -71,6 +71,14 @@ def test_main_state_has_token_tracking_fields() -> None:
     assert args[1] is operator.add
 
 
+def test_main_state_has_notes_fields() -> None:
+    hints = get_type_hints(MainState)
+    assert "context_notes" in hints
+    assert "workspace_path" in hints
+    assert _is_optional_of(hints["context_notes"], list[dict])
+    assert _is_optional_of(hints["workspace_path"], str)
+
+
 def test_exploration_state_supports_dag_parent_branches() -> None:
     hints = get_type_hints(ExplorationState)
     assert hints["branch_id"] is str

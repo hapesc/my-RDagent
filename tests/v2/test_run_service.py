@@ -58,7 +58,7 @@ def test_start_run_persists_node_boundary_checkpoint_payloads() -> None:
 
     service.start_run(run_id)
 
-    assert len(saved_calls) == 6
+    assert len(saved_calls) == 7
     first_payload = saved_calls[0]["state"]
     assert first_payload["run_id"] == run_id
     assert first_payload["last_completed_node"] == "propose"
@@ -66,7 +66,7 @@ def test_start_run_persists_node_boundary_checkpoint_payloads() -> None:
     assert first_payload["state"]["proposal"] is not None
 
     last_payload = saved_calls[-1]["state"]
-    assert last_payload["last_completed_node"] == "record"
+    assert last_payload["last_completed_node"] == "record_notes"
     assert last_payload["next_node"] is None
     assert last_payload["state"]["loop_iteration"] == 1
 

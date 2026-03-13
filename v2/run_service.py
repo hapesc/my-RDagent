@@ -180,7 +180,9 @@ class V2RunService:
                 run["latest_checkpoint_id"] = ckpt_id
 
             # Apply updates to our accumulated state.
-            accumulated_state.update(event[node_name])
+            node_updates = event[node_name]
+            if node_updates:
+                accumulated_state.update(node_updates)
 
             pending = {
                 "run_id": run_id,

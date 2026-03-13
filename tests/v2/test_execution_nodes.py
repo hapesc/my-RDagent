@@ -49,6 +49,8 @@ def test_coding_node_invokes_costeer_and_sets_step_state_to_running() -> None:
             "feedback": None,
             "metrics": [],
             "error": None,
+            "tokens_used": 0,
+            "token_budget": 0,
         }
     )
 
@@ -56,6 +58,8 @@ def test_coding_node_invokes_costeer_and_sets_step_state_to_running() -> None:
     assert result["error"] is None
     assert "code_result" in result
     assert result["code_result"] is not None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
 
 
 def test_running_node_calls_runner_plugin_and_stores_run_result() -> None:
@@ -70,11 +74,12 @@ def test_running_node_calls_runner_plugin_and_stores_run_result() -> None:
     )
 
     assert runner.seen_code == {"code": "print('hello')"}
-    assert result == {
-        "run_result": {"success": True, "output": "runner output", "code": {"code": "print('hello')"}},
-        "step_state": "FEEDBACK",
-        "error": None,
-    }
+    assert result["run_result"] == {"success": True, "output": "runner output", "code": {"code": "print('hello')"}}
+    assert result["step_state"] == "FEEDBACK"
+    assert result["error"] is None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
 
 
 def test_running_node_handles_plugin_error_gracefully() -> None:
@@ -89,6 +94,7 @@ def test_running_node_handles_plugin_error_gracefully() -> None:
     assert result["run_result"]["success"] is False
     assert "forced error" in result["run_result"]["error"]
     assert result["step_state"] == "FEEDBACK"
+    assert result["tokens_used"] == 0
 
 
 def test_feedback_node_calls_evaluator_plugin_and_stores_feedback() -> None:
@@ -104,11 +110,12 @@ def test_feedback_node_calls_evaluator_plugin_and_stores_feedback() -> None:
     )
 
     assert evaluator.calls == [({"task": "benchmark"}, {"success": True, "output": "ok"})]
-    assert result == {
-        "feedback": {"score": 0.9, "decision": "accept", "reason": "looks good"},
-        "step_state": "RECORD",
-        "error": None,
-    }
+    assert result["feedback"] == {"score": 0.9, "decision": "accept", "reason": "looks good"}
+    assert result["step_state"] == "RECORD"
+    assert result["error"] is None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
 
 
 def test_feedback_node_falls_back_to_single_argument_evaluate() -> None:
@@ -124,11 +131,12 @@ def test_feedback_node_falls_back_to_single_argument_evaluate() -> None:
     )
 
     assert evaluator.calls == [{"success": True, "output": "ok"}]
-    assert result == {
-        "feedback": {"score": 0.4, "decision": "continue", "reason": "single arg"},
-        "step_state": "RECORD",
-        "error": None,
-    }
+    assert result["feedback"] == {"score": 0.4, "decision": "continue", "reason": "single arg"}
+    assert result["step_state"] == "RECORD"
+    assert result["error"] is None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
 
 
 def test_record_node_increments_iteration_and_appends_metrics() -> None:
@@ -145,4 +153,5 @@ def test_record_node_increments_iteration_and_appends_metrics() -> None:
         "loop_iteration": 3,
         "metrics": [{"iteration": 2, "score": 0.75}],
         "step_state": "COMPLETED",
+        "tokens_used": 0,
     }

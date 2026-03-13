@@ -1,6 +1,20 @@
 from __future__ import annotations
 
+import json
 from typing import Any
+
+
+def _estimate_tokens(data: Any) -> int:
+    """Estimate token count using ~4 chars per token heuristic."""
+    if data is None:
+        return 0
+    if isinstance(data, str):
+        return len(data) // 4
+    try:
+        text = json.dumps(data, default=str)
+    except (TypeError, ValueError):
+        text = str(data)
+    return len(text) // 4
 
 
 class _DefaultMockProposerPlugin:
@@ -31,12 +45,14 @@ def propose_node(state: dict, *, proposer_plugin: Any = None) -> dict:
     try:
         proposal = plugin.propose(state)
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": str(exc), "tokens_used": 0}
 
+    estimated = _estimate_tokens(proposal)
     return {
         "proposal": proposal,
         "step_state": "EXPERIMENT_READY",
         "error": None,
+        "tokens_used": estimated,
     }
 
 
@@ -45,12 +61,13 @@ def experiment_setup_node(state: dict) -> dict:
         proposal = state.get("proposal")
         experiment = {"proposal": proposal}
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": str(exc), "tokens_used": 0}
 
     return {
         "experiment": experiment,
         "step_state": "CODING",
         "error": None,
+        "tokens_used": 0,
     }
 
 
@@ -70,28 +87,34 @@ def coding_node(
             evaluator_plugin=evaluator_plugin,
         )
         result = subgraph.invoke(state)
+        code_result = result.get("best_candidate", {})
+        estimated = _estimate_tokens(code_result)
         return {
-            "code_result": result.get("best_candidate", {}),
+            "code_result": code_result,
             "step_state": "RUNNING",
             "error": None,
+            "tokens_used": estimated,
         }
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": str(exc), "tokens_used": 0}
 
 
 def running_node(state: dict, *, runner_plugin: Any = None) -> dict:
     plugin = runner_plugin or _DefaultMockRunnerPlugin()
     try:
         run_result = plugin.run(state.get("code_result", {}))
+        estimated = _estimate_tokens(run_result)
         return {
             "run_result": run_result,
             "step_state": "FEEDBACK",
             "error": None,
+            "tokens_used": estimated,
         }
     except Exception as exc:
         return {
             "run_result": {"success": False, "error": str(exc)},
             "step_state": "FEEDBACK",
+            "tokens_used": 0,
         }
 
 
@@ -105,15 +128,18 @@ def feedback_node(state: dict, *, evaluator_plugin: Any = None) -> dict:
             feedback = plugin.evaluate(experiment, run_result)
         except TypeError:
             feedback = plugin.evaluate(run_result)
+        estimated = _estimate_tokens(feedback)
         return {
             "feedback": feedback,
             "step_state": "RECORD",
             "error": None,
+            "tokens_used": estimated,
         }
     except Exception as exc:
         return {
             "feedback": {"score": 0.0, "decision": "retry"},
             "error": str(exc),
+            "tokens_used": 0,
         }
 
 
@@ -131,6 +157,7 @@ def record_node(state: dict) -> dict:
         "loop_iteration": loop_iteration,
         "metrics": metrics,
         "step_state": "COMPLETED",
+        "tokens_used": 0,
     }
 
 
@@ -141,4 +168,5 @@ __all__ = [
     "running_node",
     "feedback_node",
     "record_node",
+    "_estimate_tokens",
 ]

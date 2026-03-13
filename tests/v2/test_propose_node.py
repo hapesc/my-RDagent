@@ -24,11 +24,12 @@ def test_propose_node_generates_proposal_and_updates_step_state() -> None:
         proposer_plugin=_MockProposerPlugin(),
     )
 
-    assert result == {
-        "proposal": {"hypothesis": "test"},
-        "step_state": "EXPERIMENT_READY",
-        "error": None,
-    }
+    assert result["proposal"] == {"hypothesis": "test"}
+    assert result["step_state"] == "EXPERIMENT_READY"
+    assert result["error"] is None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
 
 
 def test_propose_node_returns_error_when_plugin_fails() -> None:
@@ -40,7 +41,8 @@ def test_propose_node_returns_error_when_plugin_fails() -> None:
         proposer_plugin=_FailingProposerPlugin(),
     )
 
-    assert result == {"error": "plugin boom"}
+    assert result["error"] == "plugin boom"
+    assert result["tokens_used"] == 0
 
 
 def test_propose_node_uses_default_mock_when_no_plugin() -> None:
@@ -54,6 +56,17 @@ def test_propose_node_uses_default_mock_when_no_plugin() -> None:
     assert result["proposal"] is not None
     assert result["step_state"] == "EXPERIMENT_READY"
     assert result["error"] is None
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
+
+
+def test_propose_node_returns_tokens_used_estimate() -> None:
+    state = {"run_id": "test-run", "loop_iteration": 0, "max_loops": 1, "step_state": "PROPOSING"}
+    result = propose_node(state, proposer_plugin=_MockProposerPlugin())
+    assert "tokens_used" in result
+    assert isinstance(result["tokens_used"], int)
+    assert result["tokens_used"] > 0
 
 
 def test_experiment_setup_node_converts_proposal_to_experiment_and_updates_step_state() -> None:
@@ -68,4 +81,5 @@ def test_experiment_setup_node_converts_proposal_to_experiment_and_updates_step_
         "experiment": {"proposal": {"hypothesis": "test", "constraints": {"budget": "low"}}},
         "step_state": "CODING",
         "error": None,
+        "tokens_used": 0,
     }

@@ -71,6 +71,20 @@ class CoSTEERState(MainState):
     improvement_history: Annotated[list[dict], capped_feedback_reducer]
 
 
+class CoSTEERInput(TypedDict):
+    proposal_summary: str
+    initial_code: str
+    scenario_context: dict
+    max_rounds: int
+
+
+class CoSTEEROutput(TypedDict):
+    final_code: str
+    feedback_summary: str
+    rounds_used: int
+    best_score: float | None
+
+
 class ExplorationState(TypedDict):
     branch_id: str
     parent_branch_ids: list[str]
@@ -81,6 +95,8 @@ class ExplorationState(TypedDict):
 __all__ = [
     "MainState",
     "CoSTEERState",
+    "CoSTEERInput",
+    "CoSTEEROutput",
     "ExplorationState",
     "sliding_window_reducer",
     "HISTORY_WINDOW_SIZE",

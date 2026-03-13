@@ -95,7 +95,6 @@ def _should_continue(state: dict) -> str:
 
 def build_costeer_subgraph(
     *,
-    checkpointer: Any = None,
     coder_plugin: Any = None,
     runner_plugin: Any = None,
     evaluator_plugin: Any = None,
@@ -111,7 +110,7 @@ def build_costeer_subgraph(
     graph.add_edge("run_code_node", "evaluate_node")
     graph.add_conditional_edges("evaluate_node", _should_continue)
 
-    return graph.compile(checkpointer=checkpointer)
+    return graph.compile(checkpointer=None)
 
 
 __all__ = ["build_costeer_subgraph", "code_generate_node", "run_code_node", "evaluate_node"]

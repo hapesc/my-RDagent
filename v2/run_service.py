@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from collections.abc import Callable
 from typing import Any
@@ -9,17 +10,30 @@ from langgraph.checkpoint.memory import MemorySaver
 from v2.graph.main_loop import build_main_graph
 from v2.models import RunStatus
 
+try:
+    from langgraph.checkpoint.sqlite import SqliteSaver
+
+    _HAS_SQLITE_SAVER = True
+except ImportError:
+    _HAS_SQLITE_SAVER = False
+
 
 class _CooperativePauseRequested(Exception):
     pass
 
 
 class V2RunService:
-    def __init__(self, plugin_registry: Any = None, checkpoint_coordinator: Any = None) -> None:
+    def __init__(
+        self,
+        plugin_registry: Any = None,
+        checkpoint_coordinator: Any = None,
+        sqlite_path: str | None = None,
+    ) -> None:
         self._runs: dict[str, dict[str, Any]] = {}
         self._plugin_registry = plugin_registry
         self.checkpoint_coordinator = checkpoint_coordinator
         self._pause_probe: Callable[[str], bool] | None = None
+        self._sqlite_path = sqlite_path or ":memory:"
 
     def set_pause_probe(self, pause_probe: Callable[[str], bool] | None) -> None:
         self._pause_probe = pause_probe
@@ -134,7 +148,30 @@ class V2RunService:
         initial_state: dict[str, Any] | None = None,
         resume_as_node: str | None = None,
     ) -> None:
-        checkpointer = MemorySaver()
+        use_sqlite = (
+            _HAS_SQLITE_SAVER
+            and self._sqlite_path != ":memory:"
+        )
+        if use_sqlite:
+            conn = sqlite3.connect(self._sqlite_path, check_same_thread=False)
+            checkpointer = SqliteSaver(conn)
+            try:
+                self._run_graph(run_id, run, checkpointer, initial_state=initial_state, resume_as_node=resume_as_node)
+            finally:
+                conn.close()
+        else:
+            checkpointer = MemorySaver()
+            self._run_graph(run_id, run, checkpointer, initial_state=initial_state, resume_as_node=resume_as_node)
+
+    def _run_graph(
+        self,
+        run_id: str,
+        run: dict[str, Any],
+        checkpointer: Any,
+        *,
+        initial_state: dict[str, Any] | None = None,
+        resume_as_node: str | None = None,
+    ) -> None:
         plugins = self._resolve_plugins(run)
         graph = build_main_graph(checkpointer=checkpointer, **plugins)
         config: dict[str, Any] = {"configurable": {"thread_id": run_id}}

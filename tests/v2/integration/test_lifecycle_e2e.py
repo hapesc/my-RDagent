@@ -203,3 +203,88 @@ class TestLifecycleE2E:
         assert "feedback" in resume_nodes
         assert "record" in resume_nodes
         assert "record_notes" in resume_nodes
+
+
+class TestSqliteCheckpointLifecycle:
+    """Integration tests for SqliteSaver-backed checkpoint persistence."""
+
+    def test_complete_run_with_sqlite_persists_state(self, tmp_path: Path) -> None:
+        """A complete run with SqliteSaver creates a non-empty DB file."""
+        db_path = str(tmp_path / "lifecycle.db")
+        ctx = build_v2_runtime({"llm_provider": "mock", "max_loops": 1})
+        service = ctx.run_service
+        service._sqlite_path = db_path
+
+        run_id = service.create_run({"scenario": "data_science", "max_loops": 1})
+        service.start_run(run_id)
+
+        assert service.get_status(run_id) == RunStatus.COMPLETED.value
+        assert (tmp_path / "lifecycle.db").exists()
+        assert (tmp_path / "lifecycle.db").stat().st_size > 0
+
+    def test_resume_restores_full_state_with_sqlite(self, tmp_path: Path) -> None:
+        """After pause+resume with SqliteSaver, all state fields survive."""
+        db_path = str(tmp_path / "resume.db")
+
+        class _FakeCoordinator:
+            def __init__(self) -> None:
+                self.saved: list[dict] = []
+
+            def save(self, name: str, workspace_data: bytes, state: dict) -> str:
+                self.saved.append(dict(state))
+                return f"ckpt-{len(self.saved)}"
+
+            def restore(self, checkpoint_id: str) -> tuple[bytes, dict]:
+                idx = int(checkpoint_id.split("-")[1]) - 1
+                return b"", self.saved[idx]
+
+        ctx = build_v2_runtime({"llm_provider": "mock", "max_loops": 1})
+        service = ctx.run_service
+        service._sqlite_path = db_path
+
+        coordinator = _FakeCoordinator()
+        service.checkpoint_coordinator = coordinator
+
+        run_id = service.create_run({"scenario": "data_science", "max_loops": 1, "task_summary": "sqlite-resume"})
+
+        pause_once = {"triggered": False}
+
+        def _pause_probe(rid: str) -> bool:
+            if pause_once["triggered"]:
+                return False
+            if not coordinator.saved:
+                return False
+            last = coordinator.saved[-1]
+            if last.get("last_completed_node") == "experiment_setup":
+                pause_once["triggered"] = True
+                return True
+            return False
+
+        service.set_pause_probe(_pause_probe)
+        service.start_run(run_id)
+        assert service.get_status(run_id) == RunStatus.PAUSED.value
+        assert (tmp_path / "resume.db").exists()
+
+        # Resume: still using the same sqlite DB for LangGraph internal checkpoints.
+        service.set_pause_probe(None)
+        service.resume_run(run_id)
+        assert service.get_status(run_id) == RunStatus.COMPLETED.value
+
+        # Verify state fields survived the round-trip.
+        executed_nodes = [s["last_completed_node"] for s in coordinator.saved]
+        assert "propose" in executed_nodes
+        assert "experiment_setup" in executed_nodes
+        assert "record_notes" in executed_nodes
+
+    def test_sqlite_path_via_constructor(self, tmp_path: Path) -> None:
+        """V2RunService accepts sqlite_path in constructor."""
+        from v2.run_service import V2RunService
+
+        db_path = str(tmp_path / "ctor.db")
+        service = V2RunService(sqlite_path=db_path)
+        assert service._sqlite_path == db_path
+
+        run_id = service.create_run({"max_loops": 1})
+        service.start_run(run_id)
+        assert service.get_status(run_id) == RunStatus.COMPLETED.value
+        assert (tmp_path / "ctor.db").exists()

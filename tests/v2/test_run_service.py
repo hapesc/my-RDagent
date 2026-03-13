@@ -215,3 +215,42 @@ def test_resume_run_fails_when_checkpoint_restore_raises_and_does_not_execute_gr
         service.resume_run(run_id)
 
     assert service.get_status(run_id) == RunStatus.FAILED.value
+
+
+def test_start_run_uses_sqlite_checkpointer_when_path_provided(tmp_path: Path) -> None:
+    """When sqlite_path is a real file, SqliteSaver is used for persistence."""
+    db_path = str(tmp_path / "checkpoints.db")
+    service = V2RunService(sqlite_path=db_path)
+    run_id = service.create_run({"max_loops": 1})
+    service.start_run(run_id)
+    assert service.get_status(run_id) == RunStatus.COMPLETED.value
+    assert (tmp_path / "checkpoints.db").exists()
+
+
+def test_sqlite_checkpointer_creates_db_file_on_disk(tmp_path: Path) -> None:
+    """SqliteSaver creates a real SQLite database file that is non-empty."""
+    db_path = str(tmp_path / "ckpt.sqlite3")
+    service = V2RunService(sqlite_path=db_path)
+    run_id = service.create_run({"max_loops": 1})
+    service.start_run(run_id)
+
+    db_file = tmp_path / "ckpt.sqlite3"
+    assert db_file.exists()
+    assert db_file.stat().st_size > 0
+
+
+def test_sqlite_checkpointer_default_is_memory() -> None:
+    """Without sqlite_path, the service defaults to in-memory MemorySaver."""
+    service = V2RunService()
+    assert service._sqlite_path == ":memory:"
+    run_id = service.create_run({"max_loops": 1})
+    service.start_run(run_id)
+    assert service.get_status(run_id) == RunStatus.COMPLETED.value
+
+
+def test_existing_tests_unaffected_by_sqlite_path_parameter() -> None:
+    """Passing no sqlite_path still works exactly like before."""
+    service = V2RunService()
+    run_id = service.create_run({"max_loops": 1})
+    service.start_run(run_id)
+    assert service.get_status(run_id) == RunStatus.COMPLETED.value

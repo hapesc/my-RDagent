@@ -20,6 +20,7 @@ def _initial_state(max_loops: int = 1) -> dict:
         "error": None,
         "tokens_used": 0,
         "token_budget": 0,
+        "iteration_history": [],
     }
 
 
@@ -110,3 +111,12 @@ def test_main_graph_completes_all_nodes_when_budget_disabled() -> None:
 
     result = graph.invoke(state)
     assert result["loop_iteration"] >= 1
+
+
+def test_main_graph_accumulates_iteration_history():
+    state = _initial_state(max_loops=2)
+    graph = build_main_graph(checkpointer=MemorySaver())
+    config = {"configurable": {"thread_id": "history-test"}}
+    result = graph.invoke(state, config)
+    assert len(result.get("iteration_history", [])) >= 2
+    assert result["iteration_history"][-1]["iteration"] >= 1

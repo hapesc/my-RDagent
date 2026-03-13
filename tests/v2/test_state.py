@@ -4,7 +4,7 @@ import operator
 import sys
 from typing import Annotated, Union, get_args, get_origin, get_type_hints
 
-from v2.state import CoSTEERState, ExplorationState, MainState
+from v2.state import CoSTEERState, ExplorationState, MainState, capped_feedback_reducer
 
 
 def _is_optional_of(hint, expected_type: type) -> bool:
@@ -56,7 +56,7 @@ def test_costeer_state_extends_main_state_and_has_reducer() -> None:
     assert get_origin(reducer_annotated).__name__ == "Annotated"
     annotated_args = get_args(reducer_annotated)
     assert annotated_args[0] == list[dict]
-    assert annotated_args[1] is operator.add
+    assert annotated_args[1] is capped_feedback_reducer
 
 
 def test_main_state_has_token_tracking_fields() -> None:

@@ -3,6 +3,28 @@ from __future__ import annotations
 import operator
 from typing import Annotated, TypedDict
 
+HISTORY_WINDOW_SIZE = 5
+
+
+def sliding_window_reducer(existing: list, new: list) -> list:
+    """Keep recent iterations full and compress older ones.
+
+    The most recent ``HISTORY_WINDOW_SIZE`` entries are kept intact.
+    Older entries are compressed to only ``iteration``, ``hypothesis``,
+    and ``score`` fields, and at most 3 compressed entries are retained.
+    """
+    combined = existing + new
+    if len(combined) <= HISTORY_WINDOW_SIZE:
+        return combined
+    keep_full = combined[-HISTORY_WINDOW_SIZE:]
+    compress = combined[:-HISTORY_WINDOW_SIZE]
+    compressed = [
+        {"iteration": e.get("iteration"), "hypothesis": e.get("hypothesis"), "score": e.get("score")}
+        for e in compress
+    ]
+    return compressed[-3:] + keep_full
+
+
 MAX_COSTEER_FEEDBACK_ENTRIES = 5
 
 
@@ -36,6 +58,7 @@ class MainState(TypedDict):
     error: str | None
     tokens_used: Annotated[int, operator.add]
     token_budget: int
+    iteration_history: Annotated[list[dict], sliding_window_reducer]
 
 
 class CoSTEERState(MainState):
@@ -57,6 +80,8 @@ __all__ = [
     "MainState",
     "CoSTEERState",
     "ExplorationState",
+    "sliding_window_reducer",
+    "HISTORY_WINDOW_SIZE",
     "MAX_COSTEER_FEEDBACK_ENTRIES",
     "capped_feedback_reducer",
 ]

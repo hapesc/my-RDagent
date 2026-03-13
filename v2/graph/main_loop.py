@@ -5,6 +5,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from v2.graph.budget_guard import budget_check
 from v2.graph.nodes import (
     coding_node,
     experiment_setup_node,
@@ -43,11 +44,11 @@ def build_main_graph(
     graph.add_node("record", record_node)
 
     graph.add_edge(START, "propose")
-    graph.add_edge("propose", "experiment_setup")
+    graph.add_conditional_edges("propose", budget_check, {"continue": "experiment_setup", "over_budget": END})
     graph.add_edge("experiment_setup", "coding")
-    graph.add_edge("coding", "running")
+    graph.add_conditional_edges("coding", budget_check, {"continue": "running", "over_budget": END})
     graph.add_edge("running", "feedback")
-    graph.add_edge("feedback", "record")
+    graph.add_conditional_edges("feedback", budget_check, {"continue": "record", "over_budget": END})
     graph.add_conditional_edges("record", _next_after_record)
 
     return graph.compile(checkpointer=checkpointer)

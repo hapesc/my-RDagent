@@ -18,6 +18,8 @@ def _initial_state(max_loops: int = 1) -> dict:
         "feedback": None,
         "metrics": None,
         "error": None,
+        "tokens_used": 0,
+        "token_budget": 0,
     }
 
 
@@ -77,3 +79,34 @@ def test_main_graph_stream_emits_event_per_node() -> None:
     executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
 
     assert executed_nodes == ["propose", "experiment_setup", "coding", "running", "feedback", "record"]
+
+
+def test_main_graph_stops_early_when_over_budget() -> None:
+    """With a tight token_budget, the graph should terminate before completing all nodes."""
+    graph = build_main_graph()
+    state = _initial_state(max_loops=1)
+    # Set a very small budget so that propose alone exceeds the 85% threshold.
+    state["token_budget"] = 1
+    state["tokens_used"] = 0
+
+    checkpointer = MemorySaver()
+    graph = build_main_graph(checkpointer=checkpointer)
+    config = {"configurable": {"thread_id": "budget-test"}}
+
+    events = list(graph.stream(state, config, stream_mode="updates"))
+    executed_nodes = [list(e.keys())[0] for e in events if not list(e.keys())[0].startswith("__")]
+
+    # propose runs, but its tokens_used output exceeds budget -> should not reach record
+    assert "propose" in executed_nodes
+    assert "record" not in executed_nodes
+
+
+def test_main_graph_completes_all_nodes_when_budget_disabled() -> None:
+    """When token_budget is 0 (disabled), all nodes execute normally."""
+    graph = build_main_graph()
+    state = _initial_state(max_loops=1)
+    state["token_budget"] = 0
+    state["tokens_used"] = 999999
+
+    result = graph.invoke(state)
+    assert result["loop_iteration"] >= 1

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 import operator
-from typing import Optional, get_args, get_origin, get_type_hints
+import sys
+from typing import Union, get_args, get_origin, get_type_hints
 
 from v2.state import CoSTEERState, ExplorationState, MainState
+
+
+def _is_optional_of(hint, expected_type: type) -> bool:
+    """Check if hint is Optional[expected_type], handling both Union and UnionType."""
+    origin = get_origin(hint)
+    args = get_args(hint)
+    # Handle both typing.Union (Py3.9) and types.UnionType (Py3.10+)
+    is_union = origin is Union or (sys.version_info >= (3, 10) and isinstance(hint, type(int | None)))
+    if not is_union:
+        return False
+    return args == (expected_type, type(None))
 
 
 def test_main_state_has_required_fields() -> None:
@@ -12,13 +24,13 @@ def test_main_state_has_required_fields() -> None:
     assert hints["loop_iteration"] is int
     assert hints["max_loops"] is int
     assert hints["step_state"] is str
-    assert hints["proposal"] == Optional[dict]
-    assert hints["experiment"] == Optional[dict]
-    assert hints["code_result"] == Optional[dict]
-    assert hints["run_result"] == Optional[dict]
-    assert hints["feedback"] == Optional[dict]
-    assert hints["metrics"] == Optional[dict]
-    assert hints["error"] == Optional[str]
+    assert _is_optional_of(hints["proposal"], dict)
+    assert _is_optional_of(hints["experiment"], dict)
+    assert _is_optional_of(hints["code_result"], dict)
+    assert _is_optional_of(hints["run_result"], dict)
+    assert _is_optional_of(hints["feedback"], dict)
+    assert _is_optional_of(hints["metrics"], dict)
+    assert _is_optional_of(hints["error"], str)
 
 
 def test_costeer_state_extends_main_state_and_has_reducer() -> None:
@@ -26,7 +38,7 @@ def test_costeer_state_extends_main_state_and_has_reducer() -> None:
     assert hints["round_number"] is int
     assert hints["max_rounds"] is int
     assert hints["code_candidates"] == list[dict]
-    assert hints["best_candidate"] == Optional[dict]
+    assert _is_optional_of(hints["best_candidate"], dict)
 
     resolved_hints = get_type_hints(CoSTEERState, include_extras=True)
     reducer_annotated = resolved_hints["improvement_history"]
@@ -42,4 +54,4 @@ def test_exploration_state_supports_dag_parent_branches() -> None:
     assert hints["branch_id"] is str
     assert hints["parent_branch_ids"] == list[str]
     assert hints["branch_state"] is str
-    assert hints["reward"] == Optional[float]
+    assert _is_optional_of(hints["reward"], float)

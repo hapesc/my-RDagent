@@ -43,7 +43,6 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
         max_attempts=int(effective_config.get("max_retries", 3)),
     )
     plugin_registry = PluginRegistry()
-    run_service = V2RunService(plugin_registry=plugin_registry)
     exploration_manager = V2ExplorationManager()
 
     checkpoint_coordinator: CheckpointBlobCoordinator | None = None
@@ -53,6 +52,11 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
             checkpoint_dir=os.path.join(str(artifact_root), "checkpoints"),
             blob_dir=os.path.join(str(artifact_root), "blobs"),
         )
+
+    run_service = V2RunService(
+        plugin_registry=plugin_registry,
+        checkpoint_coordinator=checkpoint_coordinator,
+    )
 
     return V2RuntimeContext(
         config=effective_config,

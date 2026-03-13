@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import importlib
+import json
 
 cli_module = importlib.import_module("v2.cli")
 build_parser = cli_module.build_parser

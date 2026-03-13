@@ -49,5 +49,5 @@ def test_experiment_node_supports_dag_parent_node_ids() -> None:
 
 
 def test_experiment_node_requires_parent_node_ids_field() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         ExperimentNode.model_validate({"id": "e1"})

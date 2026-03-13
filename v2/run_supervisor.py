@@ -13,6 +13,7 @@ class V2RunSupervisor:
         self._lock = threading.Lock()
         self._workers: dict[str, threading.Thread] = {}
         self._controls: dict[str, str] = {}
+        self._run_service.set_pause_probe(self._should_pause_at_boundary)
         self._recover_inflight_runs()
 
     def create_run(self, config: dict[str, Any]) -> str:
@@ -79,6 +80,10 @@ class V2RunSupervisor:
         finally:
             with self._lock:
                 self._workers.pop(run_id, None)
+
+    def _should_pause_at_boundary(self, run_id: str) -> bool:
+        with self._lock:
+            return self._controls.get(run_id) == "pause"
 
     def _recover_inflight_runs(self) -> list[str]:
         recovered: list[str] = []

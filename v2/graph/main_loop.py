@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import copy
 from collections.abc import Callable
 from typing import Any, Protocol
 
@@ -18,64 +18,77 @@ from v2.state import MainState
 class CompiledGraph(Protocol):
     nodes: dict[str, Any]
 
-    def invoke(self, initial_state: dict) -> dict: ...
+    def invoke(
+        self,
+        initial_state: dict,
+        start_node: str | None = None,
+        checkpoint_hook: Callable[[str, str | None, dict], None] | None = None,
+    ) -> dict: ...
 
 
-try:
-    langgraph_graph = importlib.import_module("langgraph.graph")
-    END = langgraph_graph.END
-    START = langgraph_graph.START
-    StateGraph = langgraph_graph.StateGraph
-except ModuleNotFoundError:
-    START = "__start__"
-    END = "__end__"
+# LangGraph-compatible constants.  Custom execution engine provides features
+# not available in real LangGraph: start_node, checkpoint_hook, flexible state.
+START = "__start__"
+END = "__end__"
 
-    class _CompiledGraph:
-        def __init__(
-            self,
-            nodes: dict[str, Callable[[dict], dict]],
-            edges: dict[str, str],
-            conditional_edges: dict[str, Callable[[dict], str]],
-        ) -> None:
-            self.nodes = nodes
-            self._edges = edges
-            self._conditional_edges = conditional_edges
 
-        def invoke(self, initial_state: dict) -> dict:
-            state = dict(initial_state)
-            current = self._edges.get(START, END)
+class _CompiledGraph:
+    def __init__(
+        self,
+        nodes: dict[str, Callable[[dict], dict]],
+        edges: dict[str, str],
+        conditional_edges: dict[str, Callable[[dict], str]],
+    ) -> None:
+        self.nodes = nodes
+        self._edges = edges
+        self._conditional_edges = conditional_edges
 
-            while current != END:
-                node_fn = self.nodes[current]
-                updates = node_fn(state)
-                if updates:
-                    state.update(updates)
+    def _resolve_next_node(self, current: str, state: dict) -> str:
+        if current in self._conditional_edges:
+            return self._conditional_edges[current](state)
+        return self._edges.get(current, END)
 
-                if current in self._conditional_edges:
-                    current = self._conditional_edges[current](state)
-                else:
-                    current = self._edges.get(current, END)
+    def invoke(
+        self,
+        initial_state: dict,
+        start_node: str | None = None,
+        checkpoint_hook: Callable[[str, str | None, dict], None] | None = None,
+    ) -> dict:
+        state = dict(initial_state)
+        current = start_node or self._edges.get(START, END)
 
-            return state
+        while current != END:
+            node_fn = self.nodes[current]
+            updates = node_fn(state)
+            if updates:
+                state.update(updates)
 
-    class StateGraph:
-        def __init__(self, _state_type: type[dict] | type[MainState]) -> None:
-            self._nodes: dict[str, Callable[[dict], dict]] = {}
-            self._edges: dict[str, str] = {}
-            self._conditional_edges: dict[str, Callable[[dict], str]] = {}
+            next_node = self._resolve_next_node(current, state)
+            if checkpoint_hook is not None:
+                checkpoint_hook(current, None if next_node == END else next_node, copy.deepcopy(state))
+            current = next_node
 
-        def add_node(self, name: str, fn: Callable[[dict], dict]) -> None:
-            self._nodes[name] = fn
+        return state
 
-        def add_edge(self, source: str, target: str) -> None:
-            self._edges[source] = target
 
-        def add_conditional_edges(self, source: str, route_fn: Callable[[dict], str]) -> None:
-            self._conditional_edges[source] = route_fn
+class StateGraph:
+    def __init__(self, _state_type: type[dict] | type[MainState]) -> None:
+        self._nodes: dict[str, Callable[[dict], dict]] = {}
+        self._edges: dict[str, str] = {}
+        self._conditional_edges: dict[str, Callable[[dict], str]] = {}
 
-        def compile(self, checkpointer: Any = None) -> _CompiledGraph:
-            _ = checkpointer
-            return _CompiledGraph(self._nodes, self._edges, self._conditional_edges)
+    def add_node(self, name: str, fn: Callable[[dict], dict]) -> None:
+        self._nodes[name] = fn
+
+    def add_edge(self, source: str, target: str) -> None:
+        self._edges[source] = target
+
+    def add_conditional_edges(self, source: str, route_fn: Callable[[dict], str]) -> None:
+        self._conditional_edges[source] = route_fn
+
+    def compile(self, checkpointer: Any = None) -> _CompiledGraph:
+        _ = checkpointer
+        return _CompiledGraph(self._nodes, self._edges, self._conditional_edges)
 
 
 def _next_after_record(state: dict) -> str:

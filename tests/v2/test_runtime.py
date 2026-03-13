@@ -33,3 +33,10 @@ def test_mock_provider_does_not_apply_guardrails() -> None:
 def test_checkpoint_coordinator_created_when_artifact_root_provided(tmp_path) -> None:
     ctx = build_v2_runtime({"llm_provider": "mock", "artifact_root": str(tmp_path)})
     assert ctx.checkpoint_coordinator is not None
+
+
+def test_build_v2_runtime_injects_checkpoint_coordinator_into_run_service(tmp_path) -> None:
+    ctx = build_v2_runtime({"llm_provider": "mock", "artifact_root": str(tmp_path)})
+
+    assert ctx.checkpoint_coordinator is not None
+    assert getattr(ctx.run_service, "checkpoint_coordinator", None) is ctx.checkpoint_coordinator

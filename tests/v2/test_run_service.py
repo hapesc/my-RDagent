@@ -305,3 +305,58 @@ def test_resume_integrity_check_rejects_mismatched_next_node() -> None:
         service.resume_run(run_id)
 
     assert service.get_status(run_id) == RunStatus.FAILED.value
+
+
+def test_get_run_payload_exposes_benchmark_consumable_snapshot() -> None:
+    service = V2RunService(runtime_metadata={"llm_provider": "litellm", "llm_model": "gpt-4.1-mini"})
+    run_id = service.create_run({"scenario": "data_science", "max_loops": 1, "task_summary": "payload"})
+
+    service.start_run(run_id)
+
+    payload = service.get_run_payload(run_id)
+    assert payload is not None
+    assert payload["run_id"] == run_id
+    assert payload["scenario"] == "data_science"
+    assert payload["status"] == RunStatus.COMPLETED.value
+    assert "final_state" in payload
+    assert "artifacts" in payload
+    assert "runtime" in payload
+    assert payload["runtime"]["llm_provider"] == "litellm"
+    assert payload["runtime"]["llm_model"] == "gpt-4.1-mini"
+
+
+def test_get_run_payload_updates_after_resume() -> None:
+    class _FakeCoordinator:
+        def __init__(self) -> None:
+            self.saved: list[dict] = []
+
+        def save(self, name: str, workspace_data: bytes, state: dict) -> str:
+            _ = (name, workspace_data)
+            self.saved.append(dict(state))
+            return f"ckpt-{len(self.saved)}"
+
+        def restore(self, checkpoint_id: str) -> tuple[bytes, dict]:
+            idx = int(checkpoint_id.split("-")[1]) - 1
+            return b"", self.saved[idx]
+
+    coordinator = _FakeCoordinator()
+    service = V2RunService(
+        checkpoint_coordinator=coordinator,
+        runtime_metadata={"llm_provider": "mock", "llm_model": "mock-model"},
+    )
+    run_id = service.create_run({"scenario": "data_science", "max_loops": 1, "task_summary": "resume-payload"})
+
+    def _pause_probe(_: str) -> bool:
+        return bool(coordinator.saved) and coordinator.saved[-1].get("last_completed_node") == "experiment_setup"
+
+    service.set_pause_probe(_pause_probe)
+    service.start_run(run_id)
+    paused_payload = service.get_run_payload(run_id)
+    assert paused_payload is not None
+    assert paused_payload["status"] == RunStatus.PAUSED.value
+
+    service.set_pause_probe(None)
+    service.resume_run(run_id)
+    resumed_payload = service.get_run_payload(run_id)
+    assert resumed_payload is not None
+    assert resumed_payload["status"] == RunStatus.COMPLETED.value

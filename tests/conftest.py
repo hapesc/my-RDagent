@@ -25,7 +25,8 @@ except ImportError:
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--run-llm", action="store_true", help="Run LLM-backed benchmark tests")
-    parser.addoption("--run-evals", action="store_true", help="Run DeepEval evaluation tests")
+    parser.addoption("--run-evals", action="store_true", help="Run legacy evaluation regression tests")
+    parser.addoption("--run-benchmarks", action="store_true", help="Run LangSmith benchmark tests")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -39,6 +40,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "eval" in item.keywords:
                 item.add_marker(skip_eval)
+    if not config.getoption("--run-benchmarks"):
+        skip_bench = pytest.mark.skip(reason="need --run-benchmarks to run")
+        for item in items:
+            if "benchmark" in item.keywords:
+                item.add_marker(skip_bench)
 
 
 if _HAS_LLM_DEPS:

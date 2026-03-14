@@ -69,6 +69,8 @@ dev = [
 
 # Evaluation framework (LLM-as-Judge, offline quality assessment)
 eval = [
+    "langsmith>=0.1.0",
+    "langchain-openai>=0.2.0",
     "deepeval>=3.8.0",
 ]
 
@@ -88,6 +90,8 @@ all = [
     "pytest-cov>=4.1.0",
     "ruff>=0.4.0",
     "pre-commit>=3.5.0",
+    "langsmith>=0.1.0",
+    "langchain-openai>=0.2.0",
 ]
 
 [project.scripts]
@@ -123,6 +127,7 @@ pythonpath = ["."]
 addopts = "-v --tb=short"
 markers = [
     "llm: marks tests that require a real LLM provider",
+    "benchmark: marks tests for the LangSmith benchmark stack",
     "eval: marks tests that require DeepEval and --run-evals flag",
 ]
 

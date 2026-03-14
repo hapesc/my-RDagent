@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, cast
 
+from tracing import TracingConfig, load_tracing_config
 from v2.exploration.manager import V2ExplorationManager
 from v2.graph.main_loop import build_main_graph
 from v2.llm.adapter import V2LLMAdapter
@@ -21,6 +22,10 @@ REAL_PROVIDER_SAFE_PROFILE: dict[str, int] = {
 }
 
 
+def _is_chatgpt_auth_eligible_model(model: str) -> bool:
+    return model.startswith("chatgpt/") or model.startswith("gpt-")
+
+
 @dataclass
 class V2RuntimeContext:
     config: dict[str, Any]
@@ -30,19 +35,59 @@ class V2RuntimeContext:
     exploration_manager: V2ExplorationManager
     plugin_registry: PluginRegistry
     checkpoint_coordinator: CheckpointBlobCoordinator | None = field(default=None)
+    tracing_config: TracingConfig | None = field(default=None)
+    llm_provider_name: str = "mock"
+    llm_model_name: str | None = None
+    judge_model_name: str | None = None
 
 
 def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
     effective_config = dict(config)
     if effective_config.get("llm_provider") == "litellm":
         effective_config = {**effective_config, **REAL_PROVIDER_SAFE_PROFILE}
+    tracing_config = load_tracing_config()
 
     graph = build_main_graph()
+    llm_provider_name = str(effective_config.get("llm_provider", "mock"))
+    llm_model_name = str(effective_config.get("llm_model", "gpt-4o-mini"))
+    if llm_provider_name == "litellm":
+        from langchain_openai import ChatOpenAI
+
+        api_key = effective_config.get("llm_api_key")
+        base_url = effective_config.get("llm_base_url")
+        if not api_key:
+            if _is_chatgpt_auth_eligible_model(llm_model_name):
+                if llm_model_name.startswith("gpt-"):
+                    llm_model_name = f"chatgpt/{llm_model_name}"
+                base_url = None
+                api_key = "chatgpt-auth-placeholder"
+            else:
+                raise RuntimeError(
+                    "Unknown or missing LLM provider: 'litellm'. "
+                    "Set RD_AGENT_LLM_API_KEY or use a chatgpt/* or gpt-* auth-eligible model."
+                )
+        model = cast(
+            Any,
+            ChatOpenAI(
+                model=llm_model_name,
+                api_key=api_key,
+                base_url=base_url,
+            ),
+        )
+    else:
+        model = cast(Any, MockChatModel(response="mock response"))
     llm = V2LLMAdapter(
-        model=cast(Any, MockChatModel()),
+        model=model,
         max_attempts=int(effective_config.get("max_retries", 3)),
     )
+    from v2.scenarios.data_science.plugin import DataScienceBundle
+    from v2.scenarios.quant.plugin import QuantBundle
+    from v2.scenarios.synthetic_research.plugin import SyntheticResearchBundle
+
     plugin_registry = PluginRegistry()
+    plugin_registry.register("data_science", DataScienceBundle())
+    plugin_registry.register("quant", QuantBundle())
+    plugin_registry.register("synthetic_research", SyntheticResearchBundle())
     exploration_manager = V2ExplorationManager()
 
     checkpoint_coordinator: CheckpointBlobCoordinator | None = None
@@ -56,6 +101,11 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
     run_service = V2RunService(
         plugin_registry=plugin_registry,
         checkpoint_coordinator=checkpoint_coordinator,
+        runtime_metadata={
+            "llm_provider": llm_provider_name,
+            "llm_model": llm_model_name,
+            "judge_model": effective_config.get("judge_model"),
+        },
     )
 
     return V2RuntimeContext(
@@ -66,6 +116,10 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
         exploration_manager=exploration_manager,
         plugin_registry=plugin_registry,
         checkpoint_coordinator=checkpoint_coordinator,
+        tracing_config=tracing_config,
+        llm_provider_name=llm_provider_name,
+        llm_model_name=llm_model_name,
+        judge_model_name=effective_config.get("judge_model"),
     )
 
 

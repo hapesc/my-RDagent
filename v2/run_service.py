@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import uuid
 from collections.abc import Callable
+from copy import deepcopy
 from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -280,10 +280,11 @@ class V2RunService:
         if payload is None:
             return
         run = self._require_run(run_id)
-        payload["status"] = run["status"]
+        updated = {**payload, "status": run["status"]}
         final_state = payload.get("final_state")
         if isinstance(final_state, dict):
-            final_state["loop_status"] = run["status"]
+            updated["final_state"] = {**final_state, "loop_status": run["status"]}
+        self._run_payloads[run_id] = updated
 
 
 __all__ = ["V2RunService"]

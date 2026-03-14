@@ -133,7 +133,6 @@ def build_default_langsmith_backend_from_env() -> Any | None:
     if not tracing_enabled:
         return None
     if not api_key:
-        os.environ["LANGSMITH_TRACING"] = "false"
         return None
     try:
         from langsmith import Client

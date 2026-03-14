@@ -338,6 +338,7 @@ def test_runner_uses_profile_enabled_layers_to_skip_evaluators() -> None:
 
 
 def test_runner_retries_runtime_target_per_profile_rerun_count() -> None:
+    """Retry loop retries on failure up to rerun_count, but stops on first success."""
     calls = {"runtime": 0}
 
     def fake_task_materializer(profile: str, scenario: str | None):
@@ -353,9 +354,11 @@ def test_runner_retries_runtime_target_per_profile_rerun_count() -> None:
             )
         ]
 
-    def fake_runtime_target(task):
+    def fake_runtime_target_fails_then_succeeds(task):
         _ = task
         calls["runtime"] += 1
+        if calls["runtime"] < 3:
+            raise RuntimeError("transient failure")
         return {"status": "COMPLETED", "outputs": {}, "runtime": {}}
 
     with patch("benchmarking.runner.get_profile") as mock_get_profile:
@@ -364,11 +367,11 @@ def test_runner_retries_runtime_target_per_profile_rerun_count() -> None:
             (),
             {"enabled_layers": ("rules", "scenario", "judge"), "rerun_count": 3},
         )()
-        run_benchmark(
+        result = run_benchmark(
             run_id="run-bench-rerun",
             profile_name="daily",
             scenario="data_science",
-            runtime_target=fake_runtime_target,
+            runtime_target=fake_runtime_target_fails_then_succeeds,
             task_materializer=fake_task_materializer,
             structural_evaluators=[],
             scenario_evaluator=None,
@@ -376,6 +379,7 @@ def test_runner_retries_runtime_target_per_profile_rerun_count() -> None:
         )
 
     assert calls["runtime"] == 3
+    assert result.case_results[0].agent_status == "COMPLETED"
 
 
 def test_runner_classifies_running_status_as_generation_failure() -> None:

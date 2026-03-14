@@ -4,8 +4,6 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-from langchain_openai import ChatOpenAI
-
 from tracing import TracingConfig, load_tracing_config
 from v2.exploration.manager import V2ExplorationManager
 from v2.graph.main_loop import build_main_graph
@@ -13,9 +11,6 @@ from v2.llm.adapter import V2LLMAdapter
 from v2.llm.mock import MockChatModel
 from v2.plugins.registry import PluginRegistry
 from v2.run_service import V2RunService
-from v2.scenarios.data_science.plugin import DataScienceBundle
-from v2.scenarios.quant.plugin import QuantBundle
-from v2.scenarios.synthetic_research.plugin import SyntheticResearchBundle
 from v2.storage.checkpoint_coordinator import CheckpointBlobCoordinator
 
 REAL_PROVIDER_SAFE_PROFILE: dict[str, int] = {
@@ -56,6 +51,8 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
     llm_provider_name = str(effective_config.get("llm_provider", "mock"))
     llm_model_name = str(effective_config.get("llm_model", "gpt-4o-mini"))
     if llm_provider_name == "litellm":
+        from langchain_openai import ChatOpenAI
+
         api_key = effective_config.get("llm_api_key")
         base_url = effective_config.get("llm_base_url")
         if not api_key:
@@ -83,6 +80,10 @@ def build_v2_runtime(config: dict[str, Any]) -> V2RuntimeContext:
         model=model,
         max_attempts=int(effective_config.get("max_retries", 3)),
     )
+    from v2.scenarios.data_science.plugin import DataScienceBundle
+    from v2.scenarios.quant.plugin import QuantBundle
+    from v2.scenarios.synthetic_research.plugin import SyntheticResearchBundle
+
     plugin_registry = PluginRegistry()
     plugin_registry.register("data_science", DataScienceBundle())
     plugin_registry.register("quant", QuantBundle())

@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from typing import Any, Protocol
+import logging
+from typing import TYPE_CHECKING, Any, Protocol
 
 from benchmarking.result_schema import BenchmarkRunResult
 
 if TYPE_CHECKING:
     from langsmith import Client as LangSmithSdkClient
 
+_log = logging.getLogger(__name__)
+
 
 class LangSmithExperimentClient(Protocol):
-    def ensure_dataset(self, *, dataset_name: str, description: str) -> dict[str, Any]:
-        ...
+    def ensure_dataset(self, *, dataset_name: str, description: str) -> dict[str, Any]: ...
 
-    def create_experiment(self, *, dataset_id: str, experiment_name: str, metadata: dict[str, Any]) -> dict[str, Any]:
-        ...
+    def create_experiment(
+        self, *, dataset_id: str, experiment_name: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]: ...
 
 
 class NullLangSmithExperimentClient:
@@ -41,16 +43,17 @@ class NullLangSmithExperimentClient:
 class HostedLangSmithExperimentClient:
     """Thin adapter around the hosted LangSmith SDK client."""
 
-    def __init__(self, client: "LangSmithSdkClient") -> None:
+    def __init__(self, client: LangSmithSdkClient) -> None:
         self._client = client
 
     def ensure_dataset(self, *, dataset_name: str, description: str) -> dict[str, Any]:
         try:
             dataset = self._client.read_dataset(dataset_name=dataset_name)
         except Exception:
+            _log.debug("Dataset %r not found or inaccessible, creating new dataset", dataset_name)
             dataset = self._client.create_dataset(dataset_name, description=description)
         return {
-            "dataset_id": str(getattr(dataset, "id")),
+            "dataset_id": str(dataset.id),
             "dataset_name": str(getattr(dataset, "name", dataset_name)),
             "description": getattr(dataset, "description", description),
         }
@@ -63,7 +66,7 @@ class HostedLangSmithExperimentClient:
             reference_dataset_id=dataset_id,
         )
         return {
-            "experiment_id": str(getattr(project, "id")),
+            "experiment_id": str(project.id),
             "experiment_name": str(getattr(project, "name", experiment_name)),
             "dataset_id": dataset_id,
             "metadata": metadata,

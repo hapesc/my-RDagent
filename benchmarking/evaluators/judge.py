@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from benchmarking.evaluators.criteria import (
     FEEDBACK_ACTIONABILITY_CRITERIA,
@@ -22,7 +23,7 @@ class JudgeScore:
     reasoning: str
 
     @classmethod
-    def from_dict(cls, data: dict[str, object]) -> "JudgeScore":
+    def from_dict(cls, data: dict[str, object]) -> JudgeScore:
         if "score" not in data:
             raise ValueError("judge payload missing required field: score")
         if "reasoning" not in data:
@@ -33,7 +34,9 @@ class JudgeScore:
         )
 
 
-def _build_prompt(*, criteria: str, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> str:
+def _build_prompt(
+    *, criteria: str, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]
+) -> str:
     return (
         "Evaluate the following benchmark case and return JSON with keys `score` and `reasoning`.\n\n"
         f"CRITERIA:\n{criteria}\n\n"
@@ -44,7 +47,9 @@ def _build_prompt(*, criteria: str, inputs: dict[str, Any], outputs: dict[str, A
 
 
 def _make_judge(llm_adapter: Any, criteria_builder: Callable[[], str]) -> Callable[..., dict[str, Any]]:
-    def evaluator(*, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict[str, Any]:
+    def evaluator(
+        *, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]
+    ) -> dict[str, Any]:
         if not inputs and not outputs and not reference_outputs:
             return {"score": 0.0, "reasoning": "empty benchmark case"}
         prompt = _build_prompt(
@@ -63,7 +68,9 @@ def create_hypothesis_specificity_judge(llm_adapter: Any) -> Callable[..., dict[
     return _make_judge(llm_adapter, lambda: HYPOTHESIS_SPECIFICITY_CRITERIA)
 
 
-def create_hypothesis_feasibility_judge(llm_adapter: Any, *, scenario: str | None = None) -> Callable[..., dict[str, Any]]:
+def create_hypothesis_feasibility_judge(
+    llm_adapter: Any, *, scenario: str | None = None
+) -> Callable[..., dict[str, Any]]:
     return _make_judge(llm_adapter, lambda: build_hypothesis_feasibility_criteria(scenario))
 
 

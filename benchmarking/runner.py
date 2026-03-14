@@ -10,7 +10,6 @@ from benchmarking.reporting import run_result_to_json_dict
 from benchmarking.result_schema import BenchmarkCaseResult, BenchmarkRunResult, FailureBucket
 from benchmarking.task_registry import materialize_tasks
 
-
 RuntimeTarget = Callable[[Any], dict[str, Any]]
 
 
@@ -35,7 +34,6 @@ def run_benchmark(
         runtime_meta = dict(runtime_result.get("runtime", {}))
         failure_bucket = _classify_runtime_status(runtime_result)
 
-        structural_failure = False
         if failure_bucket == FailureBucket.SUCCESS and "rules" in profile.enabled_layers:
             for evaluator in structural_evaluators or []:
                 try:
@@ -45,18 +43,20 @@ def run_benchmark(
                         reference_outputs=task.reference_outputs,
                     )
                 except Exception:
-                    structural_failure = True
                     failure_bucket = FailureBucket.STRUCTURAL_FAILURE
                     break
                 else:
                     if not evaluation.get("passed", False):
-                        structural_failure = True
                         failure_bucket = FailureBucket.STRUCTURAL_FAILURE
                         break
 
         scenario_score = None
         scenario_metrics = {}
-        if failure_bucket == FailureBucket.SUCCESS and scenario_evaluator is not None and "scenario" in profile.enabled_layers:
+        if (
+            failure_bucket == FailureBucket.SUCCESS
+            and scenario_evaluator is not None
+            and "scenario" in profile.enabled_layers
+        ):
             try:
                 scenario_result = scenario_evaluator(
                     inputs=task.inputs,
@@ -123,6 +123,7 @@ def _run_with_profile_retries(runtime_target: RuntimeTarget, task: Any, rerun_co
     for _ in range(max(1, rerun_count)):
         try:
             last_result = runtime_target(task)
+            break  # Success — no need to retry
         except Exception as exc:
             last_result = {
                 "status": "INFRA_FAILURE",

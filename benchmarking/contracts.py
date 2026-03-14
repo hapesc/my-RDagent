@@ -28,14 +28,16 @@ class BenchmarkRunConfig:
 
 @runtime_checkable
 class JudgeEvaluator(Protocol):
-    def __call__(self, *, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
-        ...
+    def __call__(
+        self, *, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]
+    ) -> dict: ...
 
 
 @runtime_checkable
 class ScenarioEvaluator(Protocol):
-    def __call__(self, *, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
-        ...
+    def __call__(
+        self, *, inputs: dict[str, Any], outputs: dict[str, Any], reference_outputs: dict[str, Any]
+    ) -> dict: ...
 
 
 @runtime_checkable
@@ -50,5 +52,4 @@ class TraceRecorder(Protocol):
         next_node: str | None = None,
         checkpoint_id: str | None = None,
         payload: dict[str, Any] | None = None,
-    ) -> None:
-        ...
+    ) -> None: ...

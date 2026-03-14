@@ -66,12 +66,12 @@ dev = [
     "pre-commit>=3.5.0",
 ]
 
- # Evaluation framework (LLM-as-Judge, offline quality assessment)
- eval = [
-    "langsmith",
-    "langchain-openai",
+# Evaluation framework (LLM-as-Judge, offline quality assessment)
+eval = [
+    "langsmith>=0.1.0",
+    "langchain-openai>=0.2.0",
     "deepeval>=3.8.0",
- ]
+]
 
 # All optional dependencies
 all = [
@@ -84,13 +84,13 @@ all = [
     "uvicorn[standard]>=0.24.0",
     "streamlit>=1.28.0",
     "hypothesis>=6.0.0",
-     "pytest>=7.4.0",
-     "pytest-cov>=4.1.0",
-     "ruff>=0.4.0",
-     "pre-commit>=3.5.0",
-    "langsmith",
-    "langchain-openai",
- ]
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.5.0",
+    "langsmith>=0.1.0",
+    "langchain-openai>=0.2.0",
+]
 
 [project.scripts]
 rdagent = "agentrd_cli:main"
@@ -123,11 +123,11 @@ python_classes = "Test*"
 python_functions = "test_*"
 pythonpath = ["."]
 addopts = "-v --tb=short"
- markers = [
-     "llm: marks tests that require a real LLM provider",
+markers = [
+    "llm: marks tests that require a real LLM provider",
     "benchmark: marks tests for the LangSmith benchmark stack",
-     "eval: marks tests that require DeepEval and --run-evals flag",
- ]
+    "eval: marks tests that require DeepEval and --run-evals flag",
+]
 
 [tool.coverage.run]
 source = ["."]

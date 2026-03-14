@@ -9,8 +9,7 @@ from benchmarking.result_schema import BenchmarkCaseResult, FailureBucket
 
 
 class MLEBenchGrader(Protocol):
-    def grade_submission(self, *, competition_id: str, submission_path: str) -> dict[str, Any]:
-        ...
+    def grade_submission(self, *, competition_id: str, submission_path: str) -> dict[str, Any]: ...
 
 
 class MLEBenchAdapterError(ValueError):
@@ -78,10 +77,6 @@ class MLEBenchAdapter:
             judge_model=runtime_meta.get("judge_model"),
             failure_bucket=FailureBucket.SUCCESS,
             scenario_score=score,
-            scenario_metrics={
-                key: value
-                for key, value in graded.items()
-                if key not in {"score"}
-            },
+            scenario_metrics={key: value for key, value in graded.items() if key not in {"score"}},
             artifact_refs={"submission_path": str(submission_path)},
         )

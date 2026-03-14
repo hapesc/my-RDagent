@@ -89,7 +89,4 @@ Score on:
 
 def build_hypothesis_feasibility_criteria(scenario: str | None = None) -> str:
     constraints = _SCENARIO_CONSTRAINTS.get(scenario or "", "No additional scenario-specific constraints.")
-    return (
-        f"{HYPOTHESIS_FEASIBILITY_CRITERIA}\n\n"
-        f"SCENARIO CONSTRAINTS: {constraints}"
-    )
+    return f"{HYPOTHESIS_FEASIBILITY_CRITERIA}\n\nSCENARIO CONSTRAINTS: {constraints}"

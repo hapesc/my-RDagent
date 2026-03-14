@@ -15,13 +15,11 @@ _log = logging.getLogger(__name__)
 
 
 class TraceSink(Protocol):
-    def append_event(self, event: Event) -> None:
-        ...
+    def append_event(self, event: Event) -> None: ...
 
 
 class LangSmithClient(Protocol):
-    def create_event(self, **kwargs: Any) -> None:
-        ...
+    def create_event(self, **kwargs: Any) -> None: ...
 
 
 @dataclass
@@ -42,9 +40,8 @@ class LangSmithPrimarySink:
         if self.client is None:
             _log.warning("LangSmith tracing enabled but no client is configured; dropping event %s", event.event_id)
             return
-        create_event = getattr(self.client, "create_event", None)
-        if callable(create_event):
-            create_event(
+        try:
+            self.client.create_event(
                 name=event.event_type.value,
                 run_id=event.run_id,
                 metadata={
@@ -56,6 +53,9 @@ class LangSmithPrimarySink:
                     **payload,
                 },
             )
+        except Exception:
+            _log.exception("LangSmith primary sink failed for event %s", event.event_id)
+            raise
 
 
 @dataclass

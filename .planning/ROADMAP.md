@@ -45,7 +45,11 @@ terms:
 **Goal:** Rename MCP-era surface language into a coherent skill/CLI requirement and documentation model.
 **Depends on:** imported v1.0 baseline
 **Requirements:** SURFACE-01, SURFACE-02, SURFACE-03
-**Plans:** 0 planned
+**Plans:** 3 plans
+Plans:
+- [ ] 17-01-PLAN.md — create the six repo-local public skill packages via `$skill-architect`
+- [ ] 17-02-PLAN.md — add stable catalog classification metadata and lock it in existing CLI tests
+- [ ] 17-03-PLAN.md — converge README/project narrative and add Phase 17 surface regression coverage
 **Success Criteria:**
   1. Requirement IDs and descriptions describe the actual skill/CLI surface instead of an MCP framing.
   2. PROJECT, ROADMAP, REQUIREMENTS, README, and test naming all describe the same public surface.

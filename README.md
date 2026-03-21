@@ -16,12 +16,40 @@ The public surface is intentionally transport-free. It is not documented as a
 server product. Instead, the repo exposes high-level skills first and direct
 CLI tools second.
 
-## Install
+## Repository Setup
 
 ```bash
-uv venv
 uv sync --extra test
 ```
+
+Run all CLI commands from this repo environment. The standalone contract is:
+
+- skill discovery comes from linking `skills/` into Claude/Codex skill roots
+- CLI execution stays repo-local through `uv run ...`
+- validation also runs from the cloned repo environment
+
+## Agent Skill Setup
+
+Use the repo-local installer to expose the canonical `skills/` packages to
+Codex or Claude Code without copying the repo into another runtime-specific
+surface.
+
+Install into repo-local Codex and Claude roots:
+
+```bash
+uv run python scripts/install_agent_skills.py --runtime codex --scope local --mode link
+uv run python scripts/install_agent_skills.py --runtime claude --scope local --mode link
+```
+
+Install into global Codex and Claude roots:
+
+```bash
+uv run python scripts/install_agent_skills.py --runtime codex --scope global --mode link
+uv run python scripts/install_agent_skills.py --runtime claude --scope global --mode link
+```
+
+`link` is the default and preferred mode because it keeps the repo-local
+`skills/` tree as the single source of truth.
 
 ## Default Orchestration
 
@@ -74,14 +102,14 @@ boundary is insufficient and you need one direct CLI tool.
 List the available V3 CLI tools:
 
 ```bash
-rdagent-v3-tool list
+uv run rdagent-v3-tool list
 ```
 
 Describe one tool and inspect its schemas:
 
 ```bash
-rdagent-v3-tool describe rd_run_start
-rdagent-v3-tool describe rd_explore_round
+uv run rdagent-v3-tool describe rd_run_start
+uv run rdagent-v3-tool describe rd_explore_round
 ```
 
 The tool catalog emits stable machine-readable metadata for:
@@ -122,51 +150,22 @@ That keeps the repo-local `skills/*/SKILL.md` packages aligned with the actual
 entrypoint modules and avoids drifting into a second, docs-only product
 surface.
 
-## Verification
+## Quick verification
 
-Phase 17 public-surface checks:
+Use the quick gate after cloning the repo or updating doc/setup surfaces:
 
 ```bash
-uv run python -m pytest \
-  tests/test_v3_tool_cli.py \
-  tests/test_phase16_tool_surface.py \
-  tests/test_phase17_surface_convergence.py \
-  -q
+uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase17_surface_convergence.py tests/test_phase18_skill_installation.py tests/test_phase18_planning_continuity.py -q
 ```
 
-Focused extraction smoke tests:
+## Full verification
+
+Run the full standalone gate before calling packaging and planning continuity
+hardened:
 
 ```bash
-uv run python -m pytest \
-  tests/test_v3_tool_cli.py \
-  tests/test_phase14_skill_agent.py \
-  tests/test_phase16_rd_agent.py \
-  tests/test_phase16_tool_surface.py \
-  -q
-```
-
-Boundary checks:
-
-```bash
+uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase13_v3_tools.py tests/test_phase14_skill_agent.py tests/test_phase16_rd_agent.py tests/test_phase16_tool_surface.py tests/test_phase17_surface_convergence.py tests/test_phase18_skill_installation.py tests/test_phase18_planning_continuity.py -q
 uv run lint-imports
-```
-
-Broader V3 regression set:
-
-```bash
-uv run python -m pytest \
-  tests/test_phase13_v3_tools.py \
-  tests/test_phase14_execution_policy.py \
-  tests/test_phase14_resume_and_reuse.py \
-  tests/test_phase14_stage_skills.py \
-  tests/test_phase15_memory_contracts.py \
-  tests/test_phase15_memory_retrieval.py \
-  tests/test_phase15_branch_isolation.py \
-  tests/test_phase16_branch_lifecycle.py \
-  tests/test_phase16_convergence.py \
-  tests/test_phase16_selection.py \
-  tests/test_phase16_sharing.py \
-  -q
 ```
 
 ## Layout
@@ -191,14 +190,3 @@ my-RDagent-V3/
     tools/
   tests/
 ```
-
-## Continue This Session
-
-If you are resuming from the current standalone planning session, start here:
-
-- `.planning/STATE.md`
-- `.planning/PROJECT.md`
-- `.planning/ROADMAP.md`
-- `.planning/REQUIREMENTS.md`
-- `.planning/phases/17-skill-and-cli-surface-terminology-convergence/17-01-SUMMARY.md`
-- `.planning/phases/17-skill-and-cli-surface-terminology-convergence/17-02-SUMMARY.md`

@@ -13,17 +13,18 @@ A developer can use a self-contained V3 skill and CLI surface on top of
 V3-owned contracts and orchestration, without inheriting V2 runtime internals
 or MCP-shaped compatibility layers.
 
-## Current Milestone: v1.1 Standalone Surface Consolidation
+## Last Shipped Milestone: v1.1 Standalone Surface Consolidation
 
-**Goal:** Turn the extracted V3 baseline into a standalone skill/CLI-first
-product surface with terminology, packaging, and planning artifacts that no
-longer assume an MCP or legacy-shell framing.
+**Delivered:** Turned the extracted V3 baseline into a standalone skill/CLI-first
+product surface with repo-local installation, truthful public docs, and
+`.planning/`-native continuity.
 
-**Target features:**
-- A CLI-described V3 tool catalog instead of an MCP-shaped registry framing
-- Consistent skill/CLI terminology across requirements, roadmap, docs, and tests
-- Standalone packaging, install, and verification flow for the extracted V3 repo
-- Preserved V3 single-branch and multi-branch orchestration semantics inside the standalone repository
+## Next Milestone Goals
+
+- Define the next standalone milestone scope with `$gsd-new-milestone`
+- Create fresh milestone-scoped requirements after the v1.1 archive
+- Preserve the repo-local skill/CLI public surface while choosing the next
+  meaningful capability expansion
 
 ## Requirements
 
@@ -37,7 +38,7 @@ longer assume an MCP or legacy-shell framing.
 
 ### Active
 
-None. Milestone `v1.1` is complete.
+- [ ] Define the next standalone milestone scope and fresh requirements
 
 ### Out of Scope
 
@@ -87,7 +88,9 @@ Phase 18 completed the standalone packaging and continuity hardening work:
 | Extract V3 into its own repository | Lets V3 evolve without dragging legacy app/runtime shell assumptions forward | ✓ Good — v1.0 |
 | Replace MCP-shaped framing with skill/CLI framing | Matches the actual implementation surface and avoids fake transport abstractions | ✓ Good — v1.0 |
 | Keep `v3.compat.v2` explicit but non-central | Preserves migration context without making compatibility the product body | ✓ Good — v1.0 |
-| Treat terminology cleanup as real milestone work | Requirement names shape product direction and future planning quality | — Active |
+| Treat terminology cleanup as real milestone work | Requirement names shape product direction and future planning quality | ✓ Good — v1.1 |
+| Keep skill installation repo-local and link-first | Preserves one source of truth without widening the public CLI surface | ✓ Good — v1.1 |
+| Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
 
 ---
-*Last updated: 2026-03-21 after Phase 18 verification and v1.1 completion*
+*Last updated: 2026-03-21 after v1.1 milestone archival*

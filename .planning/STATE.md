@@ -5,7 +5,7 @@ milestone_name: standalone-surface-consolidation
 current_phase: 18
 status: completed
 stopped_at: Verified Phase 18 and completed milestone v1.1
-last_updated: "2026-03-21T14:42:12Z"
+last_updated: "2026-03-21T14:51:23Z"
 progress:
   total_phases: 2
   completed_phases: 2
@@ -23,7 +23,7 @@ See: `.planning/PROJECT.md`
 
 **Milestone:** v1.1 standalone surface consolidation  
 **Current phase:** 18
-**Status:** Phase 18 verified complete; milestone v1.1 complete
+**Status:** v1.1 milestone archived; ready to define the next milestone
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 ## Session Log
@@ -40,26 +40,23 @@ See: `.planning/PROJECT.md`
 
 ## Continue Standalone Planning
 
-Resume standalone work from the shipped Phase 18 artifact chain in this order:
+Resume from the latest shipped standalone artifacts in this order:
 
 1. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-CONTEXT.md`
 2. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-RESEARCH.md`
 3. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-VALIDATION.md`
 4. `.planning/ROADMAP.md`
 
-Use those files with the current summaries and verification report in
-`.planning/phases/18-standalone-packaging-and-planning-autonomy/` to continue
-future standalone planning without relying on any upstream worktree or removed
-upstream startup paths.
+Use those files plus `.planning/milestones/v1.1-standalone-surface-consolidation.md`
+to define the next milestone without relying on any upstream worktree.
 
 ## Immediate Next Step
 
-- Start the next standalone milestone from `.planning/STATE.md`,
-  `.planning/ROADMAP.md`, and `.planning/PROJECT.md`.
+- Run `$gsd-new-milestone` to define the next standalone milestone.
+- Use `.planning/PROJECT.md`, `.planning/ROADMAP.md`, and archived milestone
+  summaries as the planning baseline.
 - Keep `.planning/STATE.md` as the source of truth for future standalone
   continuity.
-- Treat `.planning/V3-EXTRACTION-HANDOFF.md` as historical extraction evidence,
-  not a startup checklist.
 
 ## Session Continuity
 

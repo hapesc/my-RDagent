@@ -29,6 +29,7 @@ def test_readme_describes_skills_plus_cli_tools_surface():
     readme_text = README.read_text()
 
     assert "skills plus CLI tools" in readme_text
+    assert "uv run python scripts/install_agent_skills.py --runtime codex --scope local --mode link" in readme_text
     assert "## Default Orchestration" in readme_text
     assert "rd-agent" in readme_text
     assert "default orchestration path" in readme_text
@@ -39,11 +40,14 @@ def test_readme_describes_skills_plus_cli_tools_surface():
     assert "rd-evaluate" in readme_text
     assert "## CLI Tool Catalog" in readme_text
     assert "rd-tool-catalog" in readme_text
-    assert "rdagent-v3-tool list" in readme_text
-    assert "rdagent-v3-tool describe rd_run_start" in readme_text
+    assert "uv run rdagent-v3-tool list" in readme_text
+    assert "uv run rdagent-v3-tool describe rd_run_start" in readme_text
     assert "## Routing Model" in readme_text
     assert "## Skill Authoring" in readme_text
     assert "$skill-architect" in readme_text
+    assert "## Quick verification" in readme_text
+    assert "## Full verification" in readme_text
+    assert "## Continue This Session" not in readme_text
 
 
 def test_active_public_surface_docs_do_not_claim_mcp_server_product():

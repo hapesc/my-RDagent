@@ -11,8 +11,8 @@
 
 ## Standalone Repository
 
-- [ ] **STANDALONE-01**: Developer can install and validate `my-RDagent-V3` as a self-contained repository without legacy `app`, `core`, or `exploration_manager` dependencies.
-- [ ] **STANDALONE-02**: Developer can continue GSD planning and milestone work inside the standalone repo using only its local `.planning/` artifacts.
+- [x] **STANDALONE-01**: Developer can install and validate `my-RDagent-V3` as a self-contained repository without legacy `app`, `core`, or `exploration_manager` dependencies.
+- [x] **STANDALONE-02**: Developer can continue GSD planning and milestone work inside the standalone repo using only its local `.planning/` artifacts.
 
 ## Replaced Requirement Mapping
 
@@ -32,5 +32,5 @@ surface. In the standalone repo this is replaced by the `SURFACE-*` family:
 | SURFACE-01 | Phase 17 | Complete |
 | SURFACE-02 | Phase 17 | Complete |
 | SURFACE-03 | Phase 17 | Complete |
-| STANDALONE-01 | Phase 18 | Pending |
-| STANDALONE-02 | Phase 18 | Pending |
+| STANDALONE-01 | Phase 18 | Complete |
+| STANDALONE-02 | Phase 18 | Complete |

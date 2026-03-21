@@ -31,12 +31,13 @@ longer assume an MCP or legacy-shell framing.
 
 - ✓ Imported standalone V3 baseline from upstream clean-split rebuild — v1.0
 - ✓ Skill/CLI-first V3 surface extracted into its own repository — v1.0
+- ✓ MCP-era terminology replaced with a consistent skills-plus-CLI public surface — validated in Phase 17
+- ✓ Standalone repo packaging, install, and validation flow hardened — validated in Phase 18
+- ✓ Standalone planning continuity now lives fully inside `.planning/` artifacts — validated in Phase 18
 
 ### Active
 
-- [ ] Rename old MCP-era requirement language into a CLI/skill surface requirement family
-- [ ] Make the standalone repo’s public surface terminology consistent across roadmap, requirements, README, and tests
-- [ ] Harden standalone packaging and planning autonomy so the repo can evolve without the upstream worktree
+None. Milestone `v1.1` is complete.
 
 ### Out of Scope
 
@@ -56,6 +57,17 @@ longer assume an MCP or legacy-shell framing.
   evolution, not as a mirror of the legacy upstream shell.
 - The remaining work is mostly language, packaging, and product-surface
   convergence rather than rebuilding core orchestration from scratch.
+
+## Current State
+
+Phase 18 completed the standalone packaging and continuity hardening work:
+
+- repo-local skill installation now links canonical `skills/` packages into
+  Claude/Codex local or global roots
+- README documents the public setup, CLI usage, and quick/full verification
+  flows without leaking internal planning workflow
+- `.planning/STATE.md` is the canonical continuity entrypoint, and the
+  extraction handoff is historical-only
 
 ## Constraints
 
@@ -78,4 +90,4 @@ longer assume an MCP or legacy-shell framing.
 | Treat terminology cleanup as real milestone work | Requirement names shape product direction and future planning quality | — Active |
 
 ---
-*Last updated: 2026-03-21 after baseline archive and v1.1 kickoff*
+*Last updated: 2026-03-21 after Phase 18 verification and v1.1 completion*

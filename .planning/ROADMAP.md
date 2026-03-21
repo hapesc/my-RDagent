@@ -59,7 +59,10 @@ Plans:
 **Goal:** Harden the standalone repository so it can continue independent milestone planning without the upstream worktree.
 **Depends on:** Phase 17
 **Requirements:** STANDALONE-01, STANDALONE-02
-**Plans:** 0 planned
+**Plans:** 2/2 plans complete
+Plans:
+- [x] 18-01-PLAN.md — add the repo-local skill installer/linker and lock local/global Claude/Codex install behavior in pytest (completed 2026-03-21)
+- [x] 18-02-PLAN.md — split public README from internal planning continuity, clean stale handoff residue, and lock the boundary with doc regressions (completed 2026-03-21)
 **Success Criteria:**
   1. The standalone repo has self-contained packaging, installation, and validation guidance.
   2. The standalone repo’s `.planning/` tree is sufficient to continue GSD sessions and milestone evolution locally.
@@ -77,7 +80,7 @@ The imported upstream baseline is now historical context inside this repo.
 |-------|-----------|--------|-------|
 | v1.0 Standalone V3 Baseline | 12-16 | Complete | archived baseline imported from upstream |
 | 17. Skill and CLI Surface Terminology Convergence | 3/3 | Complete   | 2026-03-21 |
-| 18. Standalone Packaging and Planning Autonomy | v1.1 | Planned | harden standalone repo continuity |
+| 18. Standalone Packaging and Planning Autonomy | 2/2 | Complete    | 2026-03-21 |
 
 ## Notes
 

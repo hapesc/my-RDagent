@@ -667,11 +667,12 @@ def test_importlinter_forbids_v3_tool_layer_fallbacks() -> None:
     assert "source_modules =" in config_text
     assert "v3.tools" in config_text
     assert "forbidden_modules =" in config_text
-    assert "app.query_services" in config_text
-    assert "app.runtime" in config_text
     assert "service_contracts" in config_text
     assert "data_models" in config_text
-    assert "core.loop" in config_text
+    assert "exploration_manager" in config_text
+    assert "app.query_services" not in config_text
+    assert "app.runtime" not in config_text
+    assert "core.loop" not in config_text
 
 
 @pytest.mark.parametrize(

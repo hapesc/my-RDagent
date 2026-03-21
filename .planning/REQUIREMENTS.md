@@ -5,7 +5,7 @@
 
 ## Surface Terminology
 
-- [ ] **SURFACE-01**: Developer can discover the complete V3 CLI tool catalog through CLI-described commands rather than MCP-framed registry language.
+- [ ] **SURFACE-01**: Developer can discover the complete V3 CLI tool catalog through CLI-described commands rather than MCP-framed catalog wording.
 - [x] **SURFACE-02**: Developer can understand the public V3 surface as skills plus CLI tools consistently across README, ROADMAP, PROJECT, and tests.
 - [x] **SURFACE-03**: Developer can distinguish high-level orchestration commands from direct primitive tools in the standalone V3 surface.
 

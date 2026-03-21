@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: standalone-surface-consolidation
-current_phase: 18
-status: completed
-stopped_at: Verified Phase 18 and completed milestone v1.1
-last_updated: "2026-03-21T14:51:23Z"
+milestone: v1.2
+milestone_name: skill-and-tool-guidance-hardening
+current_phase: 19
+status: ready_to_plan
+stopped_at: Active v1.2 roadmap created; next step is Phase 19 planning
+last_updated: "2026-03-21T16:26:35Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Session State
@@ -19,47 +19,55 @@ progress:
 
 See: `.planning/PROJECT.md`
 
+**Core value:** A developer can use a self-contained V3 skill and CLI surface
+on top of V3-owned contracts and orchestration, without reading source code
+just to discover how to start, pause, resume, or continue the loop.
+**Current focus:** Phase 19 - Tool Catalog Operator Guidance
+
 ## Position
 
-**Milestone:** v1.1 standalone surface consolidation  
-**Current phase:** 18
-**Status:** v1.1 milestone archived; ready to define the next milestone
+**Milestone:** v1.2 skill and tool guidance hardening  
+**Roadmap span:** Phases 19-21
+**Next phase:** 19 - Tool Catalog Operator Guidance
+**Status:** Roadmap created; ready to plan
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
-## Session Log
+**Last activity:** 2026-03-22 - Wrote the active v1.2 roadmap and confirmed
+8/8 requirement coverage.
+**Progress:** [░░░░░░░░░░] 0%
 
-- 2026-03-21: Imported the upstream v1.0 standalone baseline into `.planning/`
-- 2026-03-21: Reframed the standalone repo around a skill/CLI-first public surface and replaced old MCP-era naming in active planning docs
-- 2026-03-21: Archived the imported baseline as a completed milestone and opened v1.1 for standalone-native work
-- 2026-03-21: Captured Phase 17 context for skill packages, CLI tool categorization, and README/test surface convergence
-- 2026-03-21: Completed 17-02 with catalog classification metadata, CLI payload regression coverage, and an early Phase 17 surface scaffold
-- 2026-03-21: Completed 17-01 and 17-03 with repo-local skill packages, README convergence, and final surface-regression coverage
-- 2026-03-21: Completed 18-01 with repo-local Claude/Codex skill installation helpers, an installer wrapper, and filesystem-local regression coverage
-- 2026-03-21: Phase 18 planning artifacts now include `18-CONTEXT.md`, `18-RESEARCH.md`, `18-VALIDATION.md`, `18-01-SUMMARY.md`, and the active `18-02-PLAN.md`
-- 2026-03-21: Completed 18-02 with a public-only README, STATE-led continuity, historical handoff cleanup, and doc regressions for the standalone boundary
+## Performance Metrics
 
-## Continue Standalone Planning
+- Completed plans in shipped milestones: 29
+- Current milestone planned phases: 3
+- Current milestone planned plans: TBD
+- Current milestone execution trend: n/a until plans exist
 
-Resume from the latest shipped standalone artifacts in this order:
+## Accumulated Context
 
-1. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-CONTEXT.md`
-2. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-RESEARCH.md`
-3. `.planning/phases/18-standalone-packaging-and-planning-autonomy/18-VALIDATION.md`
-4. `.planning/ROADMAP.md`
+### Decisions
 
-Use those files plus `.planning/milestones/v1.1-standalone-surface-consolidation.md`
-to define the next milestone without relying on any upstream worktree.
+- v1.2 stays scoped to guidance hardening for skill metadata, tool metadata,
+  and executable operator flows only.
+- Tool catalog guidance lands before stage-skill continuation guidance so the
+  direct-tool routing layer is explicit first.
+- README and regression coverage land after the guidance contracts exist, so
+  the public surface is locked after the metadata is hardened.
 
-## Immediate Next Step
+### Pending Todos
 
-- Run `$gsd-new-milestone` to define the next standalone milestone.
-- Use `.planning/PROJECT.md`, `.planning/ROADMAP.md`, and archived milestone
-  summaries as the planning baseline.
-- Keep `.planning/STATE.md` as the source of truth for future standalone
-  continuity.
+None captured for v1.2 yet.
+
+### Blockers/Concerns
+
+- Guidance must stay truthful to existing standalone V3 contracts and must not
+  invent new orchestration capabilities.
+- Regression coverage must validate public-surface guidance directly instead of
+  assuming operators will inspect entrypoint source.
 
 ## Session Continuity
 
-Last session: 2026-03-21T10:06:12Z
-Stopped at: Verified Phase 18 and completed milestone v1.1
+Last session: 2026-03-22
+Stopped at: Active roadmap created for milestone v1.2; next step is Phase 19
+planning
 Resume file: .planning/STATE.md

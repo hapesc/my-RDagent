@@ -2,9 +2,10 @@
 
 ## Overview
 
-This roadmap tracks only the currently active standalone milestone. Completed
-milestones are archived under `.planning/milestones/` so the working roadmap
-stays small and planning context does not keep growing.
+This roadmap tracks the active `v1.2 skill-and-tool-guidance-hardening`
+milestone. The milestone hardens skill metadata, tool metadata, and public
+operator guidance so agents can advance the standalone V3 loop without reading
+source code to discover the next valid action.
 
 ## Archived Milestones
 
@@ -15,10 +16,85 @@ stays small and planning context does not keep growing.
 
 ## Current Milestone
 
-No active milestone.
+**v1.2 skill-and-tool-guidance-hardening**
 
-Start the next cycle with `$gsd-new-milestone`, which will define fresh
-requirements and write a new active roadmap.
+**Milestone Goal:** Make the standalone V3 surface executable from skill and
+tool guidance alone, with no scope expansion into new orchestration features.
+
+**Coverage:** 8/8 active v1 requirements mapped
+
+## Phases
+
+- [ ] **Phase 19: Tool Catalog Operator Guidance** - Add concrete examples,
+  routing guidance, and follow-up semantics to the direct V3 CLI tool surface.
+- [ ] **Phase 20: Stage Skill Execution Contracts** - Make `rd-agent` and the
+  stage skills executable from explicit minimal-input and pause/continue
+  contracts.
+- [ ] **Phase 21: Executable Public Surface Narrative** - Lock the guidance
+  into README and regression coverage so the standalone pipeline stays
+  operator-usable.
+
+## Phase Details
+
+### Phase 19: Tool Catalog Operator Guidance
+**Goal**: Developers can inspect a direct V3 CLI tool and know the common-path
+request shape, the correct routing layer, and the next action after a
+successful result.
+**Depends on**: Phase 18
+**Requirements**: GUIDE-01, GUIDE-02, GUIDE-03
+**Success Criteria** (what must be TRUE):
+  1. A developer can inspect a direct V3 CLI tool entry and copy a realistic
+     common-path request example without reading the implementation.
+  2. A developer can tell from the tool entry when to use the direct tool, when
+     not to use it, and which higher-level skill is the preferred route
+     instead.
+  3. After a successful direct-tool call, including orchestration or gated-stop
+     outcomes, a developer can identify the expected follow-up action from the
+     tool metadata alone.
+**Plans**: TBD
+
+### Phase 20: Stage Skill Execution Contracts
+**Goal**: Developers can start and continue the standalone stage loop from the
+skill packages using explicit minimal inputs and default stop/continue
+semantics.
+**Depends on**: Phase 19
+**Requirements**: SKILL-01, SKILL-02, SKILL-03
+**Success Criteria** (what must be TRUE):
+  1. A developer can start `rd-agent` from the skill package using a documented
+     minimal-input contract that names the required run fields and required
+     stage payload fields.
+  2. A developer can understand from the skill guidance that
+     `gated + max_stage_iterations=1` pauses after the first completed stage
+     for operator review.
+  3. A developer can continue a paused run with `rd-propose`, `rd-code`,
+     `rd-execute`, or `rd-evaluate` by supplying the exact documented
+     identifiers and payload fields for the next valid stage action.
+**Plans**: TBD
+
+### Phase 21: Executable Public Surface Narrative
+**Goal**: Developers can use the README and regression suite as the stable
+public reference for the standalone V3 pipeline start, inspect, and continue
+flows.
+**Depends on**: Phase 20
+**Requirements**: SURFACE-01, SURFACE-02
+**Success Criteria** (what must be TRUE):
+  1. A developer can read the README and follow a concrete start, inspect, and
+     continue path through the standalone V3 pipeline.
+  2. The README describes the standalone surface as an executable skill-and-tool
+     workflow rather than as a schema catalog that still requires source-code
+     spelunking.
+  3. Regression tests fail if the public tool catalog or skill packages drift
+     away from the required guidance fields, concrete examples, or pipeline
+     semantics.
+**Plans**: TBD
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 19. Tool Catalog Operator Guidance | 0/TBD | Not started | - |
+| 20. Stage Skill Execution Contracts | 0/TBD | Not started | - |
+| 21. Executable Public Surface Narrative | 0/TBD | Not started | - |
 
 ## Planning Defaults
 

@@ -19,12 +19,24 @@ or MCP-shaped compatibility layers.
 product surface with repo-local installation, truthful public docs, and
 `.planning/`-native continuity.
 
+## Current Milestone: v1.2 Skill and Tool Guidance Hardening
+
+**Goal:** Make the standalone V3 surface executable by agents without requiring
+source-code spelunking to discover the next valid action.
+
+**Target features:**
+- Add tool-layer usage guidance and concrete examples to the V3 CLI catalog.
+- Upgrade `rd-agent` and stage skill packages with minimal input contracts,
+  stop-point semantics, and continuation guidance.
+- Lock the improved guidance in README and regression tests so the public
+  surface stays pipeline-usable.
+
 ## Next Milestone Goals
 
-- Define the next standalone milestone scope with `$gsd-new-milestone`
-- Create fresh milestone-scoped requirements after the v1.1 archive
-- Preserve the repo-local skill/CLI public surface while choosing the next
-  meaningful capability expansion
+- Ship example-driven guidance so agents can invoke the standalone V3 surface
+  correctly from skill and tool metadata alone.
+- Preserve the repo-local skill/CLI public surface while making it materially
+  more actionable for multi-step orchestration work.
 
 ## Requirements
 
@@ -38,7 +50,12 @@ product surface with repo-local installation, truthful public docs, and
 
 ### Active
 
-- [ ] Define the next standalone milestone scope and fresh requirements
+- [ ] Developer can inspect a direct V3 tool and see example requests,
+  routing guidance, and expected follow-up actions without reading source.
+- [ ] Developer can use `rd-agent` and the stage skills with explicit minimal
+  input contracts and default stop/continue semantics.
+- [ ] README and tests describe the standalone surface as an executable
+  pipeline, not just a schema catalog.
 
 ### Out of Scope
 
@@ -58,6 +75,9 @@ product surface with repo-local installation, truthful public docs, and
   evolution, not as a mirror of the legacy upstream shell.
 - The remaining work is mostly language, packaging, and product-surface
   convergence rather than rebuilding core orchestration from scratch.
+- Recent `rd-agent` usage showed a concrete product gap: schema-only tool
+  descriptions are structurally valid but do not teach an agent when to use a
+  tool, what minimal payload to provide, or what to do after a gated pause.
 
 ## Current State
 
@@ -76,6 +96,9 @@ Phase 18 completed the standalone packaging and continuity hardening work:
 - **Architecture**: V3 public entrypoints, orchestration, and tool contracts
   must stay self-contained and free from legacy runtime ownership
 - **Product surface**: Skills and CLI tools are the primary surface
+- **Operator usability**: Agents should be able to advance the V3 loop from
+  public docs, skill packages, and tool metadata without reading entrypoint
+  source code
 - **State truth**: Public run, branch, stage, artifact, recovery, memory, and
   exploration semantics remain V3-owned contracts
 - **Testing**: Preserve strong validation discipline and boundary gates inside
@@ -91,6 +114,7 @@ Phase 18 completed the standalone packaging and continuity hardening work:
 | Treat terminology cleanup as real milestone work | Requirement names shape product direction and future planning quality | ✓ Good — v1.1 |
 | Keep skill installation repo-local and link-first | Preserves one source of truth without widening the public CLI surface | ✓ Good — v1.1 |
 | Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
+| Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | — Pending — v1.2 |
 
 ---
-*Last updated: 2026-03-21 after v1.1 milestone archival*
+*Last updated: 2026-03-22 after starting v1.2 milestone*

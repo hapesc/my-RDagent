@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -83,6 +83,11 @@ from v3.tools.selection_tools import rd_branch_select_next
 from v3.tools.stage_tools import rd_stage_get
 
 
+ToolCategory = Literal["orchestration", "inspection", "primitives"]
+ToolSubcategory = Literal["branch_lifecycle", "branch_knowledge", "branch_selection", "memory"] | None
+RecommendedEntrypoint = Literal["rd-agent", "rd-tool-catalog"]
+
+
 class RunStartToolResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -97,6 +102,9 @@ class _ToolSpec:
     name: str
     title: str
     description: str
+    category: ToolCategory
+    subcategory: ToolSubcategory
+    recommended_entrypoint: RecommendedEntrypoint
     handler: Callable[..., dict[str, Any]]
     request_model: type[BaseModel]
     response_model: type[BaseModel]
@@ -108,6 +116,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_run_start",
         title="Start V3 Run",
         description="Start a V3 run and publish the initial run, branch, stage, and artifact truth.",
+        category="orchestration",
+        subcategory=None,
+        recommended_entrypoint="rd-agent",
         handler=rd_run_start,
         request_model=RunStartRequest,
         response_model=RunStartToolResult,
@@ -117,6 +128,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_run_get",
         title="Get V3 Run",
         description="Load the canonical V3 run-board snapshot.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_run_get,
         request_model=RunGetRequest,
         response_model=RunGetResult,
@@ -126,6 +140,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_fork",
         title="Fork V3 Branch",
         description="Create a labeled Phase 16 branch fork with isolated workspace allocation.",
+        category="primitives",
+        subcategory="branch_lifecycle",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_fork,
         request_model=BranchForkRequest,
         response_model=BranchForkResult,
@@ -135,6 +152,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_board_get",
         title="Get V3 Branch Board",
         description="Load the Phase 16 active/history branch board read model.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_board_get,
         request_model=BranchBoardGetRequest,
         response_model=BranchBoardGetResult,
@@ -144,6 +164,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_prune",
         title="Prune V3 Branches",
         description="Prune low-quality Phase 16 branches while preserving at least one active branch.",
+        category="primitives",
+        subcategory="branch_lifecycle",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_prune,
         request_model=BranchPruneRequest,
         response_model=BranchPruneResult,
@@ -153,6 +176,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_share_assess",
         title="Assess V3 Branch Share",
         description="Assess whether one Phase 16 branch should share knowledge with another.",
+        category="primitives",
+        subcategory="branch_knowledge",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_share_assess,
         request_model=BranchShareAssessRequest,
         response_model=BranchShareAssessResult,
@@ -162,6 +188,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_share_apply",
         title="Apply V3 Branch Share",
         description="Promote eligible branch knowledge through the Phase 15 memory contract.",
+        category="primitives",
+        subcategory="branch_knowledge",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_share_apply,
         request_model=BranchShareApplyRequest,
         response_model=BranchShareApplyResult,
@@ -171,6 +200,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_shortlist",
         title="Build V3 Branch Shortlist",
         description="Build the candidate summary and quality-ordered shortlist for convergence.",
+        category="primitives",
+        subcategory="branch_selection",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_shortlist,
         request_model=BranchShortlistRequest,
         response_model=BranchShortlistResult,
@@ -180,6 +212,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_merge",
         title="Merge V3 Branches",
         description="Attempt a convergence merge over the Phase 16 shortlist.",
+        category="primitives",
+        subcategory="branch_lifecycle",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_merge,
         request_model=BranchMergeRequest,
         response_model=BranchMergeResult,
@@ -189,6 +224,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_fallback",
         title="Fallback to Top V3 Branch",
         description="Choose the top-ranked branch when merge quality degrades.",
+        category="primitives",
+        subcategory="branch_lifecycle",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_fallback,
         request_model=BranchFallbackRequest,
         response_model=BranchFallbackResult,
@@ -198,6 +236,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_get",
         title="Get V3 Branch",
         description="Load a canonical V3 branch snapshot.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_get,
         request_model=BranchGetRequest,
         response_model=BranchGetResult,
@@ -207,6 +248,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_list",
         title="List V3 Branches",
         description="List canonical V3 branches for a run.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_list,
         request_model=BranchListRequest,
         response_model=BranchListResult,
@@ -216,6 +260,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_stage_get",
         title="Get V3 Stage",
         description="Load branch-stage state and published artifacts in V3 terms.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_stage_get,
         request_model=StageGetRequest,
         response_model=StageGetResult,
@@ -225,6 +272,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_artifact_list",
         title="List V3 Artifacts",
         description="List canonical V3 artifacts for a run, branch, or stage.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_artifact_list,
         request_model=ArtifactListRequest,
         response_model=ArtifactListResult,
@@ -234,6 +284,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_recovery_assess",
         title="Assess V3 Recovery",
         description="Assess V3 branch-stage recovery readiness without legacy checkpoint leakage.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_recovery_assess,
         request_model=RecoveryAssessRequest,
         response_model=RecoveryAssessResult,
@@ -243,6 +296,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_select_next",
         title="Select Next V3 Branch",
         description="Recommend the next V3 branch to advance from public branch and recovery state.",
+        category="primitives",
+        subcategory="branch_selection",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_select_next,
         request_model=BranchSelectNextRequest,
         response_model=BranchSelectNextResult,
@@ -252,6 +308,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_memory_create",
         title="Create V3 Memory",
         description="Create a branch-owned V3 memory record for the current run and stage.",
+        category="primitives",
+        subcategory="memory",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_memory_create,
         request_model=MemoryCreateRequest,
         response_model=MemoryGetResult,
@@ -261,6 +320,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_memory_get",
         title="Get V3 Memory",
         description="Load a V3 memory record with branch-local and shared promotion context.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_memory_get,
         request_model=MemoryGetRequest,
         response_model=MemoryGetResult,
@@ -270,6 +332,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_memory_list",
         title="List V3 Memory",
         description="List branch-local and shared V3 memory matches for a branch-stage query.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_memory_list,
         request_model=MemoryListRequest,
         response_model=MemoryListResult,
@@ -279,6 +344,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_memory_promote",
         title="Promote V3 Memory",
         description="Promote eligible V3 memory into the shared namespace without leaking legacy checkpoints.",
+        category="primitives",
+        subcategory="memory",
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_memory_promote,
         request_model=MemoryPromoteRequest,
         response_model=MemoryGetResult,
@@ -288,6 +356,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_branch_paths_get",
         title="Get V3 Branch Paths",
         description="Expose canonical branch-local and shared Phase 15 storage roots for a run branch.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
         handler=rd_branch_paths_get,
         request_model=BranchPathsGetRequest,
         response_model=BranchPathsGetResult,
@@ -297,6 +368,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_explore_round",
         title="Run V3 Explore Round",
         description="Run a high-level Phase 16 exploration round over the active branch frontier.",
+        category="orchestration",
+        subcategory=None,
+        recommended_entrypoint="rd-agent",
         handler=rd_explore_round,
         request_model=ExploreRoundRequest,
         response_model=ExploreRoundResult,
@@ -306,6 +380,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         name="rd_converge_round",
         title="Run V3 Converge Round",
         description="Run a high-level Phase 16 convergence round over the current shortlist.",
+        category="orchestration",
+        subcategory=None,
+        recommended_entrypoint="rd-agent",
         handler=rd_converge_round,
         request_model=ConvergeRoundRequest,
         response_model=ConvergeRoundResult,
@@ -320,6 +397,9 @@ def _catalog_entry(spec: _ToolSpec) -> dict[str, Any]:
         "title": spec.title,
         "description": spec.description,
         "surface": "cli_tool",
+        "category": spec.category,
+        "subcategory": spec.subcategory,
+        "recommended_entrypoint": spec.recommended_entrypoint,
         "command": f"rdagent-v3-tool describe {spec.name}",
         "inputSchema": spec.request_model.model_json_schema(),
         "outputSchema": spec.response_model.model_json_schema(),

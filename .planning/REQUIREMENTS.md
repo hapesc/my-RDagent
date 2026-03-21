@@ -5,7 +5,7 @@
 
 ## Surface Terminology
 
-- [ ] **SURFACE-01**: Developer can discover the complete V3 CLI tool catalog through CLI-described commands rather than MCP-framed catalog wording.
+- [x] **SURFACE-01**: Developer can discover the complete V3 CLI tool catalog through CLI-described commands rather than MCP-framed catalog wording.
 - [x] **SURFACE-02**: Developer can understand the public V3 surface as skills plus CLI tools consistently across README, ROADMAP, PROJECT, and tests.
 - [x] **SURFACE-03**: Developer can distinguish high-level orchestration commands from direct primitive tools in the standalone V3 surface.
 
@@ -29,7 +29,7 @@ surface. In the standalone repo this is replaced by the `SURFACE-*` family:
 
 | Requirement | Planned Phase | Status |
 |-------------|---------------|--------|
-| SURFACE-01 | Phase 17 | Pending |
+| SURFACE-01 | Phase 17 | Complete |
 | SURFACE-02 | Phase 17 | Complete |
 | SURFACE-03 | Phase 17 | Complete |
 | STANDALONE-01 | Phase 18 | Pending |

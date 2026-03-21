@@ -106,5 +106,5 @@ This handoff is retained for historical context only.
 - Current planning context lives in `.planning/ROADMAP.md`,
   `.planning/REQUIREMENTS.md`, and the Phase 18 artifacts under
   `.planning/phases/18-standalone-packaging-and-planning-autonomy/`.
-- Removed `docs/context/*` startup instructions are obsolete and should not be
-  used for future sessions.
+- Removed upstream startup instructions are obsolete and should not be used for
+  future sessions.

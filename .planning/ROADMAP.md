@@ -1,0 +1,144 @@
+# Roadmap: RDAgent V3 Clean-Split Rebuild
+
+## Overview
+
+This roadmap resets the V3 effort as a **clean architectural split**, not an incremental upgrade inside the current V2 runtime. The goal is to build a true agent-first V3 system with its own entrypoints, orchestration layer, state contracts, and skills surface, while treating the current V2 implementation as a legacy execution kernel and compatibility reference rather than the body that V3 grows inside.
+
+The key correction is explicit:
+
+- **V2 remains V2** — graph-driven runtime, current CLI/control-plane behavior, and legacy operational semantics.
+- **V3 becomes V3** — agent-first orchestration, skills-first UX, MCP application boundary, and public state truth designed as first-class contracts.
+- **Compatibility is a separate layer** — not the core V3 architecture.
+
+## Milestones
+
+- ✅ **v1.0 Documentation Rewrite** — historical
+- ✅ **v2.0 Core Capabilities** — historical
+- ✅ **v3.0 MCP + Data Science Bridge Work** — historical but treated as preparatory work, not proof that V3 architecture is already separated
+- 📋 **v3.1 Clean-Split Rebuild** — current milestone in this worktree
+
+## Core Architectural Reset
+
+### Non-Negotiable Principles
+
+1. **No fake separation**
+   - Renaming V2 internals as V3 surface is not enough.
+   - A V3-facing command, skill, or artifact contract must not merely be a thin shell over V2 runtime internals.
+
+2. **V3 owns orchestration**
+   - V3 decides workflow sequencing, checkpoint behavior, resume UX, and user-facing control flow.
+   - V2 may execute scenario logic or provide reusable algorithms, but it must not remain the hidden orchestrator.
+
+3. **Public truth is V3-owned**
+   - V3 defines and owns the user-visible state contract.
+   - V2 internal payloads, checkpoints, graph nodes, and runtime structs are implementation details, not exposed truth.
+
+4. **Compatibility is optional and explicit**
+   - If `python -m v2 run` remains supported, it is a compatibility path.
+   - It must not dictate the architecture of V3.
+
+5. **Skills are product surface, not decoration**
+   - `/rd-agent`, `/rd-propose`, `/rd-code`, `/rd-execute`, `/rd-evaluate` are real product entrypoints, not deferred aliases.
+
+## Phases
+
+### Phase 12: Boundary Separation and Architectural Reset
+**Goal:** Define and enforce the clean boundary between V2 and V3 so V3 is no longer implemented as V2 plus a new shell.
+**Depends on:** Historical v2.0 and preparatory v3.0 work
+**Requirements:** V3-BOUNDARY-01, V3-BOUNDARY-02, V3-BOUNDARY-03, V3-BOUNDARY-04
+**Plans:** 3/3 plans complete
+Plans:
+- [x] `12-01-PLAN.md` — Lock V3 entry and orchestration ownership in the ADR and architecture map
+- [x] `12-02-PLAN.md` — Create concrete V3 boundary anchors for contracts, ports, and the explicit compatibility seam
+- [x] `12-03-PLAN.md` — Enforce `v3.compat.v2` as the only compatibility seam and wire the final Phase 12 bookkeeping gate
+**Success Criteria:**
+  1. Developer can point to a clear V3 entry layer, orchestration layer, state contract layer, and compatibility layer.
+  2. V3-facing interfaces no longer depend directly on V2 internal node names, payload shapes, or runtime-only concepts.
+  3. The repo documents which modules are V2 legacy, which modules are V3 core, and which modules are compatibility adapters.
+  4. Future V3 phases can be planned without assuming V2 runtime internals are the product surface.
+**Planned scope:**
+- Define module/layer boundaries
+- Define allowed dependency directions
+- Define the compatibility layer explicitly
+- Rewrite roadmap and planning contracts around the clean-split model
+
+### Phase 13: V3 Agent-Facing Contract and Tool Rebuild
+**Goal:** Build the actual V3 agent-facing public contract and rebuild required execution/exploration capabilities as V3-owned tools instead of inheriting or wrapping V2 compatibility paths.
+**Depends on:** Phase 12
+**Requirements:** V3-RUNTIME-01, V3-RUNTIME-02, V3-STATE-01, V3-STATE-02, V3-TOOLS-01, V3-TOOLS-02
+**Plans:** 6/6 plans complete
+Plans:
+- [x] `13-01-PLAN.md` — Define the schema-capable V3 contract and port layer for branch-first run, stage, artifact, and recovery truth
+- [x] `13-02-PLAN.md` — Rebuild public branch scoring and next-branch recommendation as V3-owned services
+- [x] `13-03-PLAN.md` — Publish artifact-backed V3 run, branch, and stage truth with a concrete execution handoff
+- [x] `13-04-PLAN.md` — Expose checkpoint-hidden V3 recovery semantics with a read-only V2 translation seam
+- [x] `13-05-PLAN.md` — Implement the minimal non-selection V3 tool handlers over canonical state and recovery services
+- [x] `13-06-PLAN.md` — Wire the MCP-style registry, selection tool, and import-linter gate for the final Phase 13 surface (completed 2026-03-20)
+**Success Criteria:**
+  1. Developer can start a V3 run through V3-owned agent-facing tools and contracts rather than a V2 runtime path.
+  2. V3 public state, branch truth, and artifacts are generated by V3-owned contracts rather than inferred from V2 internals on demand.
+  3. Resume/recovery semantics are explained in V3 terms and do not depend on exposing V2 graph/checkpoint vocabulary.
+  4. Algorithms still needed from V2, such as PUCT-style branch selection, are rebuilt or re-expressed as V3-owned tools instead of retained as V2 compatibility surfaces.
+
+### Phase 14: Skills-First Single-Branch Orchestration
+**Goal:** Deliver the real V3 skill surface for a single-branch loop with clear stage boundaries and gated/unattended execution modes on top of the rebuilt V3 contracts and tools.
+**Depends on:** Phase 13
+**Requirements:** SKILL-01, SKILL-02, SKILL-03, SKILL-04
+**Plans:** 5/5 plans complete
+Plans:
+- [x] `14-00-PLAN.md` — Bootstrap Wave 0 tests and boundary gates for the skill surface
+- [x] `14-01-PLAN.md` — Add iteration-aware public state and sanctioned stage-write tools
+- [x] `14-02-PLAN.md` — Expose `/rd-propose`, `/rd-code`, `/rd-execute`, and `/rd-evaluate` as independent stage skills
+- [x] `14-03-PLAN.md` — Make resume/reuse/skip artifact-driven and transparent
+- [x] `14-04-PLAN.md` — Add `/rd-agent` and explicit execution policy for gated vs unattended single-branch runs
+**Success Criteria:**
+  1. Developer can use `/rd-agent` as the primary V3 entrypoint.
+  2. Developer can call `/rd-propose`, `/rd-code`, `/rd-execute`, and `/rd-evaluate` independently without leaking V2 internals.
+  3. Stage skipping, reuse, and resume behavior are transparent and owned by V3 orchestration.
+  4. Single-branch loop behavior is understandable without referencing V2 graph implementation details.
+
+### Phase 15: V3 Memory and Branch-Isolated State
+**Goal:** Rebuild memory and branch state handling as V3-owned contracts with explicit isolation semantics.
+**Depends on:** Phase 14
+**Requirements:** MEM-01, MEM-02, MEM-03, ARTF-03
+**Plans:** 4/4 plans complete
+**Success Criteria:**
+  1. V3 memory persistence/retrieval is exposed as a stable V3-facing contract.
+  2. Branch state isolation is enforced through V3 artifact/workspace structure rather than implied by legacy runtime layout.
+  3. Cross-branch information flow is explicit and bounded.
+
+### Phase 16: Multi-Branch Orchestration and Tool Surface Completion
+**Goal:** Restore exploration and merge capabilities inside the clean V3 architecture.
+**Depends on:** Phase 15
+**Requirements:** MCP-02, EXPL-01, EXPL-02, EXPL-03, EXPL-04, EXPL-05
+**Success Criteria:**
+  1. Developer can orchestrate multi-branch exploration through V3 entrypoints and isolated branch workspaces.
+  2. V2 algorithms, where reused, are consumed through explicit tools/adapters rather than hidden orchestration coupling.
+  3. The complete `rd_*` tool surface reflects V3 contracts, not V2 implementation leakage.
+
+## Compatibility Position
+
+Compatibility is explicitly rejected as a design driver for this rebuild.
+
+The clean-split V3 path in this worktree does **not** aim to preserve V2 runtime compatibility.
+
+- `python -m v2 run` remains a historical V2 entrypoint, not a target for V3 parity.
+- V2 pause/resume semantics are not a contract target for V3.
+- Behavioral equivalence with V2 traces is not a milestone requirement.
+- If V3 needs capabilities that currently exist only in V2 (for example PUCT-style exploration logic), those capabilities should be rebuilt or re-expressed as V3-owned tools rather than kept alive through compatibility adapters.
+
+These decisions are intentional and must not be softened by later planning.
+
+## Progress
+
+| Phase | Milestone | Status | Notes |
+|-------|-----------|--------|-------|
+| 12. Boundary Separation and Architectural Reset | 3/3 | Complete   | 2026-03-19 |
+| 13. V3 Agent-Facing Contract and Tool Rebuild | 6/6 | Complete | 2026-03-20 |
+| 14. Skills-First Single-Branch Orchestration | 5/5 | Complete | 2026-03-20 |
+| 15. V3 Memory and Branch-Isolated State | 4/4 | Complete    | 2026-03-20 |
+| 16. Multi-Branch Orchestration and Tool Surface Completion | 6/6 | Complete   | 2026-03-21 |
+
+## Notes
+
+This roadmap intentionally rejects the assumption that “MCP + V2 runtime” already equals V3. The clean-split rebuild begins by treating the previous V3 effort as useful preparatory work, but not as architectural completion.

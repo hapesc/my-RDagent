@@ -1,0 +1,45 @@
+[project]
+name = "rdagent-v3"
+version = "0.1.0"
+description = "Standalone V3 skill and CLI tool surface extracted from my-RDagent"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "RDAgent Team"}]
+dependencies = [
+    "pydantic>=2,<3",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "hypothesis>=6.0.0",
+    "import-linter>=2.3,<3.0",
+]
+
+[project.scripts]
+rdagent-v3-tool = "v3.entry.tool_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["v3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["v3"]

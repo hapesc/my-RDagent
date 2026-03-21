@@ -45,10 +45,10 @@ terms:
 **Goal:** Rename MCP-era surface language into a coherent skill/CLI requirement and documentation model.
 **Depends on:** imported v1.0 baseline
 **Requirements:** SURFACE-01, SURFACE-02, SURFACE-03
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 Plans:
 - [ ] 17-01-PLAN.md — create the six repo-local public skill packages via `$skill-architect`
-- [ ] 17-02-PLAN.md — add stable catalog classification metadata and lock it in existing CLI tests
+- [x] 17-02-PLAN.md — add stable catalog classification metadata and lock it in existing CLI tests
 - [ ] 17-03-PLAN.md — converge README/project narrative and add Phase 17 surface regression coverage
 **Success Criteria:**
   1. Requirement IDs and descriptions describe the actual skill/CLI surface instead of an MCP framing.
@@ -76,7 +76,7 @@ The imported upstream baseline is now historical context inside this repo.
 | Phase | Milestone | Status | Notes |
 |-------|-----------|--------|-------|
 | v1.0 Standalone V3 Baseline | 12-16 | Complete | archived baseline imported from upstream |
-| 17. Skill and CLI Surface Terminology Convergence | v1.1 | Planned | rename MCP-era surface language |
+| 17. Skill and CLI Surface Terminology Convergence | 2/3 | In Progress|  |
 | 18. Standalone Packaging and Planning Autonomy | v1.1 | Planned | harden standalone repo continuity |
 
 ## Notes

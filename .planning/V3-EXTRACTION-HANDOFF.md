@@ -1,30 +1,34 @@
 ---
 artifact: v3-extraction-handoff
 created: 2026-03-21T15:30:00+08:00
-status: active
+status: historical
 related_milestone: v1.0
 related_phase: 16
 ---
 
 # V3 Extraction Handoff
 
-## Current State
+## Historical Status
 
-The original worktree now has a V3 surface that no longer uses the in-process
-`mcp_tools` compatibility layer. The active V3 surface is:
+This document is historical extraction evidence from the original standalone
+split. It is not the canonical continuity entrypoint for current standalone
+work.
+
+For active planning continuity, start from `.planning/STATE.md` and the current
+`.planning/` phase artifacts.
+
+## Extracted State At Handoff Time
+
+The original worktree had a V3 surface that no longer used the in-process
+`mcp_tools` compatibility layer. The extracted V3 surface at that time was:
 
 - `v3.entry.tool_catalog`
 - `v3.entry.tool_cli`
 - `v3.entry.rd_agent`
 - skill entrypoints under `v3.entry`
 
-The standalone extraction has been created at:
+Historical extraction commit:
 
-- `/Users/michael-liang/Code/my-RDagent-V3`
-
-That repository has already been initialized and committed:
-
-- repo: `/Users/michael-liang/Code/my-RDagent-V3`
 - commit: `5bbb35f`
 - message: `init standalone V3 surface`
 
@@ -94,19 +98,13 @@ That repository has already been initialized and committed:
 - Decide whether to keep `v3/compat/v2` in the extracted repo or prune it in a
   follow-up cleanup.
 
-## Next Action
+## Current Continuity Note
 
-Start from the standalone repo:
+This handoff is retained for historical context only.
 
-1. Open `/Users/michael-liang/Code/my-RDagent-V3`
-2. Read:
-   - `README.md`
-   - `docs/context/SESSION-HANDOFF.md`
-   - `docs/context/REQUIREMENTS.md`
-   - `docs/context/ROADMAP.md`
-   - `docs/context/MILESTONE-AUDIT.md`
-   - `docs/context/PHASE-16-VERIFICATION.md`
-3. Decide whether the next session is:
-   - product-surface cleanup/documentation
-   - further standalone simplification
-   - new feature work on the extracted V3 core
+- Current standalone continuity lives in `.planning/STATE.md`.
+- Current planning context lives in `.planning/ROADMAP.md`,
+  `.planning/REQUIREMENTS.md`, and the Phase 18 artifacts under
+  `.planning/phases/18-standalone-packaging-and-planning-autonomy/`.
+- Removed `docs/context/*` startup instructions are obsolete and should not be
+  used for future sessions.

@@ -66,6 +66,34 @@ def test_phase16_registry_lists_full_rd_tool_surface() -> None:
     }
 
 
+def test_phase16_tool_surface_exposes_stable_categories_and_routing() -> None:
+    tools = {tool["name"]: tool for tool in list_cli_tools()}
+
+    assert tools["rd_explore_round"]["category"] == "orchestration"
+    assert tools["rd_explore_round"]["subcategory"] is None
+    assert tools["rd_explore_round"]["recommended_entrypoint"] == "rd-agent"
+
+    assert tools["rd_artifact_list"]["category"] == "inspection"
+    assert tools["rd_artifact_list"]["subcategory"] is None
+    assert tools["rd_artifact_list"]["recommended_entrypoint"] == "rd-tool-catalog"
+
+    assert tools["rd_branch_fork"]["category"] == "primitives"
+    assert tools["rd_branch_fork"]["subcategory"] == "branch_lifecycle"
+    assert tools["rd_branch_fork"]["recommended_entrypoint"] == "rd-tool-catalog"
+
+    assert tools["rd_branch_share_assess"]["category"] == "primitives"
+    assert tools["rd_branch_share_assess"]["subcategory"] == "branch_knowledge"
+    assert tools["rd_branch_share_assess"]["recommended_entrypoint"] == "rd-tool-catalog"
+
+    assert tools["rd_branch_select_next"]["category"] == "primitives"
+    assert tools["rd_branch_select_next"]["subcategory"] == "branch_selection"
+    assert tools["rd_branch_select_next"]["recommended_entrypoint"] == "rd-tool-catalog"
+
+    assert tools["rd_memory_promote"]["category"] == "primitives"
+    assert tools["rd_memory_promote"]["subcategory"] == "memory"
+    assert tools["rd_memory_promote"]["recommended_entrypoint"] == "rd-tool-catalog"
+
+
 def test_phase16_tool_schemas_cover_full_rd_tool_surface() -> None:
     tools = {tool["name"]: tool for tool in list_cli_tools()}
     fork_request = BranchForkRequest.model_json_schema()

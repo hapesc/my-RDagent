@@ -15,6 +15,9 @@ def test_v3_tool_cli_lists_catalog(capsys) -> None:
     assert all(tool["surface"] == "cli_tool" for tool in payload)
     assert {tool["category"] for tool in payload} == {"orchestration", "inspection", "primitives"}
     assert all("recommended_entrypoint" in tool for tool in payload)
+    assert all(tool["examples"] for tool in payload)
+    assert all(tool["when_to_use"] for tool in payload)
+    assert all(tool["when_not_to_use"] for tool in payload)
     assert all(
         tool["recommended_entrypoint"] == "rd-agent"
         for tool in payload
@@ -41,6 +44,10 @@ def test_v3_tool_cli_describes_single_tool(capsys) -> None:
     assert payload["subcategory"] is None
     assert payload["recommended_entrypoint"] == "rd-agent"
     assert payload["command"] == "rdagent-v3-tool describe rd_run_start"
+    assert payload["examples"]
+    assert payload["examples"][0]["label"] == "common_path"
+    assert payload["when_to_use"]
+    assert payload["when_not_to_use"]
     assert payload["inputSchema"]["title"] == "RunStartRequest"
 
 

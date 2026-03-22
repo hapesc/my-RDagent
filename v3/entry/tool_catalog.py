@@ -105,10 +105,68 @@ class _ToolSpec:
     category: ToolCategory
     subcategory: ToolSubcategory
     recommended_entrypoint: RecommendedEntrypoint
+    examples: tuple[dict[str, Any], ...]
+    when_to_use: str
+    when_not_to_use: str
     handler: Callable[..., dict[str, Any]]
     request_model: type[BaseModel]
     response_model: type[BaseModel]
     dependency_names: tuple[str, ...]
+
+
+_ORCHESTRATION_WHEN_TO_USE = (
+    "Use this direct tool only when you intentionally need to issue a bounded orchestration call "
+    "with an explicit V3 payload."
+)
+_ORCHESTRATION_WHEN_NOT_TO_USE = (
+    "Do not use this as the default path for starting or continuing work; stay in rd-agent unless "
+    "you deliberately need a direct orchestration primitive."
+)
+_INSPECTION_WHEN_TO_USE = (
+    "Use this direct tool after a run, branch, stage, artifact, recovery, memory, or path identifier "
+    "is already known and you need a precise read-only lookup."
+)
+_INSPECTION_WHEN_NOT_TO_USE = (
+    "Do not use this to advance the workflow or to discover the next high-level skill; use rd-agent "
+    "for default orchestration and rd-tool-catalog only after narrowing to a concrete inspection need."
+)
+_PRIMITIVE_WHEN_TO_USE = (
+    "Use this direct tool after you have already decided the high-level skill boundary is insufficient "
+    "and you need a targeted state mutation or branch-selection action."
+)
+_PRIMITIVE_WHEN_NOT_TO_USE = (
+    "Do not use this when rd-agent can still own the end-to-end flow or when the request has not yet "
+    "been narrowed to a concrete primitive action."
+)
+_CATEGORY_NOTES = {
+    "orchestration": "Run one bounded orchestration step with an explicit public payload.",
+    "inspection": "Inspect the current V3 state after a prior skill or primitive call returned identifiers.",
+    "primitives": "Apply one targeted direct-tool action after narrowing through rd-tool-catalog.",
+}
+
+
+def _example(arguments: dict[str, Any], *, category: ToolCategory) -> dict[str, Any]:
+    return {
+        "label": "common_path",
+        "arguments": arguments,
+        "note": _CATEGORY_NOTES[category],
+    }
+
+
+def _when_to_use(category: ToolCategory) -> str:
+    return {
+        "orchestration": _ORCHESTRATION_WHEN_TO_USE,
+        "inspection": _INSPECTION_WHEN_TO_USE,
+        "primitives": _PRIMITIVE_WHEN_TO_USE,
+    }[category]
+
+
+def _when_not_to_use(category: ToolCategory) -> str:
+    return {
+        "orchestration": _ORCHESTRATION_WHEN_NOT_TO_USE,
+        "inspection": _INSPECTION_WHEN_NOT_TO_USE,
+        "primitives": _PRIMITIVE_WHEN_NOT_TO_USE,
+    }[category]
 
 
 _TOOL_SPECS: tuple[_ToolSpec, ...] = (
@@ -119,6 +177,21 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="orchestration",
         subcategory=None,
         recommended_entrypoint="rd-agent",
+        examples=(
+            _example(
+                {
+                    "title": "Phase 19 tool guidance hardening",
+                    "task_summary": "Add tool-catalog examples, routing guidance, and follow-up semantics to the direct V3 CLI surface.",
+                    "scenario_label": "data_science",
+                    "initial_branch_label": "primary",
+                    "execution_mode": "gated",
+                    "max_stage_iterations": 1,
+                },
+                category="orchestration",
+            ),
+        ),
+        when_to_use=_when_to_use("orchestration"),
+        when_not_to_use=_when_not_to_use("orchestration"),
         handler=rd_run_start,
         request_model=RunStartRequest,
         response_model=RunStartToolResult,
@@ -131,6 +204,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(_example({"run_id": "run-001"}, category="inspection"),),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_run_get,
         request_model=RunGetRequest,
         response_model=RunGetResult,
@@ -143,6 +219,19 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_lifecycle",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "label": "branch-002",
+                    "source_branch_id": "branch-001",
+                    "rationale": "Investigate a competing implementation path",
+                },
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_fork,
         request_model=BranchForkRequest,
         response_model=BranchForkResult,
@@ -155,6 +244,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(_example({"run_id": "run-001"}, category="inspection"),),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_branch_board_get,
         request_model=BranchBoardGetRequest,
         response_model=BranchBoardGetResult,
@@ -167,6 +259,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_lifecycle",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "relative_threshold": 0.15},
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_prune,
         request_model=BranchPruneRequest,
         response_model=BranchPruneResult,
@@ -179,6 +279,20 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_knowledge",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "source_branch_id": "branch-002",
+                    "target_branch_id": "branch-001",
+                    "similarity": 0.82,
+                    "judge_allows_share": True,
+                },
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_share_assess,
         request_model=BranchShareAssessRequest,
         response_model=BranchShareAssessResult,
@@ -191,6 +305,21 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_knowledge",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "source_branch_id": "branch-002",
+                    "target_branch_id": "branch-001",
+                    "memory_id": "memory-001",
+                    "similarity": 0.82,
+                    "judge_allows_share": True,
+                },
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_share_apply,
         request_model=BranchShareApplyRequest,
         response_model=BranchShareApplyResult,
@@ -203,6 +332,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_selection",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "minimum_quality": 0.7},
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_shortlist,
         request_model=BranchShortlistRequest,
         response_model=BranchShortlistResult,
@@ -215,6 +352,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_lifecycle",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "minimum_quality": 0.75},
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_merge,
         request_model=BranchMergeRequest,
         response_model=BranchMergeResult,
@@ -227,6 +372,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_lifecycle",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "minimum_quality": 0.75},
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_fallback,
         request_model=BranchFallbackRequest,
         response_model=BranchFallbackResult,
@@ -239,6 +392,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(_example({"branch_id": "branch-001"}, category="inspection"),),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_branch_get,
         request_model=BranchGetRequest,
         response_model=BranchGetResult,
@@ -251,6 +407,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "include_completed": True},
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_branch_list,
         request_model=BranchListRequest,
         response_model=BranchListResult,
@@ -263,6 +427,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"branch_id": "branch-001", "stage_key": "build"},
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_stage_get,
         request_model=StageGetRequest,
         response_model=StageGetResult,
@@ -275,6 +447,19 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "branch_id": "branch-001",
+                    "stage_key": "build",
+                    "kind": "code",
+                },
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_artifact_list,
         request_model=ArtifactListRequest,
         response_model=ArtifactListResult,
@@ -287,6 +472,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "branch_id": "branch-001", "stage_key": "verify"},
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_recovery_assess,
         request_model=RecoveryAssessRequest,
         response_model=RecoveryAssessResult,
@@ -299,6 +492,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="branch_selection",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "include_completed": False},
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_branch_select_next,
         request_model=BranchSelectNextRequest,
         response_model=BranchSelectNextResult,
@@ -311,6 +512,26 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="memory",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "branch_id": "branch-001",
+                    "stage_key": "build",
+                    "hypothesis": "The simplified retry policy will stabilize the verification loop.",
+                    "score": 0.78,
+                    "reason": "Build-stage evidence suggests the current branch is converging on a reusable fix.",
+                    "kind": "atomic",
+                    "memory_id": "memory-001",
+                    "evidence": ["artifact-build-001"],
+                    "outcome": "Carry the retry-policy insight into later branches.",
+                    "tags": ["build", "retry-policy"],
+                },
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_memory_create,
         request_model=MemoryCreateRequest,
         response_model=MemoryGetResult,
@@ -323,6 +544,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"memory_id": "memory-001", "run_id": "run-001", "owner_branch_id": "branch-001"},
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_memory_get,
         request_model=MemoryGetRequest,
         response_model=MemoryGetResult,
@@ -335,6 +564,20 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "branch_id": "branch-001",
+                    "stage_key": "build",
+                    "task_query": "retry policy stabilization",
+                    "limit": 5,
+                },
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_memory_list,
         request_model=MemoryListRequest,
         response_model=MemoryListResult,
@@ -347,6 +590,20 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="primitives",
         subcategory="memory",
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {
+                    "memory_id": "memory-001",
+                    "run_id": "run-001",
+                    "owner_branch_id": "branch-001",
+                    "promoted_by": "branch-001",
+                    "promotion_reason": "Promote reusable build insight for later branches",
+                },
+                category="primitives",
+            ),
+        ),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
         handler=rd_memory_promote,
         request_model=MemoryPromoteRequest,
         response_model=MemoryGetResult,
@@ -359,6 +616,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="inspection",
         subcategory=None,
         recommended_entrypoint="rd-tool-catalog",
+        examples=(
+            _example(
+                {"run_id": "run-001", "branch_id": "branch-001"},
+                category="inspection",
+            ),
+        ),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
         handler=rd_branch_paths_get,
         request_model=BranchPathsGetRequest,
         response_model=BranchPathsGetResult,
@@ -371,6 +636,20 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="orchestration",
         subcategory=None,
         recommended_entrypoint="rd-agent",
+        examples=(
+            _example(
+                {
+                    "run_id": "run-001",
+                    "hypotheses": [
+                        "Tighten tool metadata around examples and routing semantics",
+                        "Add follow-up guidance for gated and selection-sensitive tools",
+                    ],
+                },
+                category="orchestration",
+            ),
+        ),
+        when_to_use=_when_to_use("orchestration"),
+        when_not_to_use=_when_not_to_use("orchestration"),
         handler=rd_explore_round,
         request_model=ExploreRoundRequest,
         response_model=ExploreRoundResult,
@@ -383,6 +662,14 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         category="orchestration",
         subcategory=None,
         recommended_entrypoint="rd-agent",
+        examples=(
+            _example(
+                {"run_id": "run-001", "minimum_quality": 0.75},
+                category="orchestration",
+            ),
+        ),
+        when_to_use=_when_to_use("orchestration"),
+        when_not_to_use=_when_not_to_use("orchestration"),
         handler=rd_converge_round,
         request_model=ConvergeRoundRequest,
         response_model=ConvergeRoundResult,
@@ -400,6 +687,9 @@ def _catalog_entry(spec: _ToolSpec) -> dict[str, Any]:
         "category": spec.category,
         "subcategory": spec.subcategory,
         "recommended_entrypoint": spec.recommended_entrypoint,
+        "examples": list(spec.examples),
+        "when_to_use": spec.when_to_use,
+        "when_not_to_use": spec.when_not_to_use,
         "command": f"rdagent-v3-tool describe {spec.name}",
         "inputSchema": spec.request_model.model_json_schema(),
         "outputSchema": spec.response_model.model_json_schema(),

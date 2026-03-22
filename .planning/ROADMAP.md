@@ -28,7 +28,7 @@ state-aware guidance.
 
 ## Phases
 
-- [ ] **Phase 22: Intent Routing and Continuation Control** - Route plain
+- [x] **Phase 22: Intent Routing and Continuation Control** - Route plain (completed 2026-03-22)
   language user intent to the correct start, continue, inspect, or downshift
   path without requiring the user to choose a skill first.
 - [ ] **Phase 23: Preflight and State Truth Hardening** - Fail early on
@@ -89,7 +89,7 @@ truthful, state-aware answer.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. Intent Routing and Continuation Control | 0/TBD | Not started | - |
+| 22. Intent Routing and Continuation Control | 1/1 | Complete   | 2026-03-22 |
 | 23. Preflight and State Truth Hardening | 0/TBD | Not started | - |
 | 24. Operator Guidance and Next-Step UX | 0/TBD | Not started | - |
 

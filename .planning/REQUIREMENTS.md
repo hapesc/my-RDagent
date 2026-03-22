@@ -9,10 +9,10 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Intent Routing
 
-- [ ] **ROUTE-01**: User can describe work in plain language and the pipeline
+- [x] **ROUTE-01**: User can describe work in plain language and the pipeline
   chooses the correct high-level path: start a new run, continue a paused run,
   inspect state, or downshift only when necessary.
-- [ ] **ROUTE-02**: When paused work already exists, the pipeline surfaces the
+- [x] **ROUTE-02**: When paused work already exists, the pipeline surfaces the
   current run and stage and recommends the next valid skill instead of opening
   a new run by default.
 
@@ -62,8 +62,8 @@ to discover how to start, pause, resume, or continue the loop.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | Phase 22 | Pending |
-| ROUTE-02 | Phase 22 | Pending |
+| ROUTE-01 | Phase 22 | Complete |
+| ROUTE-02 | Phase 22 | Complete |
 | PREFLIGHT-01 | Phase 23 | Pending |
 | PREFLIGHT-02 | Phase 23 | Pending |
 | STATE-01 | Phase 23 | Pending |

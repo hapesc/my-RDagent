@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
-status: defining_requirements
-stopped_at: Started milestone v1.3 Pipeline Experience Hardening
-last_updated: "2026-03-22T15:30:00+08:00"
+status: ready_to_plan
+stopped_at: Defined v1.3 roadmap; next step is Phase 22 planning
+last_updated: "2026-03-22T15:40:00+08:00"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
@@ -23,20 +23,20 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Milestone v1.3 — Pipeline Experience Hardening
+**Current focus:** Phase 22 — Intent Routing and Continuation Control
 
 ## Position
 
 **Milestone:** v1.3 pipeline experience hardening  
-**Roadmap span:** defining fresh requirements and roadmap
-**Next phase:** Not started — requirements and roadmap definition
-**Status:** Defining requirements
+**Roadmap span:** Phases 22-24
+**Next phase:** 22 - Intent Routing and Continuation Control
+**Status:** Ready to plan
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Started `v1.3` to improve rdagent’s pipeline UX using `gsd-build/get-shit-done`
-as a reference for intent routing, progress guidance, and user-facing flow
-design.
+Started `v1.3` and mapped it into three phases covering intent routing,
+preflight/state truth, and operator-facing next-step UX, using
+`gsd-build/get-shit-done` as a reference.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -45,7 +45,7 @@ design.
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
 - Latest completed plan: Phase 21 Plan 01 in 2min across 2 tasks and 3 tracked files
-- Current milestone execution trend: v1.3 is in milestone-definition mode; next action is scoped requirements and roadmap creation
+- Current milestone execution trend: v1.3 is defined and ready for execution planning, starting with Phase 22
 
 ## Accumulated Context
 
@@ -86,7 +86,7 @@ design.
 
 - Define scoped milestone requirements for pipeline UX, routing, preflight, and
   next-step guidance.
-- Create a new roadmap continuing phase numbering after Phase 21.
+- Plan Phase 22 against the new milestone requirements and research.
 
 ### Blockers/Concerns
 
@@ -103,6 +103,6 @@ design.
 
 ## Session Continuity
 
-Last session: 2026-03-22T15:30:00+08:00
-Stopped at: Started milestone v1.3 Pipeline Experience Hardening
+Last session: 2026-03-22T15:40:00+08:00
+Stopped at: Defined v1.3 roadmap; next step is Phase 22 planning
 Resume file: .planning/STATE.md

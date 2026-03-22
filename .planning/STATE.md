@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-status: planning
-stopped_at: Phase 23 context gathered
-last_updated: "2026-03-22T10:09:10.811Z"
+current_phase: 23
+current_phase_name: preflight-and-state-truth-hardening
+current_plan: 2
+status: executing
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-03-22T12:18:55.490Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 33
+  total_plans: 3
+  completed_plans: 2
+  percent: 67
 ---
 
 # Session State
@@ -27,17 +30,22 @@ just to discover how to start, pause, resume, or continue the loop.
 
 ## Position
 
+**Current Phase:** 23
+**Current Phase Name:** preflight-and-state-truth-hardening
+**Total Phases:** 3
+**Current Plan:** 2
+**Total Plans in Phase:** 2
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-24
 **Next phase:** 23 - Preflight and State Truth Hardening
-**Status:** Ready to plan
+**Status:** Ready to execute
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
 Completed Phase 22 intent routing and continuation control, establishing
 plain-language entry and paused-run-first continuation routing for the v1.3
 pipeline hardening milestone.
-**Progress:** [███░░░░░░░] 33%
+**Progress:** [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -82,6 +90,9 @@ pipeline hardening milestone.
 - [Phase 21-executable-public-surface-narrative]: Kept README at the decision layer and linked to skill packages for exact field contracts instead of duplicating schema inventories.
 - [Phase 21-executable-public-surface-narrative]: Positioned rd-tool-catalog only under the Inspect downshift path so rd-agent remains the public first-class start surface.
 - [Phase 22-intent-routing-and-continuation-control]: Route plain-language entry through persisted state first, prefer paused-run continuation, and expose `recommended_next_skill` explicitly.
+- [Phase 23]: Preflight stays read-only and does not persist a second truth source. — Runtime and entry surfaces should reuse canonical state instead of introducing another persistence path.
+- [Phase 23]: Runtime truth uses pyproject.toml and mandatory uv checks before execution claims. — Phase 23 must derive environment readiness from repo-owned declarations instead of hidden shell heuristics.
+- [Phase 23]: Completed-stage reuse is blocked when persisted recovery truth is missing. — Results existing in artifact state is insufficient; Phase 23 must distinguish stored outputs from reproducible continuation.
 
 ### Pending Todos
 
@@ -104,6 +115,6 @@ pipeline hardening milestone.
 
 ## Session Continuity
 
-Last session: 2026-03-22T10:09:10.808Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-preflight-and-state-truth-hardening/23-CONTEXT.md
+Last session: 2026-03-22T12:18:55.486Z
+Stopped at: Completed 23-01-PLAN.md
+Resume file: .planning/phases/23-preflight-and-state-truth-hardening/23-02-PLAN.md

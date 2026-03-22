@@ -18,10 +18,10 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Preflight and Environment
 
-- [ ] **PREFLIGHT-01**: Before stage execution advances state, the pipeline
+- [x] **PREFLIGHT-01**: Before stage execution advances state, the pipeline
   checks required runtime versions and Python dependencies and reports exact
   missing prerequisites with concrete fix guidance.
-- [ ] **PREFLIGHT-02**: Before a stage consumes data, artifacts, or state, the
+- [x] **PREFLIGHT-02**: Before a stage consumes data, artifacts, or state, the
   pipeline checks that required files and snapshots exist and blocks early with
   an explicit reason when they do not.
 
@@ -30,7 +30,7 @@ to discover how to start, pause, resume, or continue the loop.
 - [ ] **STATE-01**: User-visible claims such as “next stage ready” are backed
   by persisted stage snapshots and current handoff artifacts rather than surface
   prose alone.
-- [ ] **STATE-02**: Verification can distinguish “results exist” from
+- [x] **STATE-02**: Verification can distinguish “results exist” from
   “environment is reproducible” and records that difference as a first-class
   blocked or passed state.
 
@@ -64,10 +64,10 @@ to discover how to start, pause, resume, or continue the loop.
 |-------------|-------|--------|
 | ROUTE-01 | Phase 22 | Complete |
 | ROUTE-02 | Phase 22 | Complete |
-| PREFLIGHT-01 | Phase 23 | Pending |
-| PREFLIGHT-02 | Phase 23 | Pending |
+| PREFLIGHT-01 | Phase 23 | Complete |
+| PREFLIGHT-02 | Phase 23 | Complete |
 | STATE-01 | Phase 23 | Pending |
-| STATE-02 | Phase 23 | Pending |
+| STATE-02 | Phase 23 | Complete |
 | GUIDE-05 | Phase 24 | Pending |
 
 **Coverage:**

@@ -20,10 +20,10 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Skill Contracts
 
-- [ ] **SKILL-01**: Developer can start `rd-agent` from the skill package with
+- [x] **SKILL-01**: Developer can start `rd-agent` from the skill package with
   an explicit minimal-input contract that names the required run fields and the
   required stage payload fields.
-- [ ] **SKILL-02**: Developer can understand the default `rd-agent` gated
+- [x] **SKILL-02**: Developer can understand the default `rd-agent` gated
   behavior, including that `gated + max_stage_iterations=1` pauses after the
   first completed stage for operator review.
 - [x] **SKILL-03**: Developer can continue from a paused `rd-agent` run by
@@ -63,8 +63,8 @@ to discover how to start, pause, resume, or continue the loop.
 | GUIDE-01 | Phase 19 | Complete |
 | GUIDE-02 | Phase 19 | Complete |
 | GUIDE-03 | Phase 19 | Complete |
-| SKILL-01 | Phase 20 | Pending |
-| SKILL-02 | Phase 20 | Pending |
+| SKILL-01 | Phase 20 | Complete |
+| SKILL-02 | Phase 20 | Complete |
 | SKILL-03 | Phase 20 | Complete |
 | SURFACE-01 | Phase 21 | Pending |
 | SURFACE-02 | Phase 21 | Pending |

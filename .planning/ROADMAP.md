@@ -27,9 +27,9 @@ tool guidance alone, with no scope expansion into new orchestration features.
 
 - [x] **Phase 19: Tool Catalog Operator Guidance** - Add concrete examples,
   routing guidance, and follow-up semantics to the direct V3 CLI tool surface.
-- [ ] **Phase 20: Stage Skill Execution Contracts** - Make `rd-agent` and the
+- [x] **Phase 20: Stage Skill Execution Contracts** - Make `rd-agent` and the
   stage skills executable from explicit minimal-input and pause/continue
-  contracts.
+  contracts. (completed 2026-03-22)
 - [ ] **Phase 21: Executable Public Surface Narrative** - Lock the guidance
   into README and regression coverage so the standalone pipeline stays
   operator-usable.
@@ -73,10 +73,10 @@ semantics.
   3. A developer can continue a paused run with `rd-propose`, `rd-code`,
      `rd-execute`, or `rd-evaluate` by supplying the exact documented
      identifiers and payload fields for the next valid stage action.
-**Plans**: 1/2 complete
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] `20-01-PLAN.md` — Add explicit `rd-agent` start-contract and gated pause guidance. (pending)
+- [x] `20-01-PLAN.md` — Add explicit `rd-agent` start-contract and gated pause guidance. (completed 2026-03-22)
 - [x] `20-02-PLAN.md` — Add continuation contracts and regression coverage for `rd-propose`, `rd-code`, `rd-execute`, and `rd-evaluate`. (completed 2026-03-22)
 
 ### Phase 21: Executable Public Surface Narrative
@@ -101,7 +101,7 @@ flows.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 19. Tool Catalog Operator Guidance | 2/2 | Complete | 2026-03-22 |
-| 20. Stage Skill Execution Contracts | 1/2 | In Progress | 2026-03-22 (plan 20-02) |
+| 20. Stage Skill Execution Contracts | 2/2 | Complete   | 2026-03-22 |
 | 21. Executable Public Surface Narrative | 0/TBD | Not started | - |
 
 ## Planning Defaults

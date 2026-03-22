@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
 status: executing
-stopped_at: Completed Plan 20-02; Phase 20 remains in progress pending Plan 20-01
-last_updated: "2026-03-22T05:34:30.437Z"
+stopped_at: Completed Phase 20; next step is discuss or plan Phase 21
+last_updated: "2026-03-22T05:39:27.351Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Session State
@@ -29,20 +29,21 @@ just to discover how to start, pause, resume, or continue the loop.
 
 **Milestone:** v1.2 skill and tool guidance hardening  
 **Roadmap span:** Phases 19-21
-**Next phase:** 20 - Stage Skill Execution Contracts
-**Status:** Executing Phase 20; Plan 20-02 complete, Plan 20-01 pending
+**Next phase:** 21 - Executable Public Surface Narrative
+**Status:** Phase 20 complete; ready to discuss or plan Phase 21
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Completed Plan 20-02 by hardening stage continuation skill contracts and locking them with Phase 20 doc-surface regressions.
-**Progress:** [████████░░] 75%
+Completed Phase 20 by hardening both the `rd-agent` start contract and the stage-skill continuation contracts, with doc-surface regressions covering both paths.
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 31
 - Current milestone planned phases: 3
-- Current milestone planned plans: 3 completed, 1 remaining
-- Current milestone execution trend: Phase 20 contract hardening is partially complete; remaining work is Plan 20-01 plus phase-level validation wrap-up
+- Current milestone planned plans: 4 completed, 0 remaining
+- Latest completed plan: Phase 20 Plan 01 in 8min across 2 tasks and 3 tracked files
+- Current milestone execution trend: Phase 20 contract hardening is complete; the next work is Phase 21 README and public-surface narrative locking
 
 ## Accumulated Context
 
@@ -74,10 +75,12 @@ Completed Plan 20-02 by hardening stage continuation skill contracts and locking
   branch state first, surface exact missing values, and use `rd-tool-catalog`
   only as an agent-side escalation path.
 
+- [Phase 20]: Document the strict rd-agent minimum start contract separately from the recommended multi-branch path.
+- [Phase 20]: Explain gated + max_stage_iterations=1 in operator language first, then map it secondarily to framing and awaiting_operator.
+
 ### Pending Todos
 
-- Complete Plan 20-01 so Phase 20 can close with both start and continuation
-  skill contracts shipped.
+- Discuss or plan Phase 21 so the completed skill and tool guidance becomes the README-level public narrative.
 
 ### Blockers/Concerns
 
@@ -94,6 +97,6 @@ Completed Plan 20-02 by hardening stage continuation skill contracts and locking
 
 ## Session Continuity
 
-Last session: 2026-03-22
-Stopped at: Completed Plan 20-02; Phase 20 remains in progress pending Plan 20-01
+Last session: 2026-03-22T05:39:27.349Z
+Stopped at: Completed Phase 20; next step is discuss or plan Phase 21
 Resume file: .planning/STATE.md

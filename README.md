@@ -22,6 +22,20 @@ CLI tools second.
 uv sync --extra test
 ```
 
+If you want a single command that sets up the repo environment, installs skills,
+and runs verification, use:
+
+```bash
+bash scripts/setup_env.sh
+```
+
+The default path is `--claude --local --link --quick-verify`. For a
+non-interactive all-runtime install similar to GSD, use:
+
+```bash
+bash scripts/setup_env.sh --all --scope-all --full-verify
+```
+
 Run all CLI commands from this repo environment. The standalone contract is:
 
 - skill discovery comes from linking `skills/` into Claude/Codex skill roots
@@ -51,9 +65,51 @@ uv run python scripts/install_agent_skills.py --runtime claude --scope global --
 `link` is the default and preferred mode because it keeps the repo-local
 `skills/` tree as the single source of truth.
 
+## Start -> Inspect -> Continue
+
+Use this as the public operator playbook for the standalone V3 surface.
+Start from the high-level orchestration skill, inspect when the next surface
+needs to be confirmed, then continue through the stage skill that matches the
+paused run.
+
+### Start
+
+Use `rd-agent` first for the default standalone orchestration path.
+Start with the recommended multi-branch path when the task benefits from multiple candidate approaches.
+For simpler tasks, the strict minimum single-branch start contract from `skills/rd-agent/SKILL.md` is enough.
+
+Keep the README at the decision level: start from `skills/rd-agent/SKILL.md`
+for the public start contract, then use the exact field-level contract in that
+skill package when you need the concrete payload shape.
+
+### Inspect
+
+Inspect before continuing when the agent needs to confirm the current state, the correct next surface, or the exact continuation contract.
+The agent should inspect current state, identify the next valid step, and present it to the user.
+Use `skills/rd-tool-catalog/SKILL.md` and `uv run rdagent-v3-tool describe rd_run_start` only as the selective downshift path when the high-level skill boundary is insufficient.
+
+Inspect the relevant skill contract first when the next move is still
+high-level. Downshift to `rd-tool-catalog` only when the agent needs one
+concrete CLI tool or lower-level inspection detail in the background.
+
+### Continue
+
+If a paused run is still in framing, continue from
+`skills/rd-propose/SKILL.md` rather than restarting the whole loop. Later
+paused stages should route to `skills/rd-code/SKILL.md`,
+`skills/rd-execute/SKILL.md`, and `skills/rd-evaluate/SKILL.md` for the exact
+continue contract and field-level details.
+
+One representative pattern is: start with `rd-agent`, inspect the current
+state before handing off, then continue the paused run with the stage skill
+that matches the current step instead of making the user browse direct tools
+manually.
+
 ## Default Orchestration
 
-Use `rd-agent` as the default orchestration entrypoint.
+This section is the supporting reference behind the `Start` step above. Use
+`rd-agent` as the default orchestration entrypoint when you want the main
+standalone flow instead of a narrower stage or tool surface.
 
 - Skill package: `skills/rd-agent/SKILL.md`
 - Python entrypoint: `v3.entry.rd_agent.rd_agent`
@@ -66,8 +122,9 @@ the caller to choose direct primitives up front.
 
 ## Stage Skills
 
-When the caller already knows it is working inside one owned stage, use the
-stage-specific skills in this order:
+This section supports the `Continue` step above. When the caller already knows
+it is working inside one owned paused stage, use the stage-specific skills in
+this order:
 
 1. `rd-propose`
    - Skill package: `skills/rd-propose/SKILL.md`
@@ -88,10 +145,12 @@ stage-specific skills in this order:
 
 These stage skills are narrower than `rd-agent`. Use them when the branch
 already has a known stage boundary and the caller does not need the default
-end-to-end orchestration path.
+end-to-end orchestration path, then follow the linked `SKILL.md` file for the
+exact continuation fields.
 
 ## CLI Tool Catalog
 
+This section is the supporting reference behind the `Inspect` downshift rule.
 Use `rd-tool-catalog` as the selective downshift layer when a high-level skill
 boundary is insufficient and you need one direct CLI tool.
 
@@ -129,7 +188,8 @@ Primitive tools are further narrowed by stable subcategories such as
 
 ## Routing Model
 
-Use the public surface in this order:
+Use this as the compact routing summary behind the `Start -> Inspect ->
+Continue` mainline:
 
 1. Stay in `rd-agent` unless the task already belongs to one owned stage.
 2. Use `rd-propose`, `rd-code`, `rd-execute`, or `rd-evaluate` when the caller

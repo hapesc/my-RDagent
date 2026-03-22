@@ -33,14 +33,30 @@ playbook.
 - Public-surface regressions now span README narrative, tool metadata, and
   skill contracts, keeping the operator guidance aligned across all layers.
 
+## Current Milestone: v1.3 Pipeline Experience Hardening
+
+**Goal:** Make the rdagent pipeline feel like an operator assistant instead of
+an exposed state machine by improving intent routing, preflight checks, and
+next-step guidance.
+
+**Target features:**
+- Add intent-first entry and state-aware routing so the system chooses the
+  correct skill or resume path before the user has to think in stage names.
+- Add early preflight checks for runtime, dependency, data, and state
+  contracts so environment blockers are surfaced before stage execution.
+- Add a truthful operator UX layer for current state, blocker reason, and next
+  action, grounded in real persisted state rather than surface prose alone.
+- Use `gsd-build/get-shit-done` as a reference for how a strong pipeline guides
+  users through one visible path while hiding orchestration complexity.
+
 ## Next Milestone Goals
 
-- Extend operator guidance beyond the core start/continue path into richer
-  branch-memory and exploration flows.
-- Explore machine-readable operator playbooks that can be generated from the
-  public surface itself.
-- Define the next repo-native milestone cleanly through `$gsd-new-milestone`
-  instead of carrying over stale active requirements.
+- Make the default rdagent entrypoint choose the right next action from user
+  intent and current persisted state.
+- Reduce user-visible orchestration jargon by translating state-machine truth
+  into concise operator guidance and explicit recovery steps.
+- Harden the pipeline against late environment surprises and surface/state
+  mismatches before stage execution begins.
 
 ## Requirements
 
@@ -57,11 +73,12 @@ playbook.
 
 ### Active
 
-- [ ] Developer can inspect branch-memory and exploration tools with richer
-  multi-branch example sequences and guidance beyond the core start/continue
-  path.
-- [ ] Developer can generate machine-readable operator playbooks from the
-  public surface itself for common end-to-end standalone V3 workflows.
+- [ ] User can start or continue work from high-level intent without having to
+  manually choose `rd-agent`, a stage skill, or a direct tool first.
+- [ ] Pipeline surfaces runtime, dependency, data, and state blockers before a
+  stage claims to be executable.
+- [ ] User-facing progress and next-step guidance stays aligned with the real
+  persisted run/branch/stage state.
 
 ### Out of Scope
 
@@ -84,6 +101,12 @@ playbook.
   without reintroducing hidden orchestration assumptions.
 - The shipped `v1.2` milestone closed the original schema-only guidance gap by
   aligning direct-tool metadata, stage-skill contracts, and README narrative.
+- Real Kaggle-style test conversations exposed the next layer of product debt:
+  users still have to understand too much about orchestration state, environment
+  readiness, and skill routing before the pipeline feels helpful.
+- The `gsd-build/get-shit-done` pipeline is a useful reference because it keeps
+  one visible operator path, a strong “what’s next” model, and explicit
+  progress/phase surfaces above its internal orchestration machinery.
 
 ## Constraints
 
@@ -111,6 +134,7 @@ playbook.
 | Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
 | Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | ✓ Good — v1.2 |
 | Keep README at the decision layer and link to contracts for field-level truth | Prevents the public narrative from drifting into a second schema catalog | ✓ Good — v1.2 |
+| Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | — Pending — v1.3 |
 
 ---
-*Last updated: 2026-03-22 after shipping v1.2 milestone*
+*Last updated: 2026-03-22 after starting v1.3 milestone*

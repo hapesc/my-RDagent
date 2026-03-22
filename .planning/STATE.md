@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
-status: ready_for_next_milestone
-stopped_at: Archived v1.2 milestone
-last_updated: "2026-03-22T15:13:18+08:00"
+status: defining_requirements
+stopped_at: Started milestone v1.3 Pipeline Experience Hardening
+last_updated: "2026-03-22T15:30:00+08:00"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
@@ -23,18 +23,20 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Milestone v1.2 archived — ready to define the next milestone
+**Current focus:** Milestone v1.3 — Pipeline Experience Hardening
 
 ## Position
 
-**Milestone:** None active  
-**Roadmap span:** awaiting next milestone definition
-**Next phase:** None — run `$gsd-new-milestone`
-**Status:** Ready for next milestone
+**Milestone:** v1.3 pipeline experience hardening  
+**Roadmap span:** defining fresh requirements and roadmap
+**Next phase:** Not started — requirements and roadmap definition
+**Status:** Defining requirements
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Archived `v1.2` after shipping tool guidance, stage-skill contracts, and the executable README narrative across Phases 19-21.
+Started `v1.3` to improve rdagent’s pipeline UX using `gsd-build/get-shit-done`
+as a reference for intent routing, progress guidance, and user-facing flow
+design.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -43,7 +45,7 @@ Archived `v1.2` after shipping tool guidance, stage-skill contracts, and the exe
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
 - Latest completed plan: Phase 21 Plan 01 in 2min across 2 tasks and 3 tracked files
-- Current milestone execution trend: v1.2 archived cleanly; next action is to define the next milestone
+- Current milestone execution trend: v1.3 is in milestone-definition mode; next action is scoped requirements and roadmap creation
 
 ## Accumulated Context
 
@@ -82,7 +84,9 @@ Archived `v1.2` after shipping tool guidance, stage-skill contracts, and the exe
 
 ### Pending Todos
 
-- Run `$gsd-new-milestone` to define fresh requirements and roadmap scope for the next cycle.
+- Define scoped milestone requirements for pipeline UX, routing, preflight, and
+  next-step guidance.
+- Create a new roadmap continuing phase numbering after Phase 21.
 
 ### Blockers/Concerns
 
@@ -99,6 +103,6 @@ Archived `v1.2` after shipping tool guidance, stage-skill contracts, and the exe
 
 ## Session Continuity
 
-Last session: 2026-03-22T15:13:18+08:00
-Stopped at: Archived v1.2 milestone
+Last session: 2026-03-22T15:30:00+08:00
+Stopped at: Started milestone v1.3 Pipeline Experience Hardening
 Resume file: .planning/STATE.md

@@ -24,14 +24,13 @@ def test_readme_no_longer_contains_internal_resume_section() -> None:
     assert ".planning/STATE.md" not in readme_text
 
 
-def test_state_is_the_phase_18_continuity_entrypoint() -> None:
+def test_state_remains_the_canonical_continuity_entrypoint() -> None:
     state_text = STATE.read_text()
 
-    assert "**Current phase:** 18" in state_text
     assert "Canonical continuity entrypoint" in state_text
-    assert "18-CONTEXT.md" in state_text
-    assert "18-RESEARCH.md" in state_text
-    assert "18-VALIDATION.md" in state_text
+    assert "**Current focus:**" in state_text
+    assert "**Next phase:**" in state_text
+    assert "Resume file: .planning/STATE.md" in state_text
 
 
 def test_extraction_handoff_is_historical_only() -> None:

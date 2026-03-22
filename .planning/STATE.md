@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
-status: executing
-stopped_at: Completed Phase 20; next step is discuss or plan Phase 21
-last_updated: "2026-03-22T05:39:27.351Z"
+status: ready_for_closeout
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-22T07:00:45.451Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 5
   percent: 100
 ---
 
@@ -23,27 +23,27 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 20 — stage-skill-execution-contracts
+**Current focus:** Phase 21 complete — executable-public-surface-narrative
 
 ## Position
 
 **Milestone:** v1.2 skill and tool guidance hardening  
 **Roadmap span:** Phases 19-21
-**Next phase:** 21 - Executable Public Surface Narrative
-**Status:** Phase 20 complete; ready to discuss or plan Phase 21
+**Next phase:** None - milestone v1.2 is complete
+**Status:** Phase 21 complete; milestone ready for closeout
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Completed Phase 20 by hardening both the `rd-agent` start contract and the stage-skill continuation contracts, with doc-surface regressions covering both paths.
+Completed Phase 21 by rewriting `README.md` into an executable `Start -> Inspect -> Continue` public playbook and adding focused regression coverage for the README narrative.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
-- Completed plans in shipped milestones: 31
+- Completed plans in shipped milestones: 32
 - Current milestone planned phases: 3
-- Current milestone planned plans: 4 completed, 0 remaining
-- Latest completed plan: Phase 20 Plan 01 in 8min across 2 tasks and 3 tracked files
-- Current milestone execution trend: Phase 20 contract hardening is complete; the next work is Phase 21 README and public-surface narrative locking
+- Current milestone planned plans: 5 completed, 0 remaining
+- Latest completed plan: Phase 21 Plan 01 in 2min across 2 tasks and 3 tracked files
+- Current milestone execution trend: Phase 21 completed the README-level public narrative lock; the milestone is now ready for closure or the next milestone discussion
 
 ## Accumulated Context
 
@@ -77,10 +77,12 @@ Completed Phase 20 by hardening both the `rd-agent` start contract and the stage
 
 - [Phase 20]: Document the strict rd-agent minimum start contract separately from the recommended multi-branch path.
 - [Phase 20]: Explain gated + max_stage_iterations=1 in operator language first, then map it secondarily to framing and awaiting_operator.
+- [Phase 21-executable-public-surface-narrative]: Kept README at the decision layer and linked to skill packages for exact field contracts instead of duplicating schema inventories.
+- [Phase 21-executable-public-surface-narrative]: Positioned rd-tool-catalog only under the Inspect downshift path so rd-agent remains the public first-class start surface.
 
 ### Pending Todos
 
-- Discuss or plan Phase 21 so the completed skill and tool guidance becomes the README-level public narrative.
+- Close out milestone v1.2 or start the next milestone discussion.
 
 ### Blockers/Concerns
 
@@ -97,6 +99,6 @@ Completed Phase 20 by hardening both the `rd-agent` start contract and the stage
 
 ## Session Continuity
 
-Last session: 2026-03-22T05:39:27.349Z
-Stopped at: Completed Phase 20; next step is discuss or plan Phase 21
+Last session: 2026-03-22T07:00:45.451Z
+Stopped at: Completed 21-01-PLAN.md
 Resume file: .planning/STATE.md

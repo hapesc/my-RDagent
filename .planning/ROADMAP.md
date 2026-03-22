@@ -30,7 +30,7 @@ tool guidance alone, with no scope expansion into new orchestration features.
 - [x] **Phase 20: Stage Skill Execution Contracts** - Make `rd-agent` and the
   stage skills executable from explicit minimal-input and pause/continue
   contracts. (completed 2026-03-22)
-- [ ] **Phase 21: Executable Public Surface Narrative** - Lock the guidance
+- [x] **Phase 21: Executable Public Surface Narrative** - Lock the guidance (completed 2026-03-22)
   into README and regression coverage so the standalone pipeline stays
   operator-usable.
 
@@ -105,7 +105,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 19. Tool Catalog Operator Guidance | 2/2 | Complete | 2026-03-22 |
 | 20. Stage Skill Execution Contracts | 2/2 | Complete    | 2026-03-22 |
-| 21. Executable Public Surface Narrative | 0/1 | Planned | - |
+| 21. Executable Public Surface Narrative | 1/1 | Complete   | 2026-03-22 |
 
 ## Planning Defaults
 

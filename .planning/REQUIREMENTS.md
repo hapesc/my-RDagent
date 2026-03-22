@@ -32,10 +32,10 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Public Surface Narrative
 
-- [ ] **SURFACE-01**: Developer can read README and understand the standalone
+- [x] **SURFACE-01**: Developer can read README and understand the standalone
   V3 surface as a multi-step skill-and-tool pipeline with concrete start,
   inspect, and continue paths.
-- [ ] **SURFACE-02**: Regression tests lock the new guidance fields and examples
+- [x] **SURFACE-02**: Regression tests lock the new guidance fields and examples
   so the tool catalog and skill packages cannot drift back to schema-only
   descriptions.
 
@@ -66,8 +66,8 @@ to discover how to start, pause, resume, or continue the loop.
 | SKILL-01 | Phase 20 | Complete |
 | SKILL-02 | Phase 20 | Complete |
 | SKILL-03 | Phase 20 | Complete |
-| SURFACE-01 | Phase 21 | Pending |
-| SURFACE-02 | Phase 21 | Pending |
+| SURFACE-01 | Phase 21 | Complete |
+| SURFACE-02 | Phase 21 | Complete |
 
 **Coverage:**
 - v1 requirements: 8 total

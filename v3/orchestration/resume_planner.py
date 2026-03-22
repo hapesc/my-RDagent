@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+from v3.orchestration.operator_guidance import render_operator_guidance_text
 
 
 class ResumeDecision(BaseModel):
@@ -40,9 +41,13 @@ def plan_resume_decision(
             should_publish=False,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
             replay_artifact_ids=list(assessment.replay_artifact_ids),
-            message=(
-                f"V3 recovery is reusing {stage.stage_key.value} iteration {stage.stage_iteration}; "
-                f"published evidence is reusable, so {assessment.recommended_next_step}."
+            message=_format_resume_message(
+                current_state=(
+                    f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                    f"iteration {stage.stage_iteration} already has reusable evidence."
+                ),
+                reason="Reason: published evidence is reusable, so a new publish is unnecessary.",
+                next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
     if assessment.disposition is RecoveryDisposition.REPLAY:
@@ -54,9 +59,13 @@ def plan_resume_decision(
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
             replay_artifact_ids=list(assessment.replay_artifact_ids),
-            message=(
-                f"V3 recovery is replaying {stage.stage_key.value} iteration {next_iteration}; "
-                f"published evidence is stale, so {assessment.recommended_next_step}."
+            message=_format_resume_message(
+                current_state=(
+                    f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                    f"needs replay at iteration {next_iteration}."
+                ),
+                reason="Reason: published evidence is stale and must be replayed before the next handoff is trustworthy.",
+                next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
     if assessment.disposition is RecoveryDisposition.REBUILD:
@@ -68,9 +77,13 @@ def plan_resume_decision(
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
             replay_artifact_ids=list(assessment.replay_artifact_ids),
-            message=(
-                f"V3 recovery is rebuilding {stage.stage_key.value} iteration {next_iteration}; "
-                f"published evidence is incomplete, so {assessment.recommended_next_step}."
+            message=_format_resume_message(
+                current_state=(
+                    f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                    f"must rebuild at iteration {next_iteration}."
+                ),
+                reason="Reason: published evidence is incomplete, so the stage cannot safely hand off yet.",
+                next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
     if stage.status in {StageStatus.NOT_STARTED, StageStatus.READY, StageStatus.IN_PROGRESS}:
@@ -81,10 +94,15 @@ def plan_resume_decision(
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
             replay_artifact_ids=list(assessment.replay_artifact_ids),
-            message=(
-                f"V3 recovery is proceeding with {stage.stage_key.value} iteration {stage.stage_iteration}; "
-                f"the stage is prepared and still requires canonical preflight truth before execution, "
-                f"so {assessment.recommended_next_step}."
+            message=_format_resume_message(
+                current_state=(
+                    f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                    f"iteration {stage.stage_iteration} is prepared but not yet executed."
+                ),
+                reason=(
+                    "Reason: the stage still requires canonical preflight truth before execution can be treated as safe."
+                ),
+                next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
     return ResumeDecision(
@@ -113,9 +131,13 @@ def _decision_without_assessment(stage: StageSnapshot) -> ResumeDecision:
             disposition=RecoveryDisposition.REVIEW,
             resume_stage_iteration=stage.stage_iteration,
             should_publish=False,
-            message=(
-                f"V3 recovery needs review before re-entering {stage.stage_key.value}; "
-                "completed stage state exists without a persisted recovery assessment."
+            message=_format_resume_message(
+                current_state=(
+                    f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                    f"iteration {stage.stage_iteration} is completed."
+                ),
+                reason="Reason: completed stage state exists without a persisted recovery assessment.",
+                next_action=f"Next action: review {stage.stage_key.value} before re-entering it.",
             ),
         )
     return ResumeDecision(
@@ -123,9 +145,13 @@ def _decision_without_assessment(stage: StageSnapshot) -> ResumeDecision:
         disposition=RecoveryDisposition.REBUILD,
         resume_stage_iteration=stage.stage_iteration,
         should_publish=True,
-        message=(
-            f"V3 recovery is rebuilding {stage.stage_key.value} iteration {stage.stage_iteration}; "
-            "no reusable published evidence exists yet."
+        message=_format_resume_message(
+            current_state=(
+                f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+                f"iteration {stage.stage_iteration} has no reusable evidence yet."
+            ),
+            reason="Reason: no reusable published evidence exists yet.",
+            next_action=f"Next action: rebuild {stage.stage_key.value} iteration {stage.stage_iteration}.",
         ),
     )
 
@@ -138,10 +164,23 @@ def _next_iteration(stage: StageSnapshot) -> int:
 
 def _review_message(stage: StageSnapshot, recommended_next_step: str) -> str:
     reason = stage.blocking_reasons[0] if stage.blocking_reasons else "manual review is required."
-    return (
-        f"V3 recovery is holding {stage.stage_key.value} at iteration {stage.stage_iteration}; "
-        f"the stage is blocked and needs manual review before it can proceed. {reason} "
-        f"Next step: {recommended_next_step}."
+    return _format_resume_message(
+        current_state=(
+            f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
+            f"iteration {stage.stage_iteration} is blocked."
+        ),
+        reason=f"Reason: {reason}",
+        next_action=f"Next action: {recommended_next_step}.",
+    )
+
+
+def _format_resume_message(*, current_state: str, reason: str, next_action: str) -> str:
+    return render_operator_guidance_text(
+        {
+            "current_state": current_state,
+            "routing_reason": reason,
+            "exact_next_action": next_action,
+        }
     )
 
 

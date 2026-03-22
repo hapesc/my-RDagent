@@ -59,6 +59,38 @@ def _minimum_continuation_skeleton(*, run_id: str, branch_id: str) -> str:
     )
 
 
+def build_stage_operator_guidance(
+    *,
+    run_id: str,
+    branch_id: str,
+    stage_key: str,
+    recommended_next_skill: str,
+    state_descriptor: str,
+    routing_reason: str,
+    exact_next_action: str,
+    current_action_status: str | None = None,
+    current_blocker_category: str | None = None,
+    current_blocker_reason: str | None = None,
+    repair_action: str | None = None,
+    next_step_detail: str | None = None,
+    detail_hint: str | None = None,
+) -> OperatorGuidance:
+    return OperatorGuidance(
+        recommended_next_skill=recommended_next_skill,
+        current_state=(
+            f"Current state: {_stage_label(stage_key)} for run {run_id} on branch {branch_id} {state_descriptor}."
+        ),
+        routing_reason=routing_reason,
+        exact_next_action=exact_next_action,
+        current_action_status=current_action_status,
+        current_blocker_category=current_blocker_category,
+        current_blocker_reason=current_blocker_reason,
+        repair_action=repair_action,
+        next_step_detail=next_step_detail,
+        detail_hint=detail_hint,
+    )
+
+
 def render_operator_guidance_text(guidance: OperatorGuidance | dict[str, Any]) -> str:
     if isinstance(guidance, OperatorGuidance):
         data = guidance.model_dump(mode="json")
@@ -114,11 +146,12 @@ def build_paused_run_guidance(
     repair_action: str,
     exact_next_action: str,
 ) -> OperatorGuidance:
-    guidance = OperatorGuidance(
+    guidance = build_stage_operator_guidance(
+        run_id=run_id,
+        branch_id=branch_id,
+        stage_key=stage_key,
         recommended_next_skill=recommended_next_skill,
-        current_state=(
-            f"Current state: paused { _stage_label(stage_key) } for run {run_id} on branch {branch_id}."
-        ),
+        state_descriptor="is paused and awaiting operator input",
         routing_reason=(
             "Reason: paused run continuation takes priority over a new run, and "
             f"{selection_reason}"
@@ -140,6 +173,7 @@ def build_paused_run_guidance(
 
 __all__ = [
     "STAGE_TO_NEXT_SKILL",
+    "build_stage_operator_guidance",
     "build_paused_run_guidance",
     "build_start_new_run_guidance",
     "project_operator_guidance",

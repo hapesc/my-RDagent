@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
 current_phase: 24
-current_phase_name: Operator Guidance and Next Step Ux
-current_plan: Not started
-status: planning
+current_phase_name: operator-guidance-and-next-step-ux
+current_plan: 2
+status: executing
 stopped_at: Phase 23 passed verification; next step is Phase 24 planning
-last_updated: "2026-03-22T12:56:42.351Z"
+last_updated: "2026-03-22T14:47:53.925Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 67
 ---
 
@@ -26,19 +26,19 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 24 — Operator Guidance and Next Step Ux
+**Current focus:** Phase 24 — operator-guidance-and-next-step-ux
 
 ## Position
 
 **Current Phase:** 24
-**Current Phase Name:** Operator Guidance and Next Step Ux
+**Current Phase Name:** operator-guidance-and-next-step-ux
 **Total Phases:** 3
-**Current Plan:** Not started
+**Current Plan:** 2
 **Total Plans in Phase:** 2
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-24
 **Next phase:** 24 - Operator Guidance and Next Step Ux
-**Status:** Ready to plan
+**Status:** Ready to execute
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
@@ -99,6 +99,7 @@ Phase 23 passed verification and the next step is Phase 24 planning.
 
 - Plan Phase 24 against the remaining `GUIDE-05` requirement and the freshly
   completed Phase 23 preflight/state-truth contract.
+
 - Decide how the top-level operator UX should surface blocked-vs-recommended
   next steps when routing only has partial preflight context.
 
@@ -109,6 +110,7 @@ Phase 23 passed verification and the next step is Phase 24 planning.
 
 - Stage-skill contract work must align with the new tool-catalog follow-up
   semantics instead of inventing a conflicting routing model.
+
 - Phase 24 should build on the new preflight truth layer instead of weakening
   it with optimistic wording or fallback guidance that hides blockers.
 

@@ -91,7 +91,7 @@ truthful, state-aware answer.
 |-------|----------------|--------|-----------|
 | 22. Intent Routing and Continuation Control | 1/1 | Complete    | 2026-03-22 |
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
-| 24. Operator Guidance and Next-Step UX | 0/TBD | Not started | - |
+| 24. Operator Guidance and Next-Step UX | 1/2 | In Progress|  |
 
 ## Planning Defaults
 

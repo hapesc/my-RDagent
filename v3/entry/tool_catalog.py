@@ -108,6 +108,7 @@ class _ToolSpec:
     examples: tuple[dict[str, Any], ...]
     when_to_use: str
     when_not_to_use: str
+    follow_up: dict[str, str]
     handler: Callable[..., dict[str, Any]]
     request_model: type[BaseModel]
     response_model: type[BaseModel]
@@ -169,6 +170,14 @@ def _when_not_to_use(category: ToolCategory) -> str:
     }[category]
 
 
+def _follow_up(when_successful: str, next_entrypoint: RecommendedEntrypoint, next_action: str) -> dict[str, str]:
+    return {
+        "when_successful": when_successful,
+        "next_entrypoint": next_entrypoint,
+        "next_action": next_action,
+    }
+
+
 _TOOL_SPECS: tuple[_ToolSpec, ...] = (
     _ToolSpec(
         name="rd_run_start",
@@ -192,6 +201,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("orchestration"),
         when_not_to_use=_when_not_to_use("orchestration"),
+        follow_up=_follow_up(
+            "A new run, primary branch, and initial stage have been published.",
+            "rd-agent",
+            "Continue the run with rd-agent using the returned run_id, or inspect the returned branch_id and stage_key before handing off to a stage skill.",
+        ),
         handler=rd_run_start,
         request_model=RunStartRequest,
         response_model=RunStartToolResult,
@@ -207,6 +221,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         examples=(_example({"run_id": "run-001"}, category="inspection"),),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The canonical run-board snapshot has been loaded.",
+            "rd-agent",
+            "Inspect the returned status, primary_branch_id, and stop_reason, then continue with rd-agent or inspect a specific branch if you need a narrower direct-tool read.",
+        ),
         handler=rd_run_get,
         request_model=RunGetRequest,
         response_model=RunGetResult,
@@ -232,6 +251,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "A new branch and fork decision have been published.",
+            "rd-tool-catalog",
+            "Inspect the new branch with rd_branch_get or rd_stage_get, then continue work on that branch through the next valid skill or primitive.",
+        ),
         handler=rd_branch_fork,
         request_model=BranchForkRequest,
         response_model=BranchForkResult,
@@ -247,6 +271,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         examples=(_example({"run_id": "run-001"}, category="inspection"),),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The active and historical branch board has been loaded.",
+            "rd-tool-catalog",
+            "Use the returned board to decide whether to shortlist, prune, merge, fallback, or select the next branch.",
+        ),
         handler=rd_branch_board_get,
         request_model=BranchBoardGetRequest,
         response_model=BranchBoardGetResult,
@@ -267,6 +296,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "Low-quality branches have been pruned and the board state has advanced.",
+            "rd-tool-catalog",
+            "Inspect the updated board with rd_branch_board_get before the next shortlist or convergence action.",
+        ),
         handler=rd_branch_prune,
         request_model=BranchPruneRequest,
         response_model=BranchPruneResult,
@@ -293,6 +327,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "The share decision for the source and target branches has been evaluated.",
+            "rd-tool-catalog",
+            "If the returned decision allows sharing, apply it with rd_branch_share_apply; otherwise continue without promoting that memory.",
+        ),
         handler=rd_branch_share_assess,
         request_model=BranchShareAssessRequest,
         response_model=BranchShareAssessResult,
@@ -320,6 +359,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "Eligible branch knowledge has been applied and the board context has been refreshed.",
+            "rd-tool-catalog",
+            "Inspect the resulting memory or branch board, then continue the affected branch with the next valid stage action.",
+        ),
         handler=rd_branch_share_apply,
         request_model=BranchShareApplyRequest,
         response_model=BranchShareApplyResult,
@@ -340,6 +384,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "A quality-ordered shortlist has been built for convergence.",
+            "rd-agent",
+            "Return to rd-agent as the default continuation path, or explicitly downshift to rd_converge_round if you intentionally need a direct convergence call after inspecting the shortlist.",
+        ),
         handler=rd_branch_shortlist,
         request_model=BranchShortlistRequest,
         response_model=BranchShortlistResult,
@@ -360,6 +409,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "A convergence merge attempt has completed.",
+            "rd-agent",
+            "Inspect the merge outcome and shortlist; if the merge did not hold, use rd_branch_fallback or rd_branch_select_next before continuing.",
+        ),
         handler=rd_branch_merge,
         request_model=BranchMergeRequest,
         response_model=BranchMergeResult,
@@ -380,6 +434,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "The top-ranked fallback branch has been selected.",
+            "rd-tool-catalog",
+            "Inspect the selected branch with rd_branch_get or rd_stage_get, then continue work on that branch.",
+        ),
         handler=rd_branch_fallback,
         request_model=BranchFallbackRequest,
         response_model=BranchFallbackResult,
@@ -395,6 +454,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         examples=(_example({"branch_id": "branch-001"}, category="inspection"),),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The canonical branch snapshot has been loaded.",
+            "rd-tool-catalog",
+            "Inspect the branch's current stage or artifacts to decide the next direct-tool read or the next high-level skill handoff.",
+        ),
         handler=rd_branch_get,
         request_model=BranchGetRequest,
         response_model=BranchGetResult,
@@ -415,6 +479,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The run's branch list has been loaded.",
+            "rd-tool-catalog",
+            "Choose a branch to inspect with rd_branch_get or let rd_branch_select_next recommend the next branch to advance.",
+        ),
         handler=rd_branch_list,
         request_model=BranchListRequest,
         response_model=BranchListResult,
@@ -435,6 +504,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The branch-stage snapshot and its published artifacts have been loaded.",
+            "rd-tool-catalog",
+            "Inspect artifacts with rd_artifact_list or hand the branch back to the next valid stage skill for continued work.",
+        ),
         handler=rd_stage_get,
         request_model=StageGetRequest,
         response_model=StageGetResult,
@@ -460,6 +534,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The requested artifact list has been loaded.",
+            "rd-tool-catalog",
+            "Use the returned artifact ids and branch/stage context to inspect the underlying evidence or continue the branch from that stage.",
+        ),
         handler=rd_artifact_list,
         request_model=ArtifactListRequest,
         response_model=ArtifactListResult,
@@ -480,6 +559,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "Recovery readiness for the requested branch stage has been evaluated.",
+            "rd-tool-catalog",
+            "If recovery is ready, inspect the relevant artifacts or continue the branch's next valid stage; if it is blocked, fix the missing evidence before retrying.",
+        ),
         handler=rd_recovery_assess,
         request_model=RecoveryAssessRequest,
         response_model=RecoveryAssessResult,
@@ -500,6 +584,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "A recommendation for the next branch to advance has been produced.",
+            "rd-tool-catalog",
+            "Inspect the recommended branch with rd_branch_get or rd_stage_get, then continue work on that branch.",
+        ),
         handler=rd_branch_select_next,
         request_model=BranchSelectNextRequest,
         response_model=BranchSelectNextResult,
@@ -532,6 +621,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "A branch-owned memory record has been created.",
+            "rd-tool-catalog",
+            "Inspect the new memory with rd_memory_get or promote it with rd_memory_promote if it should become shared.",
+        ),
         handler=rd_memory_create,
         request_model=MemoryCreateRequest,
         response_model=MemoryGetResult,
@@ -552,6 +646,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The requested memory record has been loaded.",
+            "rd-tool-catalog",
+            "Use the memory in branch work, or promote it with rd_memory_promote if it is ready for the shared namespace.",
+        ),
         handler=rd_memory_get,
         request_model=MemoryGetRequest,
         response_model=MemoryGetResult,
@@ -578,6 +677,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "Matching memory records have been listed.",
+            "rd-tool-catalog",
+            "Inspect a specific memory with rd_memory_get or promote a reusable one with rd_memory_promote.",
+        ),
         handler=rd_memory_list,
         request_model=MemoryListRequest,
         response_model=MemoryListResult,
@@ -604,6 +708,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("primitives"),
         when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "The selected memory has been promoted into the shared namespace.",
+            "rd-tool-catalog",
+            "Inspect the promoted memory to confirm the shared overlay, then use it from later branches as needed.",
+        ),
         handler=rd_memory_promote,
         request_model=MemoryPromoteRequest,
         response_model=MemoryGetResult,
@@ -624,6 +733,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("inspection"),
         when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "The canonical branch-local and shared storage roots have been loaded.",
+            "rd-tool-catalog",
+            "Open the returned paths or continue branch work using the branch_id that those paths belong to.",
+        ),
         handler=rd_branch_paths_get,
         request_model=BranchPathsGetRequest,
         response_model=BranchPathsGetResult,
@@ -650,6 +764,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("orchestration"),
         when_not_to_use=_when_not_to_use("orchestration"),
+        follow_up=_follow_up(
+            "The exploration frontier has advanced and the branch board has been updated.",
+            "rd-agent",
+            "Inspect the updated board with rd_branch_board_get if you need to see the frontier, or continue orchestration with rd-agent.",
+        ),
         handler=rd_explore_round,
         request_model=ExploreRoundRequest,
         response_model=ExploreRoundResult,
@@ -670,6 +789,11 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         ),
         when_to_use=_when_to_use("orchestration"),
         when_not_to_use=_when_not_to_use("orchestration"),
+        follow_up=_follow_up(
+            "The current shortlist has been evaluated for convergence.",
+            "rd-agent",
+            "Inspect the returned merge and shortlist state, then continue with rd-agent or use fallback/selection tools if convergence did not finish the run.",
+        ),
         handler=rd_converge_round,
         request_model=ConvergeRoundRequest,
         response_model=ConvergeRoundResult,
@@ -690,6 +814,7 @@ def _catalog_entry(spec: _ToolSpec) -> dict[str, Any]:
         "examples": list(spec.examples),
         "when_to_use": spec.when_to_use,
         "when_not_to_use": spec.when_not_to_use,
+        "follow_up": spec.follow_up,
         "command": f"rdagent-v3-tool describe {spec.name}",
         "inputSchema": spec.request_model.model_json_schema(),
         "outputSchema": spec.response_model.model_json_schema(),

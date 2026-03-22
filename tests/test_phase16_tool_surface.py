@@ -92,6 +92,11 @@ def test_phase16_tool_surface_exposes_stable_categories_and_routing() -> None:
     assert tools["rd_memory_promote"]["category"] == "primitives"
     assert tools["rd_memory_promote"]["subcategory"] == "memory"
     assert tools["rd_memory_promote"]["recommended_entrypoint"] == "rd-tool-catalog"
+    assert tools["rd_run_start"]["follow_up"]["next_entrypoint"] == "rd-agent"
+    assert tools["rd_branch_select_next"]["follow_up"]["next_entrypoint"] == "rd-tool-catalog"
+    assert "rd_branch_get" in tools["rd_branch_select_next"]["follow_up"]["next_action"]
+    assert "missing evidence" in tools["rd_recovery_assess"]["follow_up"]["next_action"]
+    assert tools["rd_explore_round"]["follow_up"]["next_entrypoint"] == "rd-agent"
 
 
 def test_phase16_tool_schemas_cover_full_rd_tool_surface() -> None:

@@ -1,4 +1,10 @@
 from v3.entry import rd_agent as rd_agent_module
+from v3.contracts.preflight import (
+    PreflightBlockerCategory,
+    PreflightBlockersByCategory,
+    PreflightReadiness,
+    PreflightResult,
+)
 
 
 def _route_user_intent(*args, **kwargs):
@@ -21,6 +27,32 @@ def _paused_state(*, stage_key: str, branch_id: str = "branch-001") -> dict[str,
     }
 
 
+def _preflight_result(*, readiness: PreflightReadiness) -> PreflightResult:
+    if readiness is PreflightReadiness.EXECUTABLE:
+        return PreflightResult(
+            run_id="run-001",
+            branch_id="branch-001",
+            stage_key="build",
+            recommended_next_skill="rd-code",
+            readiness=readiness,
+            primary_blocker_category=None,
+            primary_blocker_reason=None,
+            repair_action="None - canonical preflight truth passed.",
+            blockers_by_category=PreflightBlockersByCategory(),
+        )
+    return PreflightResult(
+        run_id="run-001",
+        branch_id="branch-001",
+        stage_key="build",
+        recommended_next_skill="rd-code",
+        readiness=readiness,
+        primary_blocker_category=PreflightBlockerCategory.DEPENDENCY,
+        primary_blocker_reason="Required dependency pytest is missing.",
+        repair_action="Run `uv sync --extra test` before continuing with rd-code.",
+        blockers_by_category=PreflightBlockersByCategory(),
+    )
+
+
 def test_plain_language_intent_does_not_require_skill_name_first() -> None:
     result = _route_user_intent(
         "help me finish this task and tell me what to do next",
@@ -38,10 +70,15 @@ def test_paused_run_is_preferred_over_new_run() -> None:
     result = _route_user_intent(
         "what should i do next?",
         persisted_state=_paused_state(stage_key="build"),
+        preflight_result_provider=lambda _context: _preflight_result(readiness=PreflightReadiness.EXECUTABLE),
     )
 
     assert result["route_kind"] == "continue_paused_run"
     assert result["recommended_next_skill"] == "rd-code"
+    assert result["current_action_status"] == "executable"
+    assert result["current_blocker_category"] is None
+    assert result["current_blocker_reason"] is None
+    assert result["repair_action"] == "None - canonical preflight truth passed."
     assert result["current_run_id"] == "run-001"
     assert result["current_branch_id"] == "branch-001"
     assert result["current_stage"] == "build"
@@ -54,9 +91,24 @@ def test_routing_response_includes_recommended_next_skill() -> None:
     result = _route_user_intent(
         "continue the current verify work",
         persisted_state=_paused_state(stage_key="verify"),
+        preflight_result_provider=lambda _context: PreflightResult(
+            run_id="run-001",
+            branch_id="branch-001",
+            stage_key="verify",
+            recommended_next_skill="rd-execute",
+            readiness=PreflightReadiness.EXECUTABLE,
+            primary_blocker_category=None,
+            primary_blocker_reason=None,
+            repair_action="None - canonical preflight truth passed.",
+            blockers_by_category=PreflightBlockersByCategory(),
+        ),
     )
 
     assert result["recommended_next_skill"] == "rd-execute"
+    assert result["current_action_status"] == "executable"
+    assert result["current_blocker_category"] is None
+    assert result["current_blocker_reason"] is None
+    assert result["repair_action"] == "None - canonical preflight truth passed."
     assert result["current_state"]
     assert result["routing_reason"]
     assert result["exact_next_action"]

@@ -58,6 +58,7 @@ class PreflightService:
         branch_id: str,
         stage_key: StageKey,
         recommended_next_skill: str,
+        require_branch_current_stage: bool = True,
     ) -> PreflightResult:
         project_metadata = self._load_project_metadata()
         blockers = PreflightBlockersByCategory()
@@ -73,6 +74,7 @@ class PreflightService:
             run_id=run_id,
             branch_id=branch_id,
             stage_key=stage_key,
+            require_branch_current_stage=require_branch_current_stage,
             run=run,
             branch=branch,
             stage=stage,
@@ -187,6 +189,7 @@ class PreflightService:
         run_id: str,
         branch_id: str,
         stage_key: StageKey,
+        require_branch_current_stage: bool,
         run: Any,
         branch: Any,
         stage: StageSnapshot | None,
@@ -223,7 +226,7 @@ class PreflightService:
                 f"Repair persisted run/branch/stage snapshots so {stage_key.value} exists for branch {branch_id}.",
             )
             return False
-        if branch.current_stage_key != stage_key:
+        if require_branch_current_stage and branch.current_stage_key != stage_key:
             self._add_blocker(
                 blockers,
                 PreflightBlockerCategory.STATE,

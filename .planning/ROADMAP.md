@@ -94,15 +94,18 @@ flows.
   3. Regression tests fail if the public tool catalog or skill packages drift
      away from the required guidance fields, concrete examples, or pipeline
      semantics.
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] `21-01-PLAN.md` — Recast `README.md` into a `Start -> Inspect -> Continue` public playbook and lock it with focused Phase 21 README regressions.
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 19. Tool Catalog Operator Guidance | 2/2 | Complete | 2026-03-22 |
-| 20. Stage Skill Execution Contracts | 2/2 | Complete   | 2026-03-22 |
-| 21. Executable Public Surface Narrative | 0/TBD | Not started | - |
+| 20. Stage Skill Execution Contracts | 2/2 | Complete    | 2026-03-22 |
+| 21. Executable Public Surface Narrative | 0/1 | Planned | - |
 
 ## Planning Defaults
 

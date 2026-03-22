@@ -1,5 +1,30 @@
 # Project Milestones: my-RDagent-V3
 
+## v1.2 skill-and-tool-guidance-hardening (Shipped: 2026-03-22)
+
+**Delivered:** Made the standalone V3 surface executable from public skill and
+tool guidance alone, including direct-tool examples/routing, explicit
+stage-skill start and continue contracts, and an agent-first README playbook.
+
+**Phases completed:** 3 phases, 5 plans, 10 tasks
+
+**Key accomplishments:**
+
+- Added concrete examples, routing guidance, and follow-up semantics to every
+  direct V3 tool entry.
+- Locked `rd-agent` minimum start guidance and the default gated pause behavior
+  into the public skill surface.
+- Locked paused-run continuation contracts for `rd-propose`, `rd-code`,
+  `rd-execute`, and `rd-evaluate`.
+- Recast `README.md` into an executable `Start -> Inspect -> Continue`
+  playbook.
+- Added focused doc-surface regressions so the public README and skill/tool
+  guidance cannot drift back into schema-only reference text.
+
+**What's next:** define the next milestone with `$gsd-new-milestone`
+
+---
+
 ## v1.1 standalone-surface-consolidation (Shipped: 2026-03-21)
 
 **Delivered:** Hardened the standalone repo around a skills-plus-CLI public surface, repo-local skill installation, and `.planning/`-native continuity.

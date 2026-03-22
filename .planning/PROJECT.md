@@ -13,30 +13,34 @@ A developer can use a self-contained V3 skill and CLI surface on top of
 V3-owned contracts and orchestration, without inheriting V2 runtime internals
 or MCP-shaped compatibility layers.
 
-## Last Shipped Milestone: v1.1 Standalone Surface Consolidation
+## Last Shipped Milestone: v1.2 Skill and Tool Guidance Hardening
 
-**Delivered:** Turned the extracted V3 baseline into a standalone skill/CLI-first
-product surface with repo-local installation, truthful public docs, and
-`.planning/`-native continuity.
+**Delivered:** Made the standalone V3 surface executable from public skill and
+tool guidance alone: direct tools now explain request shape, routing, and
+follow-up; stage skills now expose explicit start and continuation contracts;
+and the README now acts as an agent-first `Start -> Inspect -> Continue`
+playbook.
 
-## Current Milestone: v1.2 Skill and Tool Guidance Hardening
+## Current State
 
-**Goal:** Make the standalone V3 surface executable by agents without requiring
-source-code spelunking to discover the next valid action.
-
-**Target features:**
-- Add tool-layer usage guidance and concrete examples to the V3 CLI catalog.
-- Upgrade `rd-agent` and stage skill packages with minimal input contracts,
-  stop-point semantics, and continuation guidance.
-- Lock the improved guidance in README and regression tests so the public
-  surface stays pipeline-usable.
+- The direct V3 tool catalog now exposes concrete examples, routing guidance,
+  and next-step semantics through the public `rdagent-v3-tool describe ...`
+  surface.
+- `rd-agent` and the four stage skills now publish explicit minimum-input and
+  paused-run continuation contracts through their `SKILL.md` files.
+- `README.md` now explains the public surface as one executable
+  `Start -> Inspect -> Continue` path instead of a disconnected schema catalog.
+- Public-surface regressions now span README narrative, tool metadata, and
+  skill contracts, keeping the operator guidance aligned across all layers.
 
 ## Next Milestone Goals
 
-- Ship example-driven guidance so agents can invoke the standalone V3 surface
-  correctly from skill and tool metadata alone.
-- Preserve the repo-local skill/CLI public surface while making it materially
-  more actionable for multi-step orchestration work.
+- Extend operator guidance beyond the core start/continue path into richer
+  branch-memory and exploration flows.
+- Explore machine-readable operator playbooks that can be generated from the
+  public surface itself.
+- Define the next repo-native milestone cleanly through `$gsd-new-milestone`
+  instead of carrying over stale active requirements.
 
 ## Requirements
 
@@ -47,15 +51,17 @@ source-code spelunking to discover the next valid action.
 - ✓ MCP-era terminology replaced with a consistent skills-plus-CLI public surface — validated in Phase 17
 - ✓ Standalone repo packaging, install, and validation flow hardened — validated in Phase 18
 - ✓ Standalone planning continuity now lives fully inside `.planning/` artifacts — validated in Phase 18
+- ✓ Developers can inspect direct V3 tools and see example requests, routing guidance, and expected follow-up actions — validated in Phase 19 / v1.2
+- ✓ Developers can use `rd-agent` and the stage skills with explicit minimal input contracts and default stop/continue semantics — validated in Phase 20 / v1.2
+- ✓ README and tests describe the standalone surface as an executable pipeline rather than a schema catalog — validated in Phase 21 / v1.2
 
 ### Active
 
-- [ ] Developer can inspect a direct V3 tool and see example requests,
-  routing guidance, and expected follow-up actions without reading source.
-- [ ] Developer can use `rd-agent` and the stage skills with explicit minimal
-  input contracts and default stop/continue semantics.
-- [ ] README and tests describe the standalone surface as an executable
-  pipeline, not just a schema catalog.
+- [ ] Developer can inspect branch-memory and exploration tools with richer
+  multi-branch example sequences and guidance beyond the core start/continue
+  path.
+- [ ] Developer can generate machine-readable operator playbooks from the
+  public surface itself for common end-to-end standalone V3 workflows.
 
 ### Out of Scope
 
@@ -73,22 +79,11 @@ source-code spelunking to discover the next valid action.
   layer and replaced it with a transport-free CLI tool catalog.
 - The standalone repo should now be treated as the primary home for V3 surface
   evolution, not as a mirror of the legacy upstream shell.
-- The remaining work is mostly language, packaging, and product-surface
-  convergence rather than rebuilding core orchestration from scratch.
-- Recent `rd-agent` usage showed a concrete product gap: schema-only tool
-  descriptions are structurally valid but do not teach an agent when to use a
-  tool, what minimal payload to provide, or what to do after a gated pause.
-
-## Current State
-
-Phase 18 completed the standalone packaging and continuity hardening work:
-
-- repo-local skill installation now links canonical `skills/` packages into
-  Claude/Codex local or global roots
-- README documents the public setup, CLI usage, and quick/full verification
-  flows without leaking internal planning workflow
-- `.planning/STATE.md` is the canonical continuity entrypoint, and the
-  extraction handoff is historical-only
+- The remaining work is now less about basic public-surface truth and more
+  about extending that public guidance into more complex operator scenarios
+  without reintroducing hidden orchestration assumptions.
+- The shipped `v1.2` milestone closed the original schema-only guidance gap by
+  aligning direct-tool metadata, stage-skill contracts, and README narrative.
 
 ## Constraints
 
@@ -114,7 +109,8 @@ Phase 18 completed the standalone packaging and continuity hardening work:
 | Treat terminology cleanup as real milestone work | Requirement names shape product direction and future planning quality | ✓ Good — v1.1 |
 | Keep skill installation repo-local and link-first | Preserves one source of truth without widening the public CLI surface | ✓ Good — v1.1 |
 | Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
-| Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | — Pending — v1.2 |
+| Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | ✓ Good — v1.2 |
+| Keep README at the decision layer and link to contracts for field-level truth | Prevents the public narrative from drifting into a second schema catalog | ✓ Good — v1.2 |
 
 ---
-*Last updated: 2026-03-22 after starting v1.2 milestone*
+*Last updated: 2026-03-22 after shipping v1.2 milestone*

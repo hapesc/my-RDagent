@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
-status: completed
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-03-22T07:11:52.531Z"
+status: ready_for_next_milestone
+stopped_at: Archived v1.2 milestone
+last_updated: "2026-03-22T15:13:18+08:00"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
@@ -23,27 +23,27 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 21 complete — executable-public-surface-narrative
+**Current focus:** Milestone v1.2 archived — ready to define the next milestone
 
 ## Position
 
-**Milestone:** v1.2 skill and tool guidance hardening  
-**Roadmap span:** Phases 19-21
-**Next phase:** None - milestone v1.2 is complete
-**Status:** Milestone complete
+**Milestone:** None active  
+**Roadmap span:** awaiting next milestone definition
+**Next phase:** None — run `$gsd-new-milestone`
+**Status:** Ready for next milestone
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Completed Phase 21 by rewriting `README.md` into an executable `Start -> Inspect -> Continue` public playbook and adding focused regression coverage for the README narrative.
+Archived `v1.2` after shipping tool guidance, stage-skill contracts, and the executable README narrative across Phases 19-21.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
-- Current milestone planned phases: 3
-- Current milestone planned plans: 5 completed, 0 remaining
+- Last shipped milestone phases: 3
+- Last shipped milestone plans: 5 completed
 - Latest completed plan: Phase 21 Plan 01 in 2min across 2 tasks and 3 tracked files
-- Current milestone execution trend: Phase 21 completed the README-level public narrative lock; the milestone is now ready for closure or the next milestone discussion
+- Current milestone execution trend: v1.2 archived cleanly; next action is to define the next milestone
 
 ## Accumulated Context
 
@@ -82,7 +82,7 @@ Completed Phase 21 by rewriting `README.md` into an executable `Start -> Inspect
 
 ### Pending Todos
 
-- Close out milestone v1.2 or start the next milestone discussion.
+- Run `$gsd-new-milestone` to define fresh requirements and roadmap scope for the next cycle.
 
 ### Blockers/Concerns
 
@@ -99,6 +99,6 @@ Completed Phase 21 by rewriting `README.md` into an executable `Start -> Inspect
 
 ## Session Continuity
 
-Last session: 2026-03-22T07:00:45.451Z
-Stopped at: Completed 21-01-PLAN.md
+Last session: 2026-03-22T15:13:18+08:00
+Stopped at: Archived v1.2 milestone
 Resume file: .planning/STATE.md

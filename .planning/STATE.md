@@ -5,7 +5,7 @@ milestone_name: skill-and-tool-guidance-hardening
 current_phase: 19
 status: ready_to_plan
 stopped_at: Active v1.2 roadmap created; next step is Phase 19 planning
-last_updated: "2026-03-21T16:26:35Z"
+last_updated: "2026-03-22T04:04:25Z"
 progress:
   total_phases: 3
   completed_phases: 0
@@ -32,8 +32,8 @@ just to discover how to start, pause, resume, or continue the loop.
 **Status:** Roadmap created; ready to plan
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
-**Last activity:** 2026-03-22 - Wrote the active v1.2 roadmap and confirmed
-8/8 requirement coverage.
+**Last activity:** 2026-03-22 - Captured Phase 19 context in auto mode and
+locked the tool-guidance discussion boundary for planning.
 **Progress:** [░░░░░░░░░░] 0%
 
 ## Performance Metrics
@@ -53,10 +53,14 @@ just to discover how to start, pause, resume, or continue the loop.
   direct-tool routing layer is explicit first.
 - README and regression coverage land after the guidance contracts exist, so
   the public surface is locked after the metadata is hardened.
+- Phase 19 context auto-selected structured metadata, full direct-tool example
+  coverage, explicit routing guidance, and follow-up semantics as the default
+  guidance model.
 
 ### Pending Todos
 
-None captured for v1.2 yet.
+- Plan Phase 19 against the new context file at
+  `.planning/phases/19-tool-catalog-operator-guidance/19-CONTEXT.md`.
 
 ### Blockers/Concerns
 
@@ -68,6 +72,5 @@ None captured for v1.2 yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Active roadmap created for milestone v1.2; next step is Phase 19
-planning
+Stopped at: Captured Phase 19 context; next step is plan Phase 19
 Resume file: .planning/STATE.md

@@ -83,7 +83,8 @@ def plan_resume_decision(
             replay_artifact_ids=list(assessment.replay_artifact_ids),
             message=(
                 f"V3 recovery is proceeding with {stage.stage_key.value} iteration {stage.stage_iteration}; "
-                f"the stage is ready to run, so {assessment.recommended_next_step}."
+                f"the stage is prepared and still requires canonical preflight truth before execution, "
+                f"so {assessment.recommended_next_step}."
             ),
         )
     return ResumeDecision(

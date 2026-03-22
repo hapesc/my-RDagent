@@ -23,6 +23,9 @@ playbook.
 
 ## Current State
 
+- Phase 22 is complete: `rd-agent` now routes plain-language intent through
+  persisted state, prefers paused-run continuation, and exposes explicit
+  next-skill guidance.
 - The direct V3 tool catalog now exposes concrete examples, routing guidance,
   and next-step semantics through the public `rdagent-v3-tool describe ...`
   surface.
@@ -70,11 +73,10 @@ next-step guidance.
 - ✓ Developers can inspect direct V3 tools and see example requests, routing guidance, and expected follow-up actions — validated in Phase 19 / v1.2
 - ✓ Developers can use `rd-agent` and the stage skills with explicit minimal input contracts and default stop/continue semantics — validated in Phase 20 / v1.2
 - ✓ README and tests describe the standalone surface as an executable pipeline rather than a schema catalog — validated in Phase 21 / v1.2
+- ✓ User can start or continue work from high-level intent without having to manually choose `rd-agent`, a stage skill, or a direct tool first — validated in Phase 22 / v1.3
 
 ### Active
 
-- [ ] User can start or continue work from high-level intent without having to
-  manually choose `rd-agent`, a stage skill, or a direct tool first.
 - [ ] Pipeline surfaces runtime, dependency, data, and state blockers before a
   stage claims to be executable.
 - [ ] User-facing progress and next-step guidance stays aligned with the real
@@ -134,7 +136,7 @@ next-step guidance.
 | Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
 | Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | ✓ Good — v1.2 |
 | Keep README at the decision layer and link to contracts for field-level truth | Prevents the public narrative from drifting into a second schema catalog | ✓ Good — v1.2 |
-| Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | — Pending — v1.3 |
+| Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight remains pending in Phase 23 |
 
 ---
-*Last updated: 2026-03-22 after starting v1.3 milestone*
+*Last updated: 2026-03-22 after completing Phase 22*

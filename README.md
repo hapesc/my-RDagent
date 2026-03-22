@@ -76,6 +76,9 @@ The routing default is intent-first: a user can describe work in plain
 language, the surface inspects persisted state, and the reply compresses to
 current state, why that route was chosen, the exact next action, the
 `recommended_next_skill`, and when needed one blocker plus one repair action.
+The default answer stays at current state, reason, and exact next action. It
+only expands into a one-line minimum command or skeleton when the user is
+blocked or starting fresh.
 
 ### Start
 
@@ -87,6 +90,9 @@ the matching continuation skill instead of silently opening a new run. That
 recommendation can still be blocked by canonical preflight truth; when that
 happens the reply should keep the same `recommended_next_skill` and add the
 current blocker plus a repair action.
+Healthy paused runs should stay terse by default. Fresh-start replies and
+blocked replies may add a one-line minimum command or skeleton so the user can
+act immediately without spelunking for field contracts.
 
 Keep the README at the decision level: start from `skills/rd-agent/SKILL.md`
 for the public start contract, then use the exact field-level contract in that
@@ -122,6 +128,11 @@ In default operator wording, that reply should read like:
 - Next action: run the repair action first, then continue with `rd-code`.
 - `recommended_next_skill`: `rd-code`
 - repair action: `uv sync --extra test`
+
+When the route is healthy but obvious, the reply may stop there and offer a
+detail hint instead of dumping every continuation field. When the route is
+blocked or starting fresh, the reply may append a one-line minimum command or
+skeleton.
 
 ## Default Orchestration
 

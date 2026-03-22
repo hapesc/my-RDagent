@@ -36,6 +36,10 @@ Maps to `v3.entry.rd_agent.rd_agent`.
   - `routing_reason`
   - `exact_next_action`
   - `recommended_next_skill`
+- Phase 24 may add two optional detail fields when the reply needs a minimum
+  executable payload:
+  - `next_step_detail`
+  - `detail_hint`
 - When preflight truth blocks the recommended path, keep `recommended_next_skill` visible and add the blocker plus the repair action rather than pretending the stage is executable.
 - Keep the reply concise and operator-facing. The user should not need to infer the next skill from orchestration prose.
 
@@ -45,6 +49,10 @@ Maps to `v3.entry.rd_agent.rd_agent`.
 - Typical continuation mapping is: `framing -> rd-propose`, `build -> rd-code`, `verify -> rd-execute`, and `synthesize -> rd-evaluate`.
 - If canonical preflight fails, the reply should state that the recommended path is blocked, surface one blocker category, and give one repair action before reusing the same continuation skill.
 - Starting a new run is the fallback path only when paused work does not dominate the current context.
+- Healthy paused runs should stay terse by default and prefer `detail_hint`
+  over a full continuation dump.
+- Fresh-start replies and blocked replies may include `next_step_detail` as a
+  one-line minimum command or skeleton.
 
 ## Required fields
 
@@ -89,7 +97,7 @@ Keep the two layers distinct: `branch_hypotheses` is recommended for the richer 
 
 ## Default stop behavior
 
-The default operator path is `gated + max_stage_iterations=1`. In plain language, `rd-agent` will complete the current step, then pause for human review before continuing. The next step is prepared and still requires preflight before execution, but it is not continued automatically.
+The default operator path is `gated + max_stage_iterations=1`. In plain language, `rd-agent` will complete the current step, then pause for human review before continuing. the next step is prepared but is not continued automatically. It still requires preflight before execution.
 
 If you stay on the default path, the public stop reason is `awaiting_operator`. Internally the first step maps to `framing`, but the main operating rule is simpler: one step finishes, the following step is queued up, and the run stops so a human can review before more work happens.
 
@@ -126,6 +134,10 @@ If you switch to a more continuous unattended path, `rd-agent` can advance furth
 - Start or continue the V3 orchestration flow through the canonical run and branch contracts.
 - When routing plain-language intent, return the concise current-state, reason, next-action, and `recommended_next_skill` guidance before exposing lower-level detail.
 - When the recommended path is blocked, include the repair action explicitly so the user sees the current executable step instead of a false-ready continuation claim.
+- Use `detail_hint` when the route is healthy and the next move is already
+  obvious.
+- Use `next_step_detail` when the user is blocked or starting fresh and needs a
+  one-line minimum command or skeleton.
 - Prefer this skill before dropping to lower-level CLI primitives.
 
 ## Success contract

@@ -18,6 +18,9 @@ def _read_stage_skill(skill_name: str) -> str:
 def test_stage_skills_share_continuation_skeleton() -> None:
     for text in (_read_stage_skill(skill_name) for skill_name in STAGE_SKILLS):
         assert "## Continue contract" in text
+        assert "## Required fields" in text
+        assert "## If information is missing" in text
+        assert "## Outcome guide" in text
         assert "`run_id`" in text
         assert "`branch_id`" in text
         assert "`summary`" in text

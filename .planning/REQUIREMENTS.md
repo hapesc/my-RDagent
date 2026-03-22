@@ -36,7 +36,7 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Operator Guidance
 
-- [ ] **GUIDE-05**: User can ask what to do next and receive a concise answer
+- [x] **GUIDE-05**: User can ask what to do next and receive a concise answer
   that states the current state, the reason for the recommendation, and the
   exact next action without requiring orchestration jargon.
 
@@ -68,7 +68,7 @@ to discover how to start, pause, resume, or continue the loop.
 | PREFLIGHT-02 | Phase 23 | Complete |
 | STATE-01 | Phase 23 | Complete |
 | STATE-02 | Phase 23 | Complete |
-| GUIDE-05 | Phase 24 | Pending |
+| GUIDE-05 | Phase 24 | Complete |
 
 **Coverage:**
 - v1 requirements: 7 total
@@ -77,4 +77,4 @@ to discover how to start, pause, resume, or continue the loop.
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after defining v1.3 milestone requirements*
+*Last updated: 2026-03-22 after completing Phase 24*

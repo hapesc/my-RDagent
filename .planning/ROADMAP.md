@@ -34,7 +34,7 @@ state-aware guidance.
 - [x] **Phase 23: Preflight and State Truth Hardening** - Fail early on (completed 2026-03-22)
   runtime/data/state blockers and ensure user-visible stage claims match
   persisted state artifacts.
-- [ ] **Phase 24: Operator Guidance and Next-Step UX** - Add a concise
+- [x] **Phase 24: Operator Guidance and Next-Step UX** - Add a concise (completed 2026-03-22)
   state-aware “what next?” surface that explains current state, reason, and
   exact next action.
 
@@ -91,7 +91,7 @@ truthful, state-aware answer.
 |-------|----------------|--------|-----------|
 | 22. Intent Routing and Continuation Control | 1/1 | Complete    | 2026-03-22 |
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
-| 24. Operator Guidance and Next-Step UX | 1/2 | In Progress|  |
+| 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 
 ## Planning Defaults
 

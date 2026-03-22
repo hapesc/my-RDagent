@@ -42,6 +42,15 @@ playbook.
   `Start -> Inspect -> Continue` path instead of a disconnected schema catalog.
 - Public-surface regressions now span README narrative, tool metadata, and
   skill contracts, keeping the operator guidance aligned across all layers.
+- Phase 24 is complete: top-level routing, stage outcomes, direct-tool follow-up
+  semantics, and public docs now share one human-first next-step vocabulary with
+  selective detail expansion.
+- Phase 24 introduced a shared `OperatorGuidance` contract and renderer so route
+  and stage surfaces can reuse one canonical current-state / reason / next-action
+  model instead of hand-assembling strings independently.
+- The direct V3 tool catalog now uses the same stage-skill follow-up vocabulary
+  as the high-level skill surfaces, so public skill and tool guidance no longer
+  drift on "what next?" semantics.
 
 ## Current Milestone: v1.3 Pipeline Experience Hardening
 
@@ -83,12 +92,11 @@ next-step guidance.
 - ✓ User can start or continue work from high-level intent without having to manually choose `rd-agent`, a stage skill, or a direct tool first — validated in Phase 22 / v1.3
 - ✓ Pipeline surfaces runtime, dependency, data, and state blockers before a stage claims to be executable — validated in Phase 23 / v1.3
 - ✓ User-facing progress and next-step guidance now stay aligned with persisted state and preflight truth for paused-run and stage-entry surfaces — validated in Phase 23 / v1.3
+- ✓ User can ask what to do next and receive a concise answer that states the current state, the reason, and the exact next action without orchestration jargon — validated in Phase 24 / v1.3
 
 ### Active
 
-- [ ] User can ask what to do next and receive a concise answer that states the
-  current state, the reason, and the exact next action without orchestration
-  jargon.
+None — v1.3 active requirements are complete.
 
 ### Out of Scope
 
@@ -147,4 +155,4 @@ next-step guidance.
 | Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight and state-truth hardening validated in Phase 23 |
 
 ---
-*Last updated: 2026-03-22 after completing Phase 23*
+*Last updated: 2026-03-22 after completing Phase 24*

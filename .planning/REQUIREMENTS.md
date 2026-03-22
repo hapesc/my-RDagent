@@ -27,7 +27,7 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### State Truth
 
-- [ ] **STATE-01**: User-visible claims such as “next stage ready” are backed
+- [x] **STATE-01**: User-visible claims such as “next stage ready” are backed
   by persisted stage snapshots and current handoff artifacts rather than surface
   prose alone.
 - [x] **STATE-02**: Verification can distinguish “results exist” from
@@ -66,7 +66,7 @@ to discover how to start, pause, resume, or continue the loop.
 | ROUTE-02 | Phase 22 | Complete |
 | PREFLIGHT-01 | Phase 23 | Complete |
 | PREFLIGHT-02 | Phase 23 | Complete |
-| STATE-01 | Phase 23 | Pending |
+| STATE-01 | Phase 23 | Complete |
 | STATE-02 | Phase 23 | Complete |
 | GUIDE-05 | Phase 24 | Pending |
 

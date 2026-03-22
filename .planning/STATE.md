@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 23
 current_phase_name: preflight-and-state-truth-hardening
 current_plan: 2
-status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-03-22T12:18:55.490Z"
+status: verifying
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-03-22T12:43:01.468Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Session State
@@ -38,14 +38,14 @@ just to discover how to start, pause, resume, or continue the loop.
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-24
 **Next phase:** 23 - Preflight and State Truth Hardening
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
 Completed Phase 22 intent routing and continuation control, establishing
 plain-language entry and paused-run-first continuation routing for the v1.3
 pipeline hardening milestone.
-**Progress:** [███████░░░] 67%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -93,6 +93,9 @@ pipeline hardening milestone.
 - [Phase 23]: Preflight stays read-only and does not persist a second truth source. — Runtime and entry surfaces should reuse canonical state instead of introducing another persistence path.
 - [Phase 23]: Runtime truth uses pyproject.toml and mandatory uv checks before execution claims. — Phase 23 must derive environment readiness from repo-owned declarations instead of hidden shell heuristics.
 - [Phase 23]: Completed-stage reuse is blocked when persisted recovery truth is missing. — Results existing in artifact state is insufficient; Phase 23 must distinguish stored outputs from reproducible continuation.
+- [Phase 23]: Paused-run routing keeps recommended_next_skill visible even when canonical preflight blocks execution. — The operator still needs the ideal post-repair path, but the current executable action must be truthful.
+- [Phase 23]: Stage entrypoints return preflight_blocked before they publish replay, completion, or blocker state. — Phase 23 requires blocker truth to surface before stage mutation, not after.
+- [Phase 23]: Seeded next-stage summaries now say prepared and requires preflight before execution. — Shared operator text must stop implying ready-by-default execution once Phase 23 truth gating exists.
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ pipeline hardening milestone.
 
 ## Session Continuity
 
-Last session: 2026-03-22T12:18:55.486Z
-Stopped at: Completed 23-01-PLAN.md
-Resume file: .planning/phases/23-preflight-and-state-truth-hardening/23-02-PLAN.md
+Last session: 2026-03-22T12:43:01.466Z
+Stopped at: Completed 23-02-PLAN.md
+Resume file: None

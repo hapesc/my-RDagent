@@ -97,9 +97,10 @@ Phase 23 passed verification and the next step is Phase 24 planning.
 
 ### Pending Todos
 
-- Plan Phase 23 against the existing milestone requirements and research.
-- Decide the exact preflight truth sources for runtime dependencies, artifact
-  existence, and persisted state readiness before stage execution.
+- Plan Phase 24 against the remaining `GUIDE-05` requirement and the freshly
+  completed Phase 23 preflight/state-truth contract.
+- Decide how the top-level operator UX should surface blocked-vs-recommended
+  next steps when routing only has partial preflight context.
 
 ### Blockers/Concerns
 
@@ -108,11 +109,8 @@ Phase 23 passed verification and the next step is Phase 24 planning.
 
 - Stage-skill contract work must align with the new tool-catalog follow-up
   semantics instead of inventing a conflicting routing model.
-
-- Full verification for Plan 20-02 still reports an out-of-scope mismatch in
-  `.importlinter` versus `tests/test_phase14_stage_skills.py`; Phase 20-02 did
-  not own that infrastructure file, so the issue was documented instead of
-  fixed here.
+- Phase 24 should build on the new preflight truth layer instead of weakening
+  it with optimistic wording or fallback guidance that hides blockers.
 
 ## Session Continuity
 

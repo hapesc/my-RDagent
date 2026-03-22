@@ -26,7 +26,7 @@ to discover how to start, pause, resume, or continue the loop.
 - [ ] **SKILL-02**: Developer can understand the default `rd-agent` gated
   behavior, including that `gated + max_stage_iterations=1` pauses after the
   first completed stage for operator review.
-- [ ] **SKILL-03**: Developer can continue from a paused `rd-agent` run by
+- [x] **SKILL-03**: Developer can continue from a paused `rd-agent` run by
   following stage-skill guidance that states the exact identifiers and payload
   fields needed for `rd-propose`, `rd-code`, `rd-execute`, and `rd-evaluate`.
 
@@ -65,7 +65,7 @@ to discover how to start, pause, resume, or continue the loop.
 | GUIDE-03 | Phase 19 | Complete |
 | SKILL-01 | Phase 20 | Pending |
 | SKILL-02 | Phase 20 | Pending |
-| SKILL-03 | Phase 20 | Pending |
+| SKILL-03 | Phase 20 | Complete |
 | SURFACE-01 | Phase 21 | Pending |
 | SURFACE-02 | Phase 21 | Pending |
 
@@ -76,4 +76,4 @@ to discover how to start, pause, resume, or continue the loop.
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after completing Phase 19*
+*Last updated: 2026-03-22 after completing Plan 20-02*

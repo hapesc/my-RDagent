@@ -73,7 +73,11 @@ semantics.
   3. A developer can continue a paused run with `rd-propose`, `rd-code`,
      `rd-execute`, or `rd-evaluate` by supplying the exact documented
      identifiers and payload fields for the next valid stage action.
-**Plans**: TBD
+**Plans**: 1/2 complete
+
+Plans:
+- [ ] `20-01-PLAN.md` — Add explicit `rd-agent` start-contract and gated pause guidance. (pending)
+- [x] `20-02-PLAN.md` — Add continuation contracts and regression coverage for `rd-propose`, `rd-code`, `rd-execute`, and `rd-evaluate`. (completed 2026-03-22)
 
 ### Phase 21: Executable Public Surface Narrative
 **Goal**: Developers can use the README and regression suite as the stable
@@ -97,7 +101,7 @@ flows.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 19. Tool Catalog Operator Guidance | 2/2 | Complete | 2026-03-22 |
-| 20. Stage Skill Execution Contracts | 0/TBD | Not started | - |
+| 20. Stage Skill Execution Contracts | 1/2 | In Progress | 2026-03-22 (plan 20-02) |
 | 21. Executable Public Surface Narrative | 0/TBD | Not started | - |
 
 ## Planning Defaults

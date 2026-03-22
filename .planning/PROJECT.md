@@ -26,6 +26,13 @@ playbook.
 - Phase 22 is complete: `rd-agent` now routes plain-language intent through
   persisted state, prefers paused-run continuation, and exposes explicit
   next-skill guidance.
+- Phase 23 is complete: canonical preflight truth now checks runtime,
+  dependency, artifact, state, and recovery readiness before stage execution
+  claims or paused-run continuation guidance say work is executable.
+- Paused-run routing now keeps `recommended_next_skill` visible while surfacing
+  blocked-vs-executable truth and one concrete repair action.
+- Stage entrypoints now return `preflight_blocked` before publishing replay,
+  completion, or blocker state when canonical preflight fails.
 - The direct V3 tool catalog now exposes concrete examples, routing guidance,
   and next-step semantics through the public `rdagent-v3-tool describe ...`
   surface.
@@ -74,13 +81,14 @@ next-step guidance.
 - ✓ Developers can use `rd-agent` and the stage skills with explicit minimal input contracts and default stop/continue semantics — validated in Phase 20 / v1.2
 - ✓ README and tests describe the standalone surface as an executable pipeline rather than a schema catalog — validated in Phase 21 / v1.2
 - ✓ User can start or continue work from high-level intent without having to manually choose `rd-agent`, a stage skill, or a direct tool first — validated in Phase 22 / v1.3
+- ✓ Pipeline surfaces runtime, dependency, data, and state blockers before a stage claims to be executable — validated in Phase 23 / v1.3
+- ✓ User-facing progress and next-step guidance now stay aligned with persisted state and preflight truth for paused-run and stage-entry surfaces — validated in Phase 23 / v1.3
 
 ### Active
 
-- [ ] Pipeline surfaces runtime, dependency, data, and state blockers before a
-  stage claims to be executable.
-- [ ] User-facing progress and next-step guidance stays aligned with the real
-  persisted run/branch/stage state.
+- [ ] User can ask what to do next and receive a concise answer that states the
+  current state, the reason, and the exact next action without orchestration
+  jargon.
 
 ### Out of Scope
 
@@ -136,7 +144,7 @@ next-step guidance.
 | Make `.planning/STATE.md` the continuity truth | Keeps public README separate from internal milestone recovery | ✓ Good — v1.1 |
 | Treat agent-usable guidance as product work | A schema-only catalog is insufficient when the real surface is a multi-step orchestration pipeline | ✓ Good — v1.2 |
 | Keep README at the decision layer and link to contracts for field-level truth | Prevents the public narrative from drifting into a second schema catalog | ✓ Good — v1.2 |
-| Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight remains pending in Phase 23 |
+| Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight and state-truth hardening validated in Phase 23 |
 
 ---
-*Last updated: 2026-03-22 after completing Phase 22*
+*Last updated: 2026-03-22 after completing Phase 23*

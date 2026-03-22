@@ -16,6 +16,12 @@ from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
 from v3.orchestration.convergence_service import ConvergenceService
 from v3.orchestration.execution_policy import AgentExecutionPolicy
 from v3.orchestration.multi_branch_service import MultiBranchService
+from v3.orchestration.operator_guidance import (
+    STAGE_TO_NEXT_SKILL,
+    build_paused_run_guidance,
+    build_start_new_run_guidance,
+    project_operator_guidance,
+)
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.selection_service import SelectionService
@@ -24,34 +30,11 @@ from v3.orchestration.stage_transition_service import StageTransitionService
 from v3.ports.state_store import StateStorePort
 
 
-_STAGE_TO_SKILL = {
-    "framing": "rd-propose",
-    "build": "rd-code",
-    "verify": "rd-execute",
-    "synthesize": "rd-evaluate",
-    "evaluate": "rd-evaluate",
-}
-
-
 def _normalized_stage_key(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     normalized = value.strip().lower()
     return normalized or None
-
-
-def _summarize_state(
-    *,
-    route_kind: str,
-    run_id: str | None = None,
-    branch_id: str | None = None,
-    stage_key: str | None = None,
-) -> str:
-    if route_kind == "continue_paused_run" and run_id and branch_id and stage_key:
-        return (
-            f"Current state: paused run {run_id} on branch {branch_id} is at {stage_key}."
-        )
-    return "Current state: no paused run dominates, so a new run can start."
 
 
 def _extract_paused_run_context(persisted_state: dict[str, Any] | None) -> dict[str, str] | None:
@@ -106,7 +89,7 @@ def _extract_paused_run_context(persisted_state: dict[str, Any] | None) -> dict[
     if not isinstance(run_id, str) or not isinstance(branch_id, str):
         return None
 
-    recommended_skill = _STAGE_TO_SKILL.get(stage_key, "rd-agent")
+    recommended_skill = STAGE_TO_NEXT_SKILL.get(stage_key, "rd-agent")
     return {
         "run_id": run_id,
         "branch_id": branch_id,
@@ -187,17 +170,15 @@ def route_user_intent(
 
     if paused_context is not None:
         route_kind = "continue_paused_run"
-        current_state = _summarize_state(
-            route_kind=route_kind,
-            run_id=paused_context["run_id"],
-            branch_id=paused_context["branch_id"],
-            stage_key=paused_context["stage_key"],
-        )
         if not high_level_boundary_sufficient:
             return {
                 "route_kind": "downshift_to_tool_catalog",
                 "recommended_next_skill": "rd-tool-catalog",
-                "current_state": current_state,
+                "current_state": (
+                    "Current state: paused "
+                    f"{paused_context['stage_key']} work for run {paused_context['run_id']} "
+                    f"on branch {paused_context['branch_id']}."
+                ),
                 "routing_reason": (
                     "Reason: paused run exists, but the high-level boundary is insufficient, "
                     "so routing downshifts after surfacing the continuation target."
@@ -215,37 +196,33 @@ def route_user_intent(
             paused_context,
             preflight_result_provider=preflight_result_provider,
         )
-        return {
+        guidance = build_paused_run_guidance(
+            run_id=paused_context["run_id"],
+            branch_id=paused_context["branch_id"],
+            stage_key=paused_context["stage_key"],
+            recommended_next_skill=paused_context["recommended_skill"],
+            selection_reason=paused_context["selection_reason"],
+            current_action_status=preflight_fields["current_action_status"],
+            current_blocker_category=preflight_fields["current_blocker_category"],
+            current_blocker_reason=preflight_fields["current_blocker_reason"],
+            repair_action=preflight_fields["repair_action"],
+            exact_next_action=preflight_fields["exact_next_action"],
+        )
+        route_payload = {
             "route_kind": route_kind,
-            "recommended_next_skill": paused_context["recommended_skill"],
-            "current_state": current_state,
-            "routing_reason": (
-                "Reason: paused run continuation takes priority over a new run, and "
-                f"{paused_context['selection_reason']}"
-            ),
-            "exact_next_action": preflight_fields["exact_next_action"],
-            "current_action_status": preflight_fields["current_action_status"],
-            "current_blocker_category": preflight_fields["current_blocker_category"],
-            "current_blocker_reason": preflight_fields["current_blocker_reason"],
-            "repair_action": preflight_fields["repair_action"],
             "current_run_id": paused_context["run_id"],
             "current_branch_id": paused_context["branch_id"],
             "current_stage": paused_context["stage_key"],
         }
+        route_payload.update(project_operator_guidance(guidance))
+        return route_payload
 
-    return {
+    guidance = build_start_new_run_guidance(user_intent=intent_text)
+    route_payload = {
         "route_kind": "start_new_run",
-        "recommended_next_skill": "rd-agent",
-        "current_state": _summarize_state(route_kind="start_new_run"),
-        "routing_reason": (
-            "Reason: plain-language intent did not name a skill, and no paused run "
-            "dominates the current state."
-        ),
-        "exact_next_action": (
-            "Next action: stay on rd-agent and start a new run from the request"
-            + (f" \"{intent_text}\"." if intent_text else ".")
-        ),
     }
+    route_payload.update(project_operator_guidance(guidance))
+    return route_payload
 
 
 def rd_agent(

@@ -64,3 +64,5 @@ the next action without making the user reverse-engineer the pipeline.
 - real user logs from:
   - `/Users/michael-liang/Code/aerial-cactus-identification/.waylog/history/2026-03-21_15-59-59Z-codex-rd-agent-description-to-assess-the-impact-of-clim.md`
   - `/Users/michael-liang/Code/aerial-cactus-identification/.waylog/history/2026-03-22_07-16-18Z-codex-rd-agent.md`
+- formalized UX issue report:
+  - `.planning/research/RDAGENT-REAL-WORLD-UX-REPORT.md`

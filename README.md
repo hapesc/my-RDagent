@@ -72,11 +72,18 @@ Start from the high-level orchestration skill, inspect when the next surface
 needs to be confirmed, then continue through the stage skill that matches the
 paused run.
 
+The routing default is intent-first: a user can describe work in plain
+language, the surface inspects persisted state, and the reply compresses to
+current state, why that route was chosen, the exact next action, and the
+`recommended_next_skill`.
+
 ### Start
 
 Use `rd-agent` first for the default standalone orchestration path.
 Start with the recommended multi-branch path when the task benefits from multiple candidate approaches.
 For simpler tasks, the strict minimum single-branch start contract from `skills/rd-agent/SKILL.md` is enough.
+If a paused run already exists, `rd-agent` should say so first and recommend
+the matching continuation skill instead of silently opening a new run.
 
 Keep the README at the decision level: start from `skills/rd-agent/SKILL.md`
 for the public start contract, then use the exact field-level contract in that
@@ -105,6 +112,13 @@ state before handing off, then continue the paused run with the stage skill
 that matches the current step instead of making the user browse direct tools
 manually.
 
+In default operator wording, that reply should read like:
+
+- Current state: paused run X on branch Y is at build.
+- Reason: paused run continuation is a stronger routing anchor than starting fresh.
+- Next action: continue with `rd-code`.
+- `recommended_next_skill`: `rd-code`
+
 ## Default Orchestration
 
 This section is the supporting reference behind the `Start` step above. Use
@@ -118,7 +132,9 @@ standalone flow instead of a narrower stage or tool surface.
 
 `rd-agent` is the default orchestration path because it keeps the high-level
 run, branch, and stage flow inside V3-owned orchestration instead of forcing
-the caller to choose direct primitives up front.
+the caller to choose direct primitives up front. It is also the correct public
+entry when the caller only says "help me do this task" or "what should I do
+next?" and needs state-aware routing.
 
 ## Stage Skills
 

@@ -11,6 +11,8 @@ Maps to `v3.entry.rd_agent.rd_agent`.
 
 ## Trigger requests
 
+- "help me do this task"
+- "what should I do next?"
 - "start a V3 run"
 - "continue the standalone loop"
 - "run the full rd-agent flow"
@@ -18,9 +20,29 @@ Maps to `v3.entry.rd_agent.rd_agent`.
 
 ## When to use
 
+- Start from plain language first, then let `rd-agent` inspect persisted state and route to the right next high-level skill.
+- Use this when a paused run may already exist and the agent should recommend the correct continuation path instead of silently opening a new run.
 - Start a new V3 run from a task summary and scenario label.
 - Run the full high-level loop instead of calling stage skills one by one.
 - Use this when you want the default orchestration path across single-branch and multi-branch execution.
+
+## Intent-first routing
+
+- Treat `rd-agent` as the public intent-first entry surface: the user can describe work in plain language without naming a skill first.
+- Inspect current persisted run and branch state before deciding whether to start fresh, continue a paused run, or downshift.
+- Prefer a paused run when one is clearly active in the current working context.
+- Default the user-facing routing reply to four explicit fields:
+  - `current_state`
+  - `routing_reason`
+  - `exact_next_action`
+  - `recommended_next_skill`
+- Keep the reply concise and operator-facing. The user should not need to infer the next skill from orchestration prose.
+
+## Paused-run continuation preference
+
+- If current state already exposes a paused run, surface the current `run_id`, `branch_id`, and stage, then recommend the matching stage skill explicitly.
+- Typical continuation mapping is: `framing -> rd-propose`, `build -> rd-code`, `verify -> rd-execute`, and `synthesize -> rd-evaluate`.
+- Starting a new run is the fallback path only when paused work does not dominate the current context.
 
 ## Required fields
 
@@ -100,6 +122,7 @@ If you switch to a more continuous unattended path, `rd-agent` can advance furth
 ## Output
 
 - Start or continue the V3 orchestration flow through the canonical run and branch contracts.
+- When routing plain-language intent, return the concise current-state, reason, next-action, and `recommended_next_skill` guidance before exposing lower-level detail.
 - Prefer this skill before dropping to lower-level CLI primitives.
 
 ## Success contract

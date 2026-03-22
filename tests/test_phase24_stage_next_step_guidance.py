@@ -59,6 +59,8 @@ def _artifact(
 def _seed_stage(
     tmp_path: Path,
     *,
+    run_id: str = "run-001",
+    branch_id: str = "branch-001",
     stage_key: StageKey,
     stage_status: StageStatus,
     artifact_ids: list[str],
@@ -81,8 +83,8 @@ def _seed_stage(
         next_stage_key=next_stage_map[stage_key],
     )
     branch = BranchSnapshot(
-        branch_id="branch-001",
-        run_id="run-001",
+        branch_id=branch_id,
+        run_id=run_id,
         label="Primary branch",
         status=BranchStatus.ACTIVE,
         current_stage_key=stage_key,
@@ -96,7 +98,7 @@ def _seed_stage(
         artifact_ids=list(artifact_ids),
     )
     run = RunBoardSnapshot(
-        run_id="run-001",
+        run_id=run_id,
         title="Phase 24",
         scenario_label="research",
         status=RunStatus.ACTIVE,
@@ -114,7 +116,7 @@ def _seed_stage(
         for artifact_id in artifact_ids:
             state_store.write_artifact_snapshot(_artifact(artifact_id, branch.branch_id, stage_key))
     if write_recovery:
-        assessment = RecoveryService(state_store).assess("branch-001", stage_key)
+        assessment = RecoveryService(state_store).assess(branch_id, stage_key)
         if assessment is None:
             raise AssertionError("expected recovery assessment")
     return state_store
@@ -129,9 +131,10 @@ def _services(state_store: ArtifactStateStore):
 
 
 def _assert_three_part_text(text: str) -> None:
-    assert "Current state:" in text
-    assert "Reason:" in text
-    assert "Next action:" in text
+    current_index = text.index("Current state:")
+    reason_index = text.index("Reason:")
+    action_index = text.index("Next action:")
+    assert current_index < reason_index < action_index
 
 
 def test_rd_propose_completed_guidance_points_to_rd_code(tmp_path: Path) -> None:
@@ -162,6 +165,8 @@ def test_rd_propose_completed_guidance_points_to_rd_code(tmp_path: Path) -> None
 def test_rd_code_preflight_blocked_returns_operator_guidance_with_repair_first_order(tmp_path: Path) -> None:
     state_store = _seed_stage(
         tmp_path,
+        run_id="run-777",
+        branch_id="branch-777",
         stage_key=StageKey.BUILD,
         stage_status=StageStatus.READY,
         artifact_ids=["build-artifact-001"],
@@ -170,8 +175,8 @@ def test_rd_code_preflight_blocked_returns_operator_guidance_with_repair_first_o
     run_service, recovery_service, transition_service = _services(state_store)
 
     result = rd_code(
-        run_id="run-001",
-        branch_id="branch-001",
+        run_id="run-777",
+        branch_id="branch-777",
         summary="Build requested.",
         artifact_ids=["build-artifact-002"],
         state_store=state_store,
@@ -184,6 +189,7 @@ def test_rd_code_preflight_blocked_returns_operator_guidance_with_repair_first_o
     guidance = result["structuredContent"]["operator_guidance"]
     assert result["structuredContent"]["outcome"] == "preflight_blocked"
     assert guidance["recommended_next_skill"] == "rd-code"
+    assert "run-777 / branch-777" in guidance["exact_next_action"]
     assert guidance["exact_next_action"].index("repair") < guidance["exact_next_action"].index("continue")
     _assert_three_part_text(result["content"][0]["text"])
 

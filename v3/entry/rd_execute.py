@@ -20,7 +20,7 @@ from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
 from v3.contracts.stage import StageKey, StageSnapshot
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.preflight_service import PreflightService
-from v3.orchestration.operator_guidance import build_stage_operator_guidance, project_operator_guidance, render_operator_guidance_text
+from v3.orchestration.operator_guidance import build_stage_guidance_response
 from v3.orchestration.resume_planner import plan_resume_decision
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.stage_transition_service import StageTransitionService
@@ -40,38 +40,6 @@ def _tool_response(structured_content: dict[str, Any], text: str) -> dict[str, A
     return {
         "structuredContent": structured_content,
         "content": [{"type": "text", "text": text}],
-    }
-
-
-def _stage_guidance(
-    *,
-    run_id: str,
-    branch_id: str,
-    state_descriptor: str,
-    routing_reason: str,
-    exact_next_action: str,
-    recommended_next_skill: str,
-    current_action_status: str | None = None,
-    current_blocker_category: str | None = None,
-    current_blocker_reason: str | None = None,
-    repair_action: str | None = None,
-) -> dict[str, Any]:
-    guidance = build_stage_operator_guidance(
-        run_id=run_id,
-        branch_id=branch_id,
-        stage_key=OWNED_STAGE_KEY.value,
-        recommended_next_skill=recommended_next_skill,
-        state_descriptor=state_descriptor,
-        routing_reason=routing_reason,
-        exact_next_action=exact_next_action,
-        current_action_status=current_action_status,
-        current_blocker_category=current_blocker_category,
-        current_blocker_reason=current_blocker_reason,
-        repair_action=repair_action,
-    )
-    return {
-        "payload": project_operator_guidance(guidance),
-        "text": render_operator_guidance_text(guidance),
     }
 
 
@@ -118,15 +86,16 @@ def rd_execute(
         require_branch_current_stage=False,
     )
     if preflight.readiness is PreflightReadiness.BLOCKED:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="is blocked before execution",
             routing_reason=(
                 f"Reason: canonical preflight found a {preflight.primary_blocker_category} blocker for the current verify continuation."
             ),
             exact_next_action=(
-                f"Next action: {preflight.repair_action} After repair, continue run-001 / branch-001 with rd-execute."
+                f"Next action: {preflight.repair_action} After repair, continue {run_id} / {branch_id} with rd-execute."
             ),
             recommended_next_skill="rd-execute",
             current_action_status="blocked",
@@ -157,12 +126,13 @@ def rd_execute(
     )
 
     if decision.disposition is RecoveryDisposition.REUSE:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="already has reusable published evidence",
             routing_reason="Reason: verify evidence is reusable, so a fresh publish is unnecessary.",
-            exact_next_action="Next action: continue run-001 / branch-001 with rd-evaluate.",
+            exact_next_action=f"Next action: continue {run_id} / {branch_id} with rd-evaluate.",
             recommended_next_skill="rd-evaluate",
         )
         return _tool_response(
@@ -183,12 +153,13 @@ def rd_execute(
         )
 
     if decision.disposition is RecoveryDisposition.REVIEW:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs manual review before it can continue",
             routing_reason="Reason: verify state or recovery evidence still needs review before the synthesize handoff is trustworthy.",
-            exact_next_action="Next action: review verify blockers, then continue run-001 / branch-001 with rd-execute.",
+            exact_next_action=f"Next action: review verify blockers, then continue {run_id} / {branch_id} with rd-execute.",
             recommended_next_skill="rd-execute",
         )
         return _tool_response(
@@ -209,12 +180,13 @@ def rd_execute(
         )
 
     if decision.disposition is RecoveryDisposition.REPLAY:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs replay before the synthesize handoff",
             routing_reason="Reason: verify evidence must be replayed so the synthesize handoff is based on fresh output.",
-            exact_next_action="Next action: replay verify, then continue run-001 / branch-001 with rd-evaluate.",
+            exact_next_action=f"Next action: replay verify, then continue {run_id} / {branch_id} with rd-evaluate.",
             recommended_next_skill="rd-evaluate",
         )
         published = rd_stage_replay(
@@ -248,12 +220,13 @@ def rd_execute(
     stage_iteration = decision.resume_stage_iteration
     reasons = [] if blocking_reasons is None else list(blocking_reasons)
     if reasons:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="is blocked by verification results",
             routing_reason="Reason: verification produced blocking reasons, so the branch cannot hand off to synthesize yet.",
-            exact_next_action="Next action: resolve the verification blockers, then continue run-001 / branch-001 with rd-execute.",
+            exact_next_action=f"Next action: resolve the verification blockers, then continue {run_id} / {branch_id} with rd-execute.",
             recommended_next_skill="rd-execute",
         )
         published = rd_stage_block(
@@ -270,12 +243,13 @@ def rd_execute(
         )
         outcome = "blocked"
     else:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="completed successfully",
             routing_reason="Reason: verify completed and prepared the synthesize handoff.",
-            exact_next_action="Next action: continue run-001 / branch-001 with rd-evaluate.",
+            exact_next_action=f"Next action: continue {run_id} / {branch_id} with rd-evaluate.",
             recommended_next_skill="rd-evaluate",
         )
         published = rd_stage_complete(

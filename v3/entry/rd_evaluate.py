@@ -19,7 +19,7 @@ from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
 from v3.contracts.stage import StageKey, StageSnapshot
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.preflight_service import PreflightService
-from v3.orchestration.operator_guidance import build_stage_operator_guidance, project_operator_guidance, render_operator_guidance_text
+from v3.orchestration.operator_guidance import build_stage_guidance_response
 from v3.orchestration.resume_planner import plan_resume_decision
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.stage_transition_service import StageTransitionService
@@ -38,38 +38,6 @@ def _tool_response(structured_content: dict[str, Any], text: str) -> dict[str, A
     return {
         "structuredContent": structured_content,
         "content": [{"type": "text", "text": text}],
-    }
-
-
-def _stage_guidance(
-    *,
-    run_id: str,
-    branch_id: str,
-    state_descriptor: str,
-    routing_reason: str,
-    exact_next_action: str,
-    recommended_next_skill: str,
-    current_action_status: str | None = None,
-    current_blocker_category: str | None = None,
-    current_blocker_reason: str | None = None,
-    repair_action: str | None = None,
-) -> dict[str, Any]:
-    guidance = build_stage_operator_guidance(
-        run_id=run_id,
-        branch_id=branch_id,
-        stage_key=OWNED_STAGE_KEY.value,
-        recommended_next_skill=recommended_next_skill,
-        state_descriptor=state_descriptor,
-        routing_reason=routing_reason,
-        exact_next_action=exact_next_action,
-        current_action_status=current_action_status,
-        current_blocker_category=current_blocker_category,
-        current_blocker_reason=current_blocker_reason,
-        repair_action=repair_action,
-    )
-    return {
-        "payload": project_operator_guidance(guidance),
-        "text": render_operator_guidance_text(guidance),
     }
 
 
@@ -116,15 +84,16 @@ def rd_evaluate(
         require_branch_current_stage=False,
     )
     if preflight.readiness is PreflightReadiness.BLOCKED:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="is blocked before execution",
             routing_reason=(
                 f"Reason: canonical preflight found a {preflight.primary_blocker_category} blocker for the current synthesize continuation."
             ),
             exact_next_action=(
-                f"Next action: {preflight.repair_action} After repair, continue run-001 / branch-001 with rd-evaluate."
+                f"Next action: {preflight.repair_action} After repair, continue {run_id} / {branch_id} with rd-evaluate."
             ),
             recommended_next_skill="rd-evaluate",
             current_action_status="blocked",
@@ -158,13 +127,14 @@ def rd_evaluate(
     if decision.disposition is RecoveryDisposition.REUSE:
         next_skill = "rd-propose" if recommendation == "continue" else "stop"
         next_action = (
-            "Next action: continue run-001 / branch-001 with rd-propose."
+            f"Next action: continue {run_id} / {branch_id} with rd-propose."
             if recommendation == "continue"
             else "Next action: stop the loop; no next stage skill should be run."
         )
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="already has reusable published evidence",
             routing_reason="Reason: synthesize evidence is reusable, so a fresh publish is unnecessary.",
             exact_next_action=next_action,
@@ -188,12 +158,13 @@ def rd_evaluate(
         )
 
     if decision.disposition is RecoveryDisposition.REVIEW:
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs manual review before the branch decision is trusted",
             routing_reason="Reason: synthesize state or recovery evidence still needs review before continue-or-stop can be finalized.",
-            exact_next_action="Next action: review synthesize blockers, then continue run-001 / branch-001 with rd-evaluate.",
+            exact_next_action=f"Next action: review synthesize blockers, then continue {run_id} / {branch_id} with rd-evaluate.",
             recommended_next_skill="rd-evaluate",
         )
         return _tool_response(
@@ -216,13 +187,14 @@ def rd_evaluate(
     if decision.disposition is RecoveryDisposition.REPLAY:
         next_skill = "rd-propose" if recommendation == "continue" else "stop"
         next_action = (
-            "Next action: replay synthesize, then continue run-001 / branch-001 with rd-propose."
+            f"Next action: replay synthesize, then continue {run_id} / {branch_id} with rd-propose."
             if recommendation == "continue"
             else "Next action: replay synthesize, then stop the loop with no next stage skill."
         )
-        guidance = _stage_guidance(
+        guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
+            stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs replay before the branch decision is final",
             routing_reason="Reason: synthesize evidence must be replayed so the continue-or-stop recommendation is based on fresh output.",
             exact_next_action=next_action,
@@ -258,13 +230,14 @@ def rd_evaluate(
 
     next_skill = "rd-propose" if recommendation == "continue" else "stop"
     next_action = (
-        "Next action: continue run-001 / branch-001 with rd-propose."
+        f"Next action: continue {run_id} / {branch_id} with rd-propose."
         if recommendation == "continue"
         else "Next action: stop the loop; no next stage skill should be run."
     )
-    guidance = _stage_guidance(
+    guidance = build_stage_guidance_response(
         run_id=run_id,
         branch_id=branch_id,
+        stage_key=OWNED_STAGE_KEY.value,
         state_descriptor="completed successfully",
         routing_reason=(
             "Reason: synthesize completed and the branch recommendation is finalized."

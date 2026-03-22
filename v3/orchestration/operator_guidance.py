@@ -23,6 +23,7 @@ _STAGE_LABELS = {
 }
 
 _DETAIL_HINT = "If you want, I can expand the next step into the minimum command or skeleton."
+_REQUIRED_TEXT_FIELDS = ("current_state", "routing_reason", "exact_next_action")
 
 
 def _normalize_stage_key(value: str | None) -> str | None:
@@ -42,7 +43,7 @@ def _stage_label(stage_key: str | None) -> str:
 def _minimum_start_skeleton(user_intent: str) -> str:
     task_summary = user_intent or "Describe the task you want the standalone loop to drive."
     return (
-        'title="Phase 24 task" '
+        'title="Standalone V3 task" '
         f'task_summary="{task_summary}" '
         'scenario_label="research" '
         'stage_inputs.framing.summary="Summarize the first framing step." '
@@ -96,6 +97,10 @@ def render_operator_guidance_text(guidance: OperatorGuidance | dict[str, Any]) -
         data = guidance.model_dump(mode="json")
     else:
         data = dict(guidance)
+        missing = [field_name for field_name in _REQUIRED_TEXT_FIELDS if field_name not in data]
+        if missing:
+            joined = ", ".join(missing)
+            raise ValueError(f"render_operator_guidance_text missing required fields: {joined}")
 
     lines = [
         str(data["current_state"]),
@@ -109,8 +114,45 @@ def render_operator_guidance_text(guidance: OperatorGuidance | dict[str, Any]) -
     return "\n".join(lines)
 
 
-def project_operator_guidance(guidance: OperatorGuidance) -> dict[str, Any]:
+def operator_guidance_to_dict(guidance: OperatorGuidance) -> dict[str, Any]:
     return guidance.model_dump(mode="json")
+
+
+def build_stage_guidance_response(
+    *,
+    run_id: str,
+    branch_id: str,
+    stage_key: str,
+    recommended_next_skill: str,
+    state_descriptor: str,
+    routing_reason: str,
+    exact_next_action: str,
+    current_action_status: str | None = None,
+    current_blocker_category: str | None = None,
+    current_blocker_reason: str | None = None,
+    repair_action: str | None = None,
+    next_step_detail: str | None = None,
+    detail_hint: str | None = None,
+) -> dict[str, Any]:
+    guidance = build_stage_operator_guidance(
+        run_id=run_id,
+        branch_id=branch_id,
+        stage_key=stage_key,
+        recommended_next_skill=recommended_next_skill,
+        state_descriptor=state_descriptor,
+        routing_reason=routing_reason,
+        exact_next_action=exact_next_action,
+        current_action_status=current_action_status,
+        current_blocker_category=current_blocker_category,
+        current_blocker_reason=current_blocker_reason,
+        repair_action=repair_action,
+        next_step_detail=next_step_detail,
+        detail_hint=detail_hint,
+    )
+    return {
+        "payload": operator_guidance_to_dict(guidance),
+        "text": render_operator_guidance_text(guidance),
+    }
 
 
 def build_start_new_run_guidance(*, user_intent: str) -> OperatorGuidance:
@@ -173,9 +215,10 @@ def build_paused_run_guidance(
 
 __all__ = [
     "STAGE_TO_NEXT_SKILL",
+    "build_stage_guidance_response",
     "build_stage_operator_guidance",
     "build_paused_run_guidance",
     "build_start_new_run_guidance",
-    "project_operator_guidance",
+    "operator_guidance_to_dict",
     "render_operator_guidance_text",
 ]

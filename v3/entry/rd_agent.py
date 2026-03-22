@@ -20,7 +20,7 @@ from v3.orchestration.operator_guidance import (
     STAGE_TO_NEXT_SKILL,
     build_paused_run_guidance,
     build_start_new_run_guidance,
-    project_operator_guidance,
+    operator_guidance_to_dict,
 )
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService
@@ -214,14 +214,14 @@ def route_user_intent(
             "current_branch_id": paused_context["branch_id"],
             "current_stage": paused_context["stage_key"],
         }
-        route_payload.update(project_operator_guidance(guidance))
+        route_payload.update(operator_guidance_to_dict(guidance))
         return route_payload
 
     guidance = build_start_new_run_guidance(user_intent=intent_text)
     route_payload = {
         "route_kind": "start_new_run",
     }
-    route_payload.update(project_operator_guidance(guidance))
+    route_payload.update(operator_guidance_to_dict(guidance))
     return route_payload
 
 

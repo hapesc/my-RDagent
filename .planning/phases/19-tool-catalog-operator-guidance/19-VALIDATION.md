@@ -38,9 +38,11 @@ created: 2026-03-22
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 19-01-01 | 01 | 1 | GUIDE-01 | unit/public-surface | `uv run python -m pytest tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
-| 19-01-02 | 01 | 1 | GUIDE-02 | unit/public-surface | `uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
-| 19-02-01 | 02 | 1 | GUIDE-03 | unit/public-surface | `uv run python -m pytest tests/test_phase16_tool_surface.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
+| 19-01-01 | 01 | 0 | GUIDE-01 | scaffold | `uv run python -m pytest tests/test_phase19_tool_guidance.py --collect-only -q` | ❌ W0 | ⬜ pending |
+| 19-01-02 | 01 | 0 | GUIDE-01, GUIDE-02 | unit/public-surface | `uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
+| 19-01-WAVE | 01 | 0 | GUIDE-01, GUIDE-02 | wave gate | `uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase13_v3_tools.py tests/test_phase16_tool_surface.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
+| 19-02-01 | 02 | 2 | GUIDE-03 | unit/public-surface | `uv run python -m pytest tests/test_phase16_tool_surface.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
+| 19-02-02 | 02 | 2 | GUIDE-03 | full regression | `uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase13_v3_tools.py tests/test_phase16_tool_surface.py tests/test_phase19_tool_guidance.py -q` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -48,8 +50,9 @@ created: 2026-03-22
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_phase19_tool_guidance.py` — focused public-surface regression coverage for examples, routing guidance, and follow-up semantics
-- [ ] Existing tool-surface tests updated to assert non-empty guidance fields for representative tools
+- [ ] `tests/test_phase19_tool_guidance.py` — focused public-surface regression coverage for examples and routing guidance, with collection-only validation before implementation
+- [ ] Existing tool-surface tests stay green against the Wave 0 examples-and-routing contract
+- [ ] Wave 0 closes with the full suite including `tests/test_phase13_v3_tools.py`
 
 *If none: "Existing infrastructure covers all phase requirements."*
 

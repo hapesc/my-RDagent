@@ -22,6 +22,7 @@ key-files:
     - v3/entry/rd_code.py
     - v3/entry/rd_execute.py
     - v3/entry/rd_evaluate.py
+    - v3/orchestration/preflight_service.py
     - v3/orchestration/skill_loop_service.py
     - tests/test_phase22_intent_routing.py
     - tests/test_phase23_stage_preflight_integration.py
@@ -54,7 +55,7 @@ completed: 2026-03-22
 - **Started:** 2026-03-22T12:29:53Z
 - **Completed:** 2026-03-22T12:38:33Z
 - **Tasks:** 2
-- **Files modified:** 11
+- **Files modified:** 12
 
 ## Accomplishments
 
@@ -68,7 +69,7 @@ completed: 2026-03-22
 Each task was committed atomically:
 
 1. **Task 1: Add integration regressions for blocked routing and blocked stage entry** - `19cb2c5` (`test`)
-2. **Task 2: Wire canonical preflight into routing, stage entry, and public wording** - `eee2d01` (`feat`)
+2. **Task 2: Wire canonical preflight into routing, stage entry, and public wording** - `eee2d01`, `4c69f8b` (`feat`, `fix`)
 
 ## Files Created/Modified
 
@@ -79,6 +80,7 @@ Each task was committed atomically:
 - `v3/entry/rd_code.py` - returns `preflight_blocked` before publish on build preflight failure
 - `v3/entry/rd_execute.py` - distinguishes `preflight_blocked` from verify-stage `blocked`
 - `v3/entry/rd_evaluate.py` - returns `preflight_blocked` before publish on synthesize preflight failure
+- `v3/orchestration/preflight_service.py` - allows explicit stage-skill entry while keeping routing-time current-stage checks strict
 - `v3/orchestration/skill_loop_service.py` - downgrades seeded ready wording to preflight-aware wording
 - `README.md` - documents blocked recommendations plus repair action
 - `skills/rd-agent/SKILL.md` - documents blocked-vs-recommended routing contract
@@ -100,7 +102,7 @@ Each task was committed atomically:
 - **Fix:** Added `require_branch_current_stage` to canonical preflight and set it to `false` for explicit stage-skill entrypoints while keeping the stricter routing-time behavior intact.
 - **Files modified:** `v3/orchestration/preflight_service.py`, `v3/entry/rd_propose.py`, `v3/entry/rd_code.py`, `v3/entry/rd_execute.py`, `v3/entry/rd_evaluate.py`
 - **Verification:** Full regression gate passed after the change.
-- **Committed in:** `eee2d01`
+- **Committed in:** `4c69f8b`
 
 **2. [Rule 3 - Blocking] Restored expected forbidden-module coverage in `.importlinter`**
 - **Found during:** Task 2 full regression gate

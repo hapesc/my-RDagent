@@ -25,7 +25,7 @@ tool guidance alone, with no scope expansion into new orchestration features.
 
 ## Phases
 
-- [ ] **Phase 19: Tool Catalog Operator Guidance** - Add concrete examples,
+- [x] **Phase 19: Tool Catalog Operator Guidance** - Add concrete examples,
   routing guidance, and follow-up semantics to the direct V3 CLI tool surface.
 - [ ] **Phase 20: Stage Skill Execution Contracts** - Make `rd-agent` and the
   stage skills executable from explicit minimal-input and pause/continue
@@ -51,11 +51,11 @@ successful result.
   3. After a successful direct-tool call, including orchestration or gated-stop
      outcomes, a developer can identify the expected follow-up action from the
      tool metadata alone.
-**Plans**: 2 plans
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] `19-01-PLAN.md` — Add structured common-path examples and explicit routing boundaries to the direct tool catalog payload.
-- [ ] `19-02-PLAN.md` — Add structured follow-up semantics and regression coverage for next-step operator guidance.
+- [x] `19-01-PLAN.md` — Add structured common-path examples and explicit routing boundaries to the direct tool catalog payload. (completed 2026-03-22)
+- [x] `19-02-PLAN.md` — Add structured follow-up semantics and regression coverage for next-step operator guidance. (completed 2026-03-22)
 
 ### Phase 20: Stage Skill Execution Contracts
 **Goal**: Developers can start and continue the standalone stage loop from the
@@ -96,7 +96,7 @@ flows.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 19. Tool Catalog Operator Guidance | 0/2 | Not started | - |
+| 19. Tool Catalog Operator Guidance | 2/2 | Complete | 2026-03-22 |
 | 20. Stage Skill Execution Contracts | 0/TBD | Not started | - |
 | 21. Executable Public Surface Narrative | 0/TBD | Not started | - |
 

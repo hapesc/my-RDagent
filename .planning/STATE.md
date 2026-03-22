@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: skill-and-tool-guidance-hardening
-status: ready_for_closeout
+status: completed
 stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-03-22T07:00:45.451Z"
+last_updated: "2026-03-22T07:11:52.531Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
@@ -30,7 +30,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Milestone:** v1.2 skill and tool guidance hardening  
 **Roadmap span:** Phases 19-21
 **Next phase:** None - milestone v1.2 is complete
-**Status:** Phase 21 complete; milestone ready for closeout
+**Status:** Milestone complete
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22

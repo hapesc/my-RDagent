@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-03-22T08:59:32.872Z"
+status: planning
+stopped_at: Phase 22 passed verification; next step is Phase 23 planning
+last_updated: "2026-03-22T09:05:49.195Z"
 last_activity: 2026-03-22
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 1
   completed_plans: 1
-  percent: 100
+  percent: 33
 ---
 
 # Session State
@@ -23,29 +23,29 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 22 — intent-routing-and-continuation-control
+**Current focus:** Phase 23 — preflight-and-state-truth-hardening
 
 ## Position
 
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-24
-**Next phase:** 22 - Intent Routing and Continuation Control
-**Status:** Executing Phase 22
+**Next phase:** 23 - Preflight and State Truth Hardening
+**Status:** Ready to plan
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-22
-Started `v1.3` and mapped it into three phases covering intent routing,
-preflight/state truth, and operator-facing next-step UX, using
-`gsd-build/get-shit-done` as a reference.
-**Progress:** [██████████] 100%
+Completed Phase 22 intent routing and continuation control, establishing
+plain-language entry and paused-run-first continuation routing for the v1.3
+pipeline hardening milestone.
+**Progress:** [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 21 Plan 01 in 2min across 2 tasks and 3 tracked files
-- Current milestone execution trend: v1.3 is defined and ready for execution planning, starting with Phase 22
+- Latest completed plan: Phase 22 Plan 01 in 10min across 2 tasks and 5 tracked files
+- Current milestone execution trend: v1.3 has Phase 22 complete and is ready for Phase 23 planning
 
 ## Accumulated Context
 
@@ -81,13 +81,13 @@ preflight/state truth, and operator-facing next-step UX, using
 - [Phase 20]: Explain gated + max_stage_iterations=1 in operator language first, then map it secondarily to framing and awaiting_operator.
 - [Phase 21-executable-public-surface-narrative]: Kept README at the decision layer and linked to skill packages for exact field contracts instead of duplicating schema inventories.
 - [Phase 21-executable-public-surface-narrative]: Positioned rd-tool-catalog only under the Inspect downshift path so rd-agent remains the public first-class start surface.
+- [Phase 22-intent-routing-and-continuation-control]: Route plain-language entry through persisted state first, prefer paused-run continuation, and expose `recommended_next_skill` explicitly.
 
 ### Pending Todos
 
-- Define scoped milestone requirements for pipeline UX, routing, preflight, and
-  next-step guidance.
-
-- Plan Phase 22 against the new milestone requirements and research.
+- Plan Phase 23 against the existing milestone requirements and research.
+- Decide the exact preflight truth sources for runtime dependencies, artifact
+  existence, and persisted state readiness before stage execution.
 
 ### Blockers/Concerns
 
@@ -105,5 +105,5 @@ preflight/state truth, and operator-facing next-step UX, using
 ## Session Continuity
 
 Last session: 2026-03-22T08:59:32.870Z
-Stopped at: Completed 22-01-PLAN.md
+Stopped at: Phase 22 passed verification; next step is Phase 23 planning
 Resume file: None

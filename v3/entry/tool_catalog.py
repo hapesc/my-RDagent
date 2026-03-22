@@ -62,6 +62,7 @@ from v3.contracts.tool_io import (
     StageGetRequest,
     StageGetResult,
 )
+from v3.orchestration.operator_guidance import STAGE_TO_NEXT_SKILL
 from v3.tools.artifact_tools import rd_artifact_list
 from v3.tools.branch_tools import rd_branch_get, rd_branch_list
 from v3.tools.exploration_tools import (
@@ -144,6 +145,13 @@ _CATEGORY_NOTES = {
     "inspection": "Inspect the current V3 state after a prior skill or primitive call returned identifiers.",
     "primitives": "Apply one targeted direct-tool action after narrowing through rd-tool-catalog.",
 }
+_STAGE_SKILL_SEQUENCE = tuple(
+    skill_name
+    for skill_name in dict.fromkeys(
+        value for key, value in STAGE_TO_NEXT_SKILL.items() if key != "evaluate"
+    )
+)
+_STAGE_SKILL_LIST = ", ".join(f"`{skill}`" for skill in _STAGE_SKILL_SEQUENCE)
 
 
 def _example(arguments: dict[str, Any], *, category: ToolCategory) -> dict[str, Any]:
@@ -204,7 +212,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A new run, primary branch, and initial stage have been published.",
             "rd-agent",
-            "Continue the run with rd-agent using the returned run_id, or inspect the returned branch_id and stage_key before handing off to a stage skill.",
+            "Continue the run with rd-agent using the returned run_id, or inspect the returned branch_id and stage_key before handing the branch to the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_run_start,
         request_model=RunStartRequest,
@@ -457,7 +466,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The canonical branch snapshot has been loaded.",
             "rd-tool-catalog",
-            "Inspect the branch's current stage or artifacts to decide the next direct-tool read or the next high-level skill handoff.",
+            "Inspect the branch's current stage or artifacts to decide the next direct-tool read or hand the branch back to the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_get,
         request_model=BranchGetRequest,
@@ -482,7 +492,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The run's branch list has been loaded.",
             "rd-tool-catalog",
-            "Choose a branch to inspect with rd_branch_get or let rd_branch_select_next recommend the next branch to advance.",
+            "Choose a branch to inspect with rd_branch_get or let rd_branch_select_next recommend the next branch to advance before returning to the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_list,
         request_model=BranchListRequest,
@@ -507,7 +518,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The branch-stage snapshot and its published artifacts have been loaded.",
             "rd-tool-catalog",
-            "Inspect artifacts with rd_artifact_list or hand the branch back to the next valid stage skill for continued work.",
+            "Inspect artifacts with rd_artifact_list or hand the branch back to the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}) based on the returned stage_key.",
         ),
         handler=rd_stage_get,
         request_model=StageGetRequest,
@@ -537,7 +549,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The requested artifact list has been loaded.",
             "rd-tool-catalog",
-            "Use the returned artifact ids and branch/stage context to inspect the underlying evidence or continue the branch from that stage.",
+            "Use the returned artifact ids and branch/stage context to inspect the underlying evidence or continue the branch from that stage with the next valid skill "
+            f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_artifact_list,
         request_model=ArtifactListRequest,
@@ -562,7 +575,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "Recovery readiness for the requested branch stage has been evaluated.",
             "rd-tool-catalog",
-            "If recovery is ready, inspect the relevant artifacts or continue the branch's next valid stage; if it is blocked, fix the missing evidence before retrying.",
+            "If recovery is ready, inspect the relevant artifacts or continue the branch with the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}); if it is blocked, fix the missing evidence before retrying.",
         ),
         handler=rd_recovery_assess,
         request_model=RecoveryAssessRequest,
@@ -587,7 +601,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A recommendation for the next branch to advance has been produced.",
             "rd-tool-catalog",
-            "Inspect the recommended branch with rd_branch_get or rd_stage_get, then continue work on that branch.",
+            "Inspect the recommended branch with rd_branch_get or rd_stage_get, then continue work on that branch with the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_select_next,
         request_model=BranchSelectNextRequest,

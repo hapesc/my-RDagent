@@ -48,6 +48,10 @@ def test_v3_tool_cli_describes_single_tool(capsys) -> None:
     assert payload["examples"][0]["label"] == "common_path"
     assert payload["when_to_use"]
     assert payload["when_not_to_use"]
+    assert payload["follow_up"]
+    assert payload["follow_up"]["when_successful"]
+    assert payload["follow_up"]["next_entrypoint"]
+    assert payload["follow_up"]["next_action"]
     assert payload["inputSchema"]["title"] == "RunStartRequest"
 
 

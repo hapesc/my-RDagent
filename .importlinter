@@ -10,6 +10,10 @@ source_modules =
     v3.entry
     v3.orchestration
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     exploration_manager
@@ -20,6 +24,10 @@ type = forbidden
 source_modules =
     v3.tools
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     exploration_manager
@@ -30,6 +38,10 @@ type = forbidden
 source_modules =
     v3.tools.stage_write_tools
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     exploration_manager
@@ -40,6 +52,10 @@ type = forbidden
 source_modules =
     v3.entry
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     exploration_manager
@@ -50,6 +66,10 @@ type = forbidden
 source_modules =
     v3.entry
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     exploration_manager
@@ -63,6 +83,10 @@ source_modules =
     v3.orchestration
     v3.tools
 forbidden_modules =
+    app.control_plane
+    app.query_services
+    app.runtime
+    core.loop
     service_contracts
     data_models
     memory_service

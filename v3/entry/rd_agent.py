@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
+from v3.contracts.preflight import PreflightReadiness
 from v3.contracts.run import ExecutionMode
 from v3.contracts.tool_io import RunStartRequest
 from v3.entry.tool_catalog import call_cli_tool
@@ -114,12 +116,70 @@ def _extract_paused_run_context(persisted_state: dict[str, Any] | None) -> dict[
     }
 
 
+def _normalize_preflight_result(result: Any) -> dict[str, Any]:
+    if hasattr(result, "model_dump"):
+        return result.model_dump(mode="json")
+    if isinstance(result, dict):
+        return result
+    raise TypeError("preflight_result_provider must return a dict or PreflightResult")
+
+
+def _paused_route_preflight_fields(
+    paused_context: dict[str, str],
+    *,
+    preflight_result_provider: Callable[[dict[str, str]], Any] | None,
+) -> dict[str, Any]:
+    if preflight_result_provider is None:
+        return {
+            "current_action_status": "unknown_not_ready",
+            "current_blocker_category": None,
+            "current_blocker_reason": "Canonical preflight truth has not been evaluated for this paused stage yet.",
+            "repair_action": (
+                f"Run canonical preflight for {paused_context['run_id']} / {paused_context['branch_id']} "
+                f"before continuing with {paused_context['recommended_skill']}."
+            ),
+            "exact_next_action": (
+                "Next action: run canonical preflight for "
+                f"{paused_context['run_id']} / {paused_context['branch_id']} before continuing with "
+                f"{paused_context['recommended_skill']}."
+            ),
+        }
+
+    preflight = _normalize_preflight_result(preflight_result_provider(paused_context))
+    if preflight["readiness"] == PreflightReadiness.BLOCKED.value:
+        repair_action = str(preflight["repair_action"])
+        return {
+            "current_action_status": "blocked",
+            "current_blocker_category": preflight.get("primary_blocker_category"),
+            "current_blocker_reason": preflight.get("primary_blocker_reason"),
+            "repair_action": repair_action,
+            "exact_next_action": (
+                f"Next action: {repair_action} After repair, continue "
+                f"{paused_context['run_id']} / {paused_context['branch_id']} with "
+                f"{paused_context['recommended_skill']}."
+            ),
+        }
+
+    return {
+        "current_action_status": "executable",
+        "current_blocker_category": None,
+        "current_blocker_reason": None,
+        "repair_action": str(preflight["repair_action"]),
+        "exact_next_action": (
+            "Next action: continue "
+            f"{paused_context['run_id']} / {paused_context['branch_id']} with "
+            f"{paused_context['recommended_skill']}."
+        ),
+    }
+
+
 def route_user_intent(
     user_intent: str,
     *,
     persisted_state: dict[str, Any] | None,
     high_level_boundary_sufficient: bool = True,
-) -> dict[str, str]:
+    preflight_result_provider: Callable[[dict[str, str]], Any] | None = None,
+) -> dict[str, Any]:
     """Route plain-language intent to the next high-level standalone V3 skill."""
 
     paused_context = _extract_paused_run_context(persisted_state)
@@ -151,6 +211,10 @@ def route_user_intent(
                 "current_stage": paused_context["stage_key"],
             }
 
+        preflight_fields = _paused_route_preflight_fields(
+            paused_context,
+            preflight_result_provider=preflight_result_provider,
+        )
         return {
             "route_kind": route_kind,
             "recommended_next_skill": paused_context["recommended_skill"],
@@ -159,11 +223,11 @@ def route_user_intent(
                 "Reason: paused run continuation takes priority over a new run, and "
                 f"{paused_context['selection_reason']}"
             ),
-            "exact_next_action": (
-                "Next action: continue "
-                f"{paused_context['run_id']} / {paused_context['branch_id']} with "
-                f"{paused_context['recommended_skill']}."
-            ),
+            "exact_next_action": preflight_fields["exact_next_action"],
+            "current_action_status": preflight_fields["current_action_status"],
+            "current_blocker_category": preflight_fields["current_blocker_category"],
+            "current_blocker_reason": preflight_fields["current_blocker_reason"],
+            "repair_action": preflight_fields["repair_action"],
             "current_run_id": paused_context["run_id"],
             "current_branch_id": paused_context["branch_id"],
             "current_stage": paused_context["stage_key"],

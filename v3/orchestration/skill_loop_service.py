@@ -163,7 +163,7 @@ class SkillLoopService:
                 stage_iteration=stage_iteration,
                 status=StageStatus.READY,
                 summary=(
-                    f"{stage_key.value.capitalize()} iteration {stage_iteration} is ready for `/rd-agent`."
+                    f"{stage_key.value.capitalize()} iteration {stage_iteration} is prepared and requires preflight before execution."
                 ),
                 artifact_ids=[],
                 next_stage_key=next_stage_key,

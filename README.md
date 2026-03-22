@@ -74,8 +74,8 @@ paused run.
 
 The routing default is intent-first: a user can describe work in plain
 language, the surface inspects persisted state, and the reply compresses to
-current state, why that route was chosen, the exact next action, and the
-`recommended_next_skill`.
+current state, why that route was chosen, the exact next action, the
+`recommended_next_skill`, and when needed one blocker plus one repair action.
 
 ### Start
 
@@ -83,7 +83,10 @@ Use `rd-agent` first for the default standalone orchestration path.
 Start with the recommended multi-branch path when the task benefits from multiple candidate approaches.
 For simpler tasks, the strict minimum single-branch start contract from `skills/rd-agent/SKILL.md` is enough.
 If a paused run already exists, `rd-agent` should say so first and recommend
-the matching continuation skill instead of silently opening a new run.
+the matching continuation skill instead of silently opening a new run. That
+recommendation can still be blocked by canonical preflight truth; when that
+happens the reply should keep the same `recommended_next_skill` and add the
+current blocker plus a repair action.
 
 Keep the README at the decision level: start from `skills/rd-agent/SKILL.md`
 for the public start contract, then use the exact field-level contract in that
@@ -116,8 +119,9 @@ In default operator wording, that reply should read like:
 
 - Current state: paused run X on branch Y is at build.
 - Reason: paused run continuation is a stronger routing anchor than starting fresh.
-- Next action: continue with `rd-code`.
+- Next action: run the repair action first, then continue with `rd-code`.
 - `recommended_next_skill`: `rd-code`
+- repair action: `uv sync --extra test`
 
 ## Default Orchestration
 

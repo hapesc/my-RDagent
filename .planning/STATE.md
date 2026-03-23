@@ -6,11 +6,11 @@ current_phase: 24
 current_phase_name: operator-guidance-and-next-step-ux
 current_plan: Not started
 status: completed
-stopped_at: Phase 24 passed verification; milestone complete
-last_updated: "2026-03-22T15:15:40.996Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-03-23T02:26:29.160Z"
 last_activity: 2026-03-22
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
   total_plans: 5
   completed_plans: 5
@@ -103,6 +103,10 @@ Phase 24 passed verification and the milestone is complete.
 - Decide how the top-level operator UX should surface blocked-vs-recommended
   next steps when routing only has partial preflight context.
 
+### Roadmap Evolution
+
+- Phase 25 added: Fix QA-discovered operator guidance and multi-branch UX gaps
+
 ### Blockers/Concerns
 
 - Phase 20 must preserve the completed Phase 19 tool surface rather than
@@ -116,6 +120,6 @@ Phase 24 passed verification and the milestone is complete.
 
 ## Session Continuity
 
-Last session: 2026-03-22T12:43:01.466Z
-Stopped at: Phase 24 passed verification; milestone complete
-Resume file: None
+Last session: 2026-03-23T02:26:29.157Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-CONTEXT.md

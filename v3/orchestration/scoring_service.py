@@ -98,9 +98,33 @@ def _rationale(exploration_priority: float, result_quality: float) -> str:
     return "Moderate exploration value with limited confirmed results so far."
 
 
+def compute_generalization_signals(
+    *,
+    validation_score: float,
+    training_score: float | None = None,
+    cross_fold_variance: float | None = None,
+    score_trend: float | None = None,
+) -> tuple[float, float]:
+    """Compute generalization gap and overfitting risk from stage results."""
+
+    if training_score is None:
+        return (0.0, 0.0)
+
+    gap = max(0.0, training_score - validation_score)
+    risk_components: list[float] = [min(1.0, gap * 2.0)]
+    if cross_fold_variance is not None:
+        risk_components.append(min(1.0, cross_fold_variance * 5.0))
+    if score_trend is not None and score_trend < 0.0:
+        risk_components.append(min(1.0, abs(score_trend) * 3.0))
+
+    overfitting_risk = min(1.0, sum(risk_components) / len(risk_components))
+    return (round(gap, 4), round(overfitting_risk, 4))
+
+
 __all__ = [
     "BranchSelectionSignal",
     "build_selection_rationale",
+    "compute_generalization_signals",
     "project_branch_score",
     "selection_potential",
 ]

@@ -22,7 +22,6 @@ _STAGE_LABELS = {
     "evaluate": "synthesis stage (`synthesize`)",
 }
 
-_DETAIL_HINT = "If you want, I can expand the next step into the minimum command or skeleton."
 _REQUIRED_TEXT_FIELDS = ("current_state", "routing_reason", "exact_next_action")
 
 
@@ -74,7 +73,6 @@ def build_stage_operator_guidance(
     current_blocker_reason: str | None = None,
     repair_action: str | None = None,
     next_step_detail: str | None = None,
-    detail_hint: str | None = None,
 ) -> OperatorGuidance:
     return OperatorGuidance(
         recommended_next_skill=recommended_next_skill,
@@ -88,7 +86,6 @@ def build_stage_operator_guidance(
         current_blocker_reason=current_blocker_reason,
         repair_action=repair_action,
         next_step_detail=next_step_detail,
-        detail_hint=detail_hint,
     )
 
 
@@ -107,8 +104,6 @@ def render_operator_guidance_text(guidance: OperatorGuidance | dict[str, Any]) -
         str(data["routing_reason"]),
         str(data["exact_next_action"]),
     ]
-    if data.get("detail_hint"):
-        lines.append(str(data["detail_hint"]))
     if data.get("next_step_detail"):
         lines.append(f"Detail: {data['next_step_detail']}")
     return "\n".join(lines)
@@ -132,7 +127,6 @@ def build_stage_guidance_response(
     current_blocker_reason: str | None = None,
     repair_action: str | None = None,
     next_step_detail: str | None = None,
-    detail_hint: str | None = None,
 ) -> dict[str, Any]:
     guidance = build_stage_operator_guidance(
         run_id=run_id,
@@ -147,7 +141,6 @@ def build_stage_guidance_response(
         current_blocker_reason=current_blocker_reason,
         repair_action=repair_action,
         next_step_detail=next_step_detail,
-        detail_hint=detail_hint,
     )
     return {
         "payload": operator_guidance_to_dict(guidance),
@@ -204,8 +197,6 @@ def build_paused_run_guidance(
         current_blocker_reason=current_blocker_reason,
         repair_action=repair_action,
     )
-    if current_action_status == "executable":
-        return guidance.model_copy(update={"detail_hint": _DETAIL_HINT})
     return guidance.model_copy(
         update={
             "next_step_detail": _minimum_continuation_skeleton(run_id=run_id, branch_id=branch_id),

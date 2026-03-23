@@ -19,7 +19,6 @@ class OperatorGuidance(BaseModel):
     current_blocker_reason: str | None = None
     repair_action: str | None = None
     next_step_detail: str | None = None
-    detail_hint: str | None = None
 
 
 __all__ = ["OperatorGuidance"]

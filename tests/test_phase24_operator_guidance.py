@@ -97,15 +97,16 @@ def test_new_run_route_includes_minimum_start_skeleton() -> None:
     assert "stage_inputs.framing.artifact_ids" in detail
 
 
-def test_executable_paused_route_uses_detail_hint_without_auto_skeleton() -> None:
+def test_executable_paused_route_uses_next_step_detail_without_detail_hint() -> None:
     result = route_user_intent(
         "continue the current build work",
         persisted_state=_paused_state(stage_key="build"),
         preflight_result_provider=lambda _context: _preflight_result(readiness=PreflightReadiness.EXECUTABLE),
     )
 
-    assert result["detail_hint"]
-    assert result.get("next_step_detail") in (None, "")
+    assert "run_id=" in result["next_step_detail"]
+    assert "branch_id=" in result["next_step_detail"]
+    assert "detail_hint" not in result
 
 
 def test_stage_to_next_skill_mapping_comes_from_one_shared_source() -> None:

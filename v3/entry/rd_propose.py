@@ -18,7 +18,10 @@ from v3.contracts.tool_io import (
 )
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.preflight_service import PreflightService
-from v3.orchestration.operator_guidance import build_stage_guidance_response
+from v3.orchestration.operator_guidance import (
+    _minimum_continuation_skeleton,
+    build_stage_guidance_response,
+)
 from v3.orchestration.resume_planner import plan_resume_decision
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.stage_transition_service import StageTransitionService
@@ -75,6 +78,7 @@ def rd_propose(
         recovery_response = None
 
     stage_snapshot = stage_response["structuredContent"]["stage"]
+    next_step_detail = _minimum_continuation_skeleton(run_id=run_id, branch_id=branch_id)
     preflight = (preflight_service or PreflightService(state_store)).assess(
         run_id=run_id,
         branch_id=branch_id,
@@ -99,6 +103,7 @@ def rd_propose(
             current_blocker_category=preflight.primary_blocker_category.value if preflight.primary_blocker_category else None,
             current_blocker_reason=preflight.primary_blocker_reason,
             repair_action=preflight.repair_action,
+            next_step_detail=next_step_detail,
         )
         return _tool_response(
             {
@@ -131,10 +136,12 @@ def rd_propose(
             routing_reason="Reason: framing evidence is reusable, so a fresh publish is unnecessary.",
             exact_next_action=f"Next action: continue {run_id} / {branch_id} with rd-code.",
             recommended_next_skill="rd-code",
+            next_step_detail=next_step_detail,
         )
         return _tool_response(
             {
                 "owned_stage": OWNED_STAGE_KEY.value,
+                "outcome": "reused",
                 "operator_guidance": guidance["payload"],
                 "decision": decision.model_dump(mode="json"),
                 "run": run_response["structuredContent"]["run"],
@@ -157,10 +164,12 @@ def rd_propose(
             routing_reason="Reason: framing state or recovery evidence still needs review before the build handoff is trustworthy.",
             exact_next_action=f"Next action: review framing blockers, then continue {run_id} / {branch_id} with rd-propose.",
             recommended_next_skill="rd-propose",
+            next_step_detail=next_step_detail,
         )
         return _tool_response(
             {
                 "owned_stage": OWNED_STAGE_KEY.value,
+                "outcome": "review",
                 "operator_guidance": guidance["payload"],
                 "decision": decision.model_dump(mode="json"),
                 "run": run_response["structuredContent"]["run"],
@@ -183,6 +192,7 @@ def rd_propose(
             routing_reason="Reason: framing evidence must be replayed so the next-stage handoff is based on fresh output.",
             exact_next_action=f"Next action: replay framing, then continue {run_id} / {branch_id} with rd-code.",
             recommended_next_skill="rd-code",
+            next_step_detail=next_step_detail,
         )
         published = rd_stage_replay(
             StageStartRequest(
@@ -198,6 +208,7 @@ def rd_propose(
         return _tool_response(
             {
                 "owned_stage": OWNED_STAGE_KEY.value,
+                "outcome": "replay",
                 "operator_guidance": guidance["payload"],
                 "decision": decision.model_dump(mode="json"),
                 "run": run_response["structuredContent"]["run"],
@@ -219,6 +230,7 @@ def rd_propose(
         routing_reason="Reason: framing completed and prepared the build handoff.",
         exact_next_action=f"Next action: continue {run_id} / {branch_id} with rd-code.",
         recommended_next_skill="rd-code",
+        next_step_detail=next_step_detail,
     )
     published = rd_stage_complete(
         StageCompleteRequest(
@@ -234,6 +246,7 @@ def rd_propose(
     return _tool_response(
         {
             "owned_stage": OWNED_STAGE_KEY.value,
+            "outcome": "completed",
             "operator_guidance": guidance["payload"],
             "decision": decision.model_dump(mode="json"),
             "run": run_response["structuredContent"]["run"],

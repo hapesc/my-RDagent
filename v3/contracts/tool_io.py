@@ -130,6 +130,7 @@ class BranchPruneRequest(BaseModel):
 
     run_id: str = Field(min_length=1)
     relative_threshold: float = Field(default=0.5, ge=0.0)
+    min_active_branches: int = Field(default=2, ge=1)
 
 
 class BranchPruneResult(BaseModel):

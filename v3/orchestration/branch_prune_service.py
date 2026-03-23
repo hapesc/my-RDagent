@@ -1,4 +1,4 @@
-"""Phase 16 pruning service over the V3 cutoff algorithm."""
+"""Phase 26 pruning service over the multi-signal V3 cutoff algorithm."""
 
 from __future__ import annotations
 
@@ -34,9 +34,26 @@ class BranchPruneService:
             if (branch := self._state_store.load_branch_snapshot(branch_id)) is not None
             and branch.status in {BranchStatus.ACTIVE, BranchStatus.CANDIDATE}
         ]
+        use_multi_signal = run.exploration_mode is ExplorationMode.EXPLORATION
+        budget_ratio = run.current_round / max(run.max_rounds, 1) if use_multi_signal else None
+        generalization_gaps = (
+            {branch.branch_id: branch.score.generalization_gap for branch in active_branches}
+            if use_multi_signal
+            else None
+        )
+        overfitting_risks = (
+            {branch.branch_id: branch.score.overfitting_risk for branch in active_branches}
+            if use_multi_signal
+            else None
+        )
+        min_active_branches = request.min_active_branches if use_multi_signal else 1
         pruned_branch_ids = prune_branch_candidates(
             [(branch.branch_id, branch.score.result_quality) for branch in active_branches],
             relative_threshold=request.relative_threshold,
+            budget_ratio=budget_ratio,
+            generalization_gaps=generalization_gaps,
+            overfitting_risks=overfitting_risks,
+            min_active_branches=min_active_branches,
         )
         decision_ids: list[str] = []
         for branch_id in pruned_branch_ids:
@@ -56,8 +73,13 @@ class BranchPruneService:
                 branch_id=branch_id,
                 kind=BranchDecisionKind.PRUNE,
                 mode=ExplorationMode.EXPLORATION,
-                summary=f"Pruned {branch.label} after falling below the frontier cutoff.",
-                rationale="The branch fell below the V3 prune threshold while keeping at least one active branch.",
+                summary=f"Pruned {branch.label} after falling below the multi-signal frontier cutoff.",
+                rationale=(
+                    f"Pruned {branch.label} via multi-signal criteria at budget_ratio={budget_ratio:.2f} "
+                    f"while preserving at least {min_active_branches} active branch(es)."
+                    if use_multi_signal and budget_ratio is not None
+                    else "The branch fell below the V3 prune threshold while keeping at least one active branch."
+                ),
                 resolution=BranchResolution.PRUNED,
                 affected_branch_ids=[branch_id],
             )

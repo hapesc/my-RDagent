@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from v3.contracts.exploration import ExplorationMode
 from v3.contracts.preflight import PreflightReadiness
 from v3.contracts.run import ExecutionMode
 from v3.contracts.tool_io import RunStartRequest
@@ -237,6 +238,7 @@ def rd_agent(
     stage_inputs: dict[Any, StagePayload],
     initial_branch_label: str | None = None,
     execution_mode: ExecutionMode = ExecutionMode.GATED,
+    exploration_mode: ExplorationMode = ExplorationMode.EXPLORATION,
     max_stage_iterations: int = 1,
     branch_hypotheses: list[str] | None = None,
     dispatcher=None,
@@ -249,6 +251,8 @@ def rd_agent(
             "scenario_label": scenario_label,
             "initial_branch_label": initial_branch_label,
             "execution_mode": execution_mode,
+            "exploration_mode": exploration_mode,
+            "branch_hypotheses": branch_hypotheses,
             "max_stage_iterations": max_stage_iterations,
         },
         service=run_service,
@@ -259,6 +263,7 @@ def rd_agent(
     run_snapshot = run_snapshot.model_copy(
         update={
             "execution_mode": execution_mode,
+            "exploration_mode": exploration_mode,
             "max_stage_iterations": max_stage_iterations,
         }
     )

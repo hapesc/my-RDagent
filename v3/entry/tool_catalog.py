@@ -190,7 +190,7 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
     _ToolSpec(
         name="rd_run_start",
         title="Start V3 Run",
-        description="Start a V3 run and publish the initial run, branch, stage, and artifact truth.",
+        description="Start a V3 run and publish the initial run, branch, stage, and artifact truth, with multi-branch exploration as the default mode.",
         category="orchestration",
         subcategory=None,
         recommended_entrypoint="rd-agent",
@@ -202,6 +202,12 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
                     "scenario_label": "data_science",
                     "initial_branch_label": "primary",
                     "execution_mode": "gated",
+                    "exploration_mode": "exploration",
+                    "branch_hypotheses": [
+                        "Approach A: primary method for tool guidance hardening",
+                        "Approach B: alternative method for tool guidance hardening",
+                        "Approach C: baseline comparison for tool guidance hardening",
+                    ],
                     "max_stage_iterations": 1,
                 },
                 category="orchestration",

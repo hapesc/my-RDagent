@@ -50,6 +50,15 @@ def _minimum_start_skeleton(user_intent: str) -> str:
     )
 
 
+def _generate_branch_hypotheses(intent: str) -> list[str]:
+    summary = intent.strip()[:50]
+    return [
+        f"Approach A: primary method for {summary}",
+        f"Approach B: alternative method for {summary}",
+        f"Approach C: baseline comparison for {summary}",
+    ]
+
+
 def _minimum_continuation_skeleton(*, run_id: str, branch_id: str) -> str:
     return (
         f'run_id="{run_id}" '
@@ -150,21 +159,31 @@ def build_stage_guidance_response(
 
 def build_start_new_run_guidance(*, user_intent: str) -> OperatorGuidance:
     intent_text = user_intent.strip()
+    hypotheses = _generate_branch_hypotheses(intent_text)
+    hypothesis_lines = "\n".join(f"  - {hypothesis}" for hypothesis in hypotheses)
+    skeleton = _minimum_start_skeleton(intent_text)
+    branch_skeleton = (
+        f"{skeleton} "
+        'exploration_mode="exploration" '
+        f"branch_hypotheses={hypotheses!r}"
+    )
     return OperatorGuidance(
         recommended_next_skill="rd-agent",
         current_state=(
             "Current state: no paused run is active in the current working context, "
-            "so a new run can start (`start_new_run`)."
+            "so a new run can start (`start_new_run`). "
+            "Multi-branch exploration is recommended."
         ),
         routing_reason=(
-            "Reason: plain-language intent did not name a skill, and no paused run "
-            "dominates the current state."
+            "Reason: plain-language intent suggests a research task. "
+            "I suggest exploring these directions:\n"
+            f"{hypothesis_lines}"
         ),
         exact_next_action=(
-            "Next action: stay on rd-agent and start a new run from the request"
-            + (f' "{intent_text}".' if intent_text else ".")
+            "Next action: start a new run with rd-agent in exploration mode. "
+            "Confirm or modify the suggested branch hypotheses, then start."
         ),
-        next_step_detail=_minimum_start_skeleton(intent_text),
+        next_step_detail=branch_skeleton,
     )
 
 
@@ -206,6 +225,7 @@ def build_paused_run_guidance(
 
 __all__ = [
     "STAGE_TO_NEXT_SKILL",
+    "_generate_branch_hypotheses",
     "build_stage_guidance_response",
     "build_stage_operator_guidance",
     "build_paused_run_guidance",

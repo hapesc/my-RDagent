@@ -92,6 +92,7 @@ class RunBoardService:
             title=request.title,
             scenario_label=request.scenario_label,
             status=RunStatus.ACTIVE,
+            exploration_mode=request.exploration_mode,
             primary_branch_id=branch.branch_id,
             branch_ids=[branch.branch_id],
             highlighted_artifact_ids=[artifact.artifact_id for artifact in artifacts],

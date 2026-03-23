@@ -10,6 +10,7 @@ from .exploration import (
     BranchBoardSnapshot,
     BranchDecisionSnapshot,
     CandidateSummarySnapshot,
+    ExplorationMode,
     MergeOutcomeSnapshot,
     ShortlistEntrySnapshot,
 )
@@ -28,6 +29,8 @@ class RunStartRequest(BaseModel):
     scenario_label: str = Field(min_length=1)
     initial_branch_label: str | None = None
     execution_mode: ExecutionMode = ExecutionMode.GATED
+    exploration_mode: ExplorationMode = ExplorationMode.EXPLORATION
+    branch_hypotheses: list[str] | None = None
     max_stage_iterations: int = Field(default=1, ge=1)
 
 

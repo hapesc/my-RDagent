@@ -7,7 +7,7 @@ current_phase_name: adaptive-dag-path-management-with-selectparents-and-dynamic-
 current_plan: 6
 status: verifying
 stopped_at: Phase 26 gap-closure execution finished; rerun verify-work next
-last_updated: "2026-03-23T10:20:36Z"
+last_updated: "2026-03-23T10:34:19Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
@@ -42,7 +42,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-work 26` to confirm the diagnosed issues are actually closed.
+Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-work 26` to confirm the diagnosed issues are actually closed. Quick task `260323-p50` also landed repo-level CI, Make targets, and release-versioning automation without changing the phase roadmap.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -114,9 +114,10 @@ Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-wor
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260323-oy1 | Record runtime-bundle installer and tool-invocation contract hardening | 2026-03-23 | 777d1fc | [260323-oy1-record-runtime-bundle-installer-and-tool](./quick/260323-oy1-record-runtime-bundle-installer-and-tool/) |
+| 260323-p50 | Make repo easy to install, verify, and release | 2026-03-23 | 6f467a8 | [260323-p50-repo-easy-to-install-gsd-repo](./quick/260323-p50-repo-easy-to-install-gsd-repo/) |
 
 ## Session Continuity
 
-Last session: 2026-03-23T10:20:36Z
-Stopped at: Phase 26 gap-closure execution finished; rerun verify-work next
+Last session: 2026-03-23T10:34:19Z
+Stopped at: Quick task 260323-p50 completed; Phase 26 still needs verify-work rerun next
 Resume file: .planning/phases/26-adaptive-dag-path-management-with-selectparents-and-dynamic-pruning/26-UAT.md

@@ -1,6 +1,6 @@
 [project]
 name = "rdagent-v3"
-version = "0.1.0"
+version = "1.2.0"
 description = "Standalone V3 skill and CLI tool surface extracted from my-RDagent"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -1,6 +1,6 @@
 # Common developer commands for install, lint, test, verification, and releases.
 
-.PHONY: test test-quick lint lint-fix format verify install install-all
+.PHONY: test test-quick lint lint-fix format verify install install-all release
 
 test:
 	uv run python -m pytest tests/ -q
@@ -24,3 +24,10 @@ install:
 
 install-all:
 	bash scripts/setup_env.sh --all --scope-all --full-verify
+
+release:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "error: VERSION is required (example: make release VERSION=1.3.0)"; \
+		exit 1; \
+	fi
+	uv run python scripts/bump_version.py $(VERSION)

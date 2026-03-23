@@ -7,7 +7,7 @@ current_phase_name: adaptive-dag-path-management-with-selectparents-and-dynamic-
 current_plan: 6
 status: verified
 stopped_at: Phase 26 verification passed; plan Phase 27 next
-last_updated: "2026-03-23T10:38:01Z"
+last_updated: "2026-03-23T11:02:23.779Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
@@ -42,7 +42,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Quick task `260323-p50` landed CI pipeline, Makefile, version/changelog automation, and cleaned all Ruff lint debt (141→0 violations). `make verify` now passes end-to-end (273 tests, 0 lint errors).
+Quick task `260323-qfz` distilled Google’s five skill patterns into concrete RDagent guidance: thinner public skills, internal workflows, stronger deterministic tools, and a skill-review checklist.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -116,6 +116,7 @@ Quick task `260323-p50` landed CI pipeline, Makefile, version/changelog automati
 |---|-------------|------|--------|--------|-----------|
 | 260323-oy1 | Record runtime-bundle installer and tool-invocation contract hardening | 2026-03-23 | 777d1fc | | [260323-oy1-record-runtime-bundle-installer-and-tool](./quick/260323-oy1-record-runtime-bundle-installer-and-tool/) |
 | 260323-p50 | Make repo easy to install, verify, and release | 2026-03-23 | e7128cb | Verified | [260323-p50-repo-easy-to-install-gsd-repo](./quick/260323-p50-repo-easy-to-install-gsd-repo/) |
+| 260323-qfz | Extract actionable skill-improvement guidance from Google skill patterns for RDagent | 2026-03-23 | docs-only | | [260323-qfz-extract-actionable-skill-improvement-gui](./quick/260323-qfz-extract-actionable-skill-improvement-gui/) |
 
 ## Session Continuity
 

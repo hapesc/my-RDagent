@@ -4,17 +4,17 @@ milestone: v1.3
 milestone_name: milestone
 current_phase: 26
 current_phase_name: adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
-current_plan: 4
+current_plan: 5
 status: verifying
 stopped_at: Phase 26 context gathered
-last_updated: "2026-03-23T09:57:39.918Z"
+last_updated: "2026-03-23T10:02:22.000Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 12
+  completed_phases: 4
+  total_plans: 14
   completed_plans: 12
-  percent: 100
+  percent: 86
 ---
 
 # Session State
@@ -26,32 +26,32 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 26 — adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
+**Current focus:** Phase 26 diagnosed gaps — adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
 
 ## Position
 
 **Current Phase:** 26
 **Current Phase Name:** adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
 **Total Phases:** 7
-**Current Plan:** 4
-**Total Plans in Phase:** 4
+**Current Plan:** 5
+**Total Plans in Phase:** 6
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
-**Next phase:** Phase 26 after Phase 25 completion
-**Status:** Phase complete — ready for verification
+**Next phase:** Phase 26 gap closure before Phase 27
+**Status:** UAT diagnosed 5 issues; 2 gap-closure plans ready
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
-**Last activity:** 2026-03-23 - Completed quick task 260323-oy1: Record runtime-bundle installer and tool-invocation contract hardening
-Phase 25 verification was approved and the milestone can move on to Phase 26 planning.
-**Progress:** [██████████] 100%
+**Last activity:** 2026-03-23
+Phase 26 UAT completed with 5 diagnosed issues. Gap-closure plans 26-05 and 26-06 are ready for `$gsd-execute-phase 26 --gaps-only`.
+**Progress:** [████████░░] 86%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 25 plan 03 completed with 3/3 summarized plan(s)
-- Current milestone execution trend: v1.3 phase 25 is verified and Phase 26 is next
+- Latest completed plan: Phase 26 plan 04 completed with 4/4 summarized execution plan(s)
+- Current milestone execution trend: v1.3 phase 26 execution is done, but verification found diagnosed gaps that require closure before Phase 27
 
 ## Accumulated Context
 
@@ -97,9 +97,9 @@ Phase 25 verification was approved and the milestone can move on to Phase 26 pla
 
 ### Pending Todos
 
-- Plan Phase 26 against the new multi-branch exploration defaults, explicit recovery contracts, and materialized next-stage truth shipped in Phase 25.
-- Phase 26 context captured: independent DAG layer, SelectParentsService, multi-signal pruning, HypothesisSpec with category enum.
-- Cross-phase decisions for Phase 27/28 recorded in ROADMAP.md Phase Details sections under "Phase 26 decisions that constrain Phase N".
+- Execute Phase 26 gap-closure plan 26-05 to fix stale rd_agent payloads, mixed-input validation, and legacy compatibility edges surfaced by UAT.
+- Execute Phase 26 gap-closure plan 26-06 to repair structured-path diversity semantics and later-round DAG parent linkage.
+- Re-run verification after gap closure before advancing to Phase 27.
 
 ### Roadmap Evolution
 
@@ -108,7 +108,7 @@ Phase 25 verification was approved and the milestone can move on to Phase 26 pla
 
 ### Blockers/Concerns
 
-- None currently. Phase 25 is verified.
+- Phase 26 verification is blocked on five diagnosed UAT gaps captured in `26-UAT.md`.
 
 ### Quick Tasks Completed
 
@@ -118,6 +118,6 @@ Phase 25 verification was approved and the milestone can move on to Phase 26 pla
 
 ## Session Continuity
 
-Last session: 2026-03-23T06:13:25.223Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-adaptive-dag-path-management-with-selectparents-and-dynamic-pruning/26-CONTEXT.md
+Last session: 2026-03-23T10:02:22Z
+Stopped at: Phase 26 UAT diagnosed gaps; gap-closure plans created
+Resume file: .planning/phases/26-adaptive-dag-path-management-with-selectparents-and-dynamic-pruning/26-UAT.md

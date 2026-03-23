@@ -2,15 +2,26 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from v3.contracts.tool_io import ConvergeRoundRequest, ConvergeRoundResult, ExploreRoundRequest, ExploreRoundResult
+from v3.algorithms.decay import category_entropy
+from v3.contracts.exploration import NodeMetrics
+from v3.contracts.tool_io import (
+    BranchPruneRequest,
+    ConvergeRoundRequest,
+    ConvergeRoundResult,
+    ExploreRoundRequest,
+    ExploreRoundResult,
+)
 from v3.orchestration.branch_board_service import BranchBoardService
 from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
 from v3.orchestration.branch_merge_service import BranchMergeService
+from v3.orchestration.branch_prune_service import BranchPruneService
 from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from v3.orchestration.dag_service import DAGService
 from v3.orchestration.selection_service import SelectionService
 from v3.ports.state_store import StateStorePort
 
@@ -31,6 +42,8 @@ class MultiBranchService:
         selection_service: SelectionService,
         branch_merge_service: BranchMergeService,
         dispatcher: DispatchFn | None = None,
+        dag_service: DAGService | None = None,
+        prune_service: BranchPruneService | None = None,
     ) -> None:
         self._state_store = state_store
         self._workspace_manager = workspace_manager
@@ -39,6 +52,8 @@ class MultiBranchService:
         self._selection_service = selection_service
         self._branch_merge_service = branch_merge_service
         self._dispatcher = dispatcher or (lambda payload: {"status": "queued", **payload})
+        self._dag_service = dag_service
+        self._prune_service = prune_service
 
     def run_exploration_round(self, request: ExploreRoundRequest) -> ExploreRoundResult:
         run = self._state_store.load_run_snapshot(request.run_id)
@@ -48,9 +63,21 @@ class MultiBranchService:
         if primary_branch is None:
             raise KeyError("primary branch missing for exploration round")
 
+        if request.hypothesis_specs is not None and run.current_round == 0:
+            seen_categories = set()
+            for spec in request.hypothesis_specs:
+                if spec.approach_category in seen_categories:
+                    raise ValueError(f"Duplicate approach_category in first layer: {spec.approach_category}")
+                seen_categories.add(spec.approach_category)
+
+        hypothesis_labels = (
+            [spec.label for spec in request.hypothesis_specs]
+            if request.hypothesis_specs is not None
+            else request.hypotheses
+        )
         by_label = {primary_branch.label: primary_branch}
         dispatched_branch_ids: list[str] = []
-        for hypothesis in request.hypotheses:
+        for hypothesis in hypothesis_labels:
             branch = by_label.get(hypothesis)
             if branch is None:
                 publication = self._branch_lifecycle_service.fork_branch(
@@ -79,6 +106,21 @@ class MultiBranchService:
             )
             dispatched_branch_ids.append(branch.branch_id)
 
+        dag_node_ids: list[str] = []
+        if self._dag_service is not None:
+            diversity_score = 0.0
+            if request.hypothesis_specs is not None:
+                category_counts = Counter(spec.approach_category.value for spec in request.hypothesis_specs)
+                diversity_score = category_entropy(dict(category_counts))
+            for branch_id in dispatched_branch_ids:
+                node = self._dag_service.create_node(
+                    run_id=request.run_id,
+                    branch_id=branch_id,
+                    parent_node_ids=[],
+                    node_metrics=NodeMetrics(diversity_score=diversity_score),
+                )
+                dag_node_ids.append(node.node_id)
+
         board = self._branch_board_service.get_board(request.run_id)
         try:
             recommendation = self._selection_service.select_next_branch(run_id=request.run_id, include_completed=True)
@@ -89,12 +131,26 @@ class MultiBranchService:
             selected_branch_id = board.active_cards[0].branch_id
             recommended_next_step = "continue explore round"
             rationale = "No recovery-backed recommendation yet; continue exploring active branches."
+
+        pruned_branch_ids: list[str] = []
+        if self._prune_service is not None and request.auto_prune:
+            prune_result = self._prune_service.prune(BranchPruneRequest(run_id=request.run_id))
+            pruned_branch_ids = prune_result.pruned_branch_ids
+            board = prune_result.board
+
+        run = self._state_store.load_run_snapshot(request.run_id)
+        if run is not None:
+            self._state_store.write_run_snapshot(
+                run.model_copy(update={"current_round": run.current_round + 1})
+            )
         return ExploreRoundResult(
             selected_branch_id=selected_branch_id,
             recommended_next_step=recommended_next_step,
             rationale=rationale,
             board=board,
             dispatched_branch_ids=dispatched_branch_ids,
+            pruned_branch_ids=pruned_branch_ids,
+            dag_node_ids=dag_node_ids,
         )
 
     def run_convergence_round(self, request: ConvergeRoundRequest) -> ConvergeRoundResult:

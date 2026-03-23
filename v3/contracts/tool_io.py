@@ -7,10 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from .artifact import ArtifactKind, ArtifactSnapshot
 from .branch import BranchSnapshot
 from .exploration import (
+    ApproachCategory,
     BranchBoardSnapshot,
     BranchDecisionSnapshot,
     CandidateSummarySnapshot,
     ExplorationMode,
+    HypothesisSpec,
     MergeOutcomeSnapshot,
     ShortlistEntrySnapshot,
 )
@@ -233,6 +235,8 @@ class ExploreRoundRequest(BaseModel):
 
     run_id: str = Field(min_length=1)
     hypotheses: list[str] = Field(default_factory=list)
+    hypothesis_specs: list[HypothesisSpec] | None = None
+    auto_prune: bool = Field(default=True)
 
 
 class ExploreRoundResult(BaseModel):
@@ -243,6 +247,8 @@ class ExploreRoundResult(BaseModel):
     rationale: str = Field(min_length=1)
     board: BranchBoardSnapshot
     dispatched_branch_ids: list[str] = Field(default_factory=list)
+    pruned_branch_ids: list[str] = Field(default_factory=list)
+    dag_node_ids: list[str] = Field(default_factory=list)
 
 
 class ConvergeRoundRequest(BaseModel):

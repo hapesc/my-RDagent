@@ -13,7 +13,7 @@ from v3.contracts.run import RunBoardSnapshot
 from v3.contracts.stage import StageKey, StageSnapshot
 
 if TYPE_CHECKING:
-    from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot
+    from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot, HypothesisSpec
 
 
 @dataclass(frozen=True)
@@ -45,6 +45,8 @@ class StateStorePort(Protocol):
     def load_run_snapshot(self, run_id: str) -> RunBoardSnapshot | None: ...
 
     def load_branch_snapshot(self, branch_id: str) -> BranchSnapshot | None: ...
+
+    def load_hypothesis_spec(self, branch_id: str) -> HypothesisSpec | None: ...
 
     def load_stage_snapshot(
         self,

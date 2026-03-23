@@ -170,6 +170,16 @@ class EdgeType(StrEnum):
     MERGED = "merged"
 
 
+class ComponentClass(StrEnum):
+    """Structured solution component buckets for merge-stage complementarity."""
+
+    DATA_LOAD = "data_load"
+    FEATURE_ENG = "feature_eng"
+    MODEL = "model"
+    ENSEMBLE = "ensemble"
+    WORKFLOW = "workflow"
+
+
 class NodeMetrics(BaseModel):
     """Convergence-specific metrics attached to a DAG node."""
 
@@ -179,6 +189,7 @@ class NodeMetrics(BaseModel):
     generalization_gap: float = Field(default=0.0)
     overfitting_risk: float = Field(default=0.0, ge=0.0, le=1.0)
     diversity_score: float = Field(default=0.0, ge=0.0)
+    complementarity_score: float = Field(default=0.0, ge=0.0)
 
 
 class DAGNodeSnapshot(BaseModel):
@@ -240,6 +251,7 @@ __all__ = [
     "BranchBoardSnapshot",
     "BranchCardSnapshot",
     "CandidateSummarySnapshot",
+    "ComponentClass",
     "DAGEdgeSnapshot",
     "DAGNodeSnapshot",
     "BranchDecisionRef",

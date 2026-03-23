@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import inspect
 import math
-from typing import get_type_hints
 
 import pytest
 
@@ -54,11 +53,11 @@ def test_node_metrics_accepts_explicit_complementarity_score() -> None:
 
 def test_embedding_port_signature_and_stub_vectors() -> None:
     signature = inspect.signature(EmbeddingPort.embed)
-    type_hints = get_type_hints(EmbeddingPort.embed)
+    annotations = EmbeddingPort.embed.__annotations__
 
     assert list(signature.parameters) == ["self", "texts"]
-    assert type_hints["texts"] == list[str]
-    assert type_hints["return"] == list[list[float]]
+    assert annotations["texts"] == "list[str]"
+    assert annotations["return"] == "list[list[float]]"
 
     stub = StubEmbeddingPort()
     assert stub.embed(["a", "b"]) == [[0.0] * 256, [0.0] * 256]
@@ -66,11 +65,11 @@ def test_embedding_port_signature_and_stub_vectors() -> None:
 
 def test_state_store_port_exposes_load_hypothesis_spec() -> None:
     signature = inspect.signature(StateStorePort.load_hypothesis_spec)
-    type_hints = get_type_hints(StateStorePort.load_hypothesis_spec)
+    annotations = StateStorePort.load_hypothesis_spec.__annotations__
 
     assert list(signature.parameters) == ["self", "branch_id"]
-    assert type_hints["branch_id"] == str
-    assert "HypothesisSpec" in str(type_hints["return"])
+    assert annotations["branch_id"] == "str"
+    assert annotations["return"] == "HypothesisSpec | None"
 
 
 def test_compute_interaction_potential_uses_default_weights() -> None:

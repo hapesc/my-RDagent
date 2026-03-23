@@ -244,8 +244,12 @@ def rd_agent(
     max_stage_iterations: int = 1,
     branch_hypotheses: list[str] | None = None,
     hypothesis_specs: list[HypothesisSpec] | None = None,
+    auto_prune: bool = True,
     dispatcher=None,
 ) -> dict[str, Any]:
+    if branch_hypotheses and hypothesis_specs:
+        raise ValueError("Provide either branch_hypotheses or hypothesis_specs, not both")
+
     derived_hypotheses = branch_hypotheses
     if hypothesis_specs and not derived_hypotheses:
         derived_hypotheses = [spec.label for spec in hypothesis_specs]
@@ -285,8 +289,12 @@ def rd_agent(
         workspace_manager = BranchWorkspaceManager(getattr(state_store, "_root", ".state"))
         board_service = BranchBoardService(state_store)
         convergence_service = ConvergenceService(state_store=state_store, board_service=board_service)
-        dag_service = DAGService(state_store)
-        prune_service = BranchPruneService(state_store=state_store, board_service=board_service)
+        dag_service = DAGService(state_store) if hypothesis_specs is not None else None
+        prune_service = (
+            BranchPruneService(state_store=state_store, board_service=board_service)
+            if hypothesis_specs is not None
+            else None
+        )
         multi_branch_service = MultiBranchService(
             state_store=state_store,
             workspace_manager=workspace_manager,
@@ -311,6 +319,7 @@ def rd_agent(
                 run_id=run_snapshot.run_id,
                 hypotheses=derived_hypotheses or [],
                 hypothesis_specs=hypothesis_specs,
+                auto_prune=auto_prune,
             )
         )
         converge_round = multi_branch_service.run_convergence_round(
@@ -318,6 +327,7 @@ def rd_agent(
                 run_id=run_snapshot.run_id,
             )
         )
+        run_snapshot = state_store.load_run_snapshot(run_snapshot.run_id) or run_snapshot
         return {
             "structuredContent": {
                 "run": run_snapshot.model_dump(mode="json"),

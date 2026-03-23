@@ -75,7 +75,7 @@ def test_rd_agent_dispatches_parallel_exploration_subagents_with_isolated_worksp
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
 
-    rd_agent(
+    result = rd_agent(
         title="Phase 16 task",
         task_summary="Drive multi-branch exploration.",
         scenario_label="research",
@@ -99,6 +99,7 @@ def test_rd_agent_dispatches_parallel_exploration_subagents_with_isolated_worksp
     assert len(dispatches) == 3
     assert len({payload["branch_id"] for payload in dispatches}) == 3
     assert all(payload["workspace_root"].endswith("workspace") for payload in dispatches)
+    assert result["structuredContent"]["dispatches"] == [payload["branch_id"] for payload in dispatches]
 
 
 def test_rd_agent_runs_multi_branch_explore_and_converge_round(tmp_path) -> None:

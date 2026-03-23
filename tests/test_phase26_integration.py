@@ -290,6 +290,76 @@ def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: 
     nodes = state_store.list_dag_nodes("run-001")
 
     assert len(result["structuredContent"]["dispatches"]) == 2
+    assert result["structuredContent"]["run"]["current_round"] == 1
+    assert result["structuredContent"]["selected_branch_id"]
+    assert result["structuredContent"]["merge_summary"]
     assert run is not None
     assert run.current_round == 1
     assert len(nodes) == 2
+
+
+def test_rd_agent_rejects_mixed_hypothesis_inputs(tmp_path: Path) -> None:
+    from v3.entry.rd_agent import rd_agent
+
+    state_store = ArtifactStateStore(tmp_path / "state")
+    run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
+
+    with pytest.raises(ValueError, match="Provide either branch_hypotheses or hypothesis_specs, not both"):
+        rd_agent(
+            title="Phase 26 task",
+            task_summary="Drive integrated exploration.",
+            scenario_label="research",
+            initial_branch_label="primary",
+            branch_hypotheses=["legacy-a", "legacy-b"],
+            hypothesis_specs=[
+                HypothesisSpec(
+                    label="structured-a",
+                    approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+                    target_challenge="baseline",
+                    rationale="structured",
+                ),
+                HypothesisSpec(
+                    label="structured-b",
+                    approach_category=ApproachCategory.FEATURE_ENGINEERING,
+                    target_challenge="features",
+                    rationale="structured",
+                ),
+            ],
+            state_store=state_store,
+            run_service=run_service,
+            recovery_service=RecoveryService(state_store),
+            transition_service=StageTransitionService(state_store),
+            stage_inputs={},
+        )
+
+
+def test_rd_agent_legacy_string_hypotheses_remain_side_effect_neutral(tmp_path: Path) -> None:
+    from v3.entry.rd_agent import rd_agent
+
+    state_store = ArtifactStateStore(tmp_path / "state")
+    run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
+
+    result = rd_agent(
+        title="Phase 26 task",
+        task_summary="Legacy multi-branch exploration.",
+        scenario_label="research",
+        initial_branch_label="primary",
+        branch_hypotheses=["primary", "alt-a"],
+        dispatcher=lambda payload: payload,
+        execution_mode=ExecutionMode.UNATTENDED,
+        max_stage_iterations=1,
+        stage_inputs={
+            StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
+            StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
+            StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
+            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+        },
+        state_store=state_store,
+        run_service=run_service,
+        recovery_service=RecoveryService(state_store),
+        transition_service=StageTransitionService(state_store),
+    )
+
+    assert len(result["structuredContent"]["dispatches"]) == 2
+    assert "branch-001" in result["structuredContent"]["dispatches"]
+    assert state_store.list_dag_nodes("run-001") == []

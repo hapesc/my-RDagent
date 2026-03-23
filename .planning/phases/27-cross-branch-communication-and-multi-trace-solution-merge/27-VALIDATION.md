@@ -19,18 +19,18 @@ created: 2026-03-23
 |----------|-------|
 | **Framework** | pytest 7.x |
 | **Config file** | `pyproject.toml` |
-| **Quick run command** | `python -m pytest tests/ -x -q --timeout=30` |
-| **Full suite command** | `python -m pytest tests/ -v --timeout=60` |
-| **Estimated runtime** | ~45 seconds |
+| **Quick run command** | `python -m pytest tests/test_phase27_*.py -x -q` |
+| **Full suite command** | `python -m pytest tests/ -x -q` |
+| **Estimated runtime** | ~30 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `python -m pytest tests/ -x -q --timeout=30`
-- **After every plan wave:** Run `python -m pytest tests/ -v --timeout=60`
+- **After every task commit:** Run `python -m pytest tests/test_phase27_*.py -x -q`
+- **After every plan wave:** Run `python -m pytest tests/ -x -q`
 - **Before `/gsd:verify-work`:** Full suite must be green
-- **Max feedback latency:** 45 seconds
+- **Max feedback latency:** 30 seconds
 
 ---
 
@@ -38,11 +38,17 @@ created: 2026-03-23
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 27-01-01 | 01 | 1 | TBD | unit | `python -m pytest tests/test_interaction_kernel.py -x` | ❌ W0 | ⬜ pending |
-| 27-01-02 | 01 | 1 | TBD | unit | `python -m pytest tests/test_global_best_injection.py -x` | ❌ W0 | ⬜ pending |
-| 27-02-01 | 02 | 2 | TBD | unit | `python -m pytest tests/test_component_classifier.py -x` | ❌ W0 | ⬜ pending |
-| 27-02-02 | 02 | 2 | TBD | unit | `python -m pytest tests/test_merge_synthesizer.py -x` | ❌ W0 | ⬜ pending |
-| 27-03-01 | 03 | 3 | TBD | integration | `python -m pytest tests/test_cross_branch_integration.py -x` | ❌ W0 | ⬜ pending |
+| 27-01-T1 | 01 | 1 | P27-KERNEL, P27-COMPONENT | unit | `pytest tests/test_phase27_interaction_kernel.py -x` | ❌ W0 | ⬜ pending |
+| 27-01-T2 | 01 | 1 | P27-COMPONENT | unit | `pytest tests/test_phase27_complementarity.py -x` | ❌ W0 | ⬜ pending |
+| 27-02-T1 | 02 | 2 | P27-KERNEL | unit | `pytest tests/test_phase27_global_injection.py -x -k shared_edge` | ❌ W0 | ⬜ pending |
+| 27-02-T2 | 02 | 2 | P27-INJECT | unit | `pytest tests/test_phase27_global_injection.py -x` | ❌ W0 | ⬜ pending |
+| 27-02-T3 | 02 | 2 | P27-INJECT | unit | `pytest tests/test_phase27_global_injection.py -x -k multi_branch` | ❌ W0 | ⬜ pending |
+| 27-03-T1 | 03 | 2 | P27-PRUNE4 | unit | `pytest tests/test_phase27_prune_signal4.py -x` | ❌ W0 | ⬜ pending |
+| 27-03-T2 | 03 | 2 | P27-SELECT | unit | `pytest tests/test_phase27_select_parents.py -x` | ❌ W0 | ⬜ pending |
+| 27-04-T1 | 04 | 3 | P27-MERGE | unit | `pytest tests/test_phase27_merge_synthesis.py -x -k merge_design` | ❌ W0 | ⬜ pending |
+| 27-04-T2 | 04 | 3 | P27-MERGE | unit | `pytest tests/test_phase27_merge_synthesis.py -x` | ❌ W0 | ⬜ pending |
+| 27-05-T1 | 05 | 4 | P27-PRUNE4 | unit | `pytest tests/test_phase27_integration.py -x -k prune_signal4` | ❌ W0 | ⬜ pending |
+| 27-05-T2 | 05 | 4 | P27-E2E | integration | `pytest tests/test_phase27_integration.py -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,11 +56,14 @@ created: 2026-03-23
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_interaction_kernel.py` — stubs for interaction kernel algorithms
-- [ ] `tests/test_global_best_injection.py` — stubs for global best injection
-- [ ] `tests/test_component_classifier.py` — stubs for component classification
-- [ ] `tests/test_merge_synthesizer.py` — stubs for merge synthesis
-- [ ] `tests/test_cross_branch_integration.py` — stubs for end-to-end cross-branch flows
+- [ ] `tests/test_phase27_interaction_kernel.py` — covers P27-KERNEL (kernel math, softmax, sampling)
+- [ ] `tests/test_phase27_complementarity.py` — covers P27-COMPONENT (coverage distance, cosine similarity)
+- [ ] `tests/test_phase27_global_injection.py` — covers P27-INJECT (global best, sharing candidates, SHARED edges)
+- [ ] `tests/test_phase27_prune_signal4.py` — covers P27-PRUNE4 (functional preservation)
+- [ ] `tests/test_phase27_select_parents.py` — covers P27-SELECT (merge-stage complementary parents)
+- [ ] `tests/test_phase27_merge_synthesis.py` — covers P27-MERGE (LLM synthesis, holdout, MERGED edges)
+- [ ] `tests/test_phase27_integration.py` — covers P27-E2E (sharing → pruning → merge lifecycle)
+- [ ] `v3/ports/embedding_port.py` — StubEmbeddingPort for all tests
 
 ---
 
@@ -62,7 +71,7 @@ created: 2026-03-23
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Merged solution outperforms single branches | SC-3 | Requires multi-iteration execution with real LLM | Run 3+ branch exploration, trigger merge, compare scores |
+| Merged solution outperforms single branches with real LLM | SC-3 | Requires multi-iteration execution with real LLM and data | Run 3+ branch exploration, trigger merge at budget_ratio >= 0.8, compare holdout scores |
 
 ---
 
@@ -72,7 +81,7 @@ created: 2026-03-23
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
-- [ ] Feedback latency < 45s
+- [ ] Feedback latency < 30s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending

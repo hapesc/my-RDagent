@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.claude/settings.local.json
+.claude/skills/
+.codex/skills/

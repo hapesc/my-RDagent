@@ -39,7 +39,7 @@ state-aware guidance.
   exact next action.
 - [x] **Phase 25: Fix QA-discovered operator guidance and multi-branch UX gaps** - (completed 2026-03-23)
   Fix 6 QA issues and expose multi-branch exploration as the default UX.
-- [ ] **Phase 26: Adaptive DAG path management with SelectParents and dynamic pruning** -
+- [x] **Phase 26: Adaptive DAG path management with SelectParents and dynamic pruning** - (completed 2026-03-23)
   First layer of R&D-Agent convergence: DAG diversity, parent selection, pruning.
 - [ ] **Phase 27: Cross-branch communication and multi-trace solution merge** -
   Layers 2-3: global best injection, probabilistic exchange, unified merge.
@@ -101,7 +101,7 @@ truthful, state-aware answer.
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
-| 26. Adaptive DAG path management | 3/4 | In Progress|  |
+| 26. Adaptive DAG path management | 4/4 | Complete   | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
 
@@ -162,7 +162,7 @@ overfitting risk, and dynamically prunes underperforming sub-paths.
      below a configurable threshold.
   3. First-layer diversity is maximized by ensuring initial hypotheses span
      distinct approach categories.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [ ] 26-01-PLAN.md — All Phase 26 contracts, model extensions, algorithms, and DAG CRUD (P26-DAG, P26-SCORE, P26-ROUND, P26-DIVERSITY)
 - [ ] 26-02-PLAN.md — DAGService + SelectParentsService + ScoringService extension (P26-DAG, P26-SELECT, P26-SCORE)

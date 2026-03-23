@@ -43,14 +43,20 @@ def _branch(
     )
 
 
-def _recovery(branch_id: str, *, stage_key: StageKey, disposition: RecoveryDisposition, next_step: str) -> RecoveryAssessment:
+def _recovery(
+    branch_id: str,
+    *,
+    stage_key: StageKey,
+    recovery_assessment: RecoveryDisposition,
+    next_step: str,
+) -> RecoveryAssessment:
     return RecoveryAssessment(
         run_id="run-select",
         branch_id=branch_id,
         stage_key=stage_key,
-        disposition=disposition,
-        reusable_artifact_ids=["artifact"] if disposition is RecoveryDisposition.REUSE else [],
-        replay_artifact_ids=["artifact"] if disposition is not RecoveryDisposition.REUSE else [],
+        recovery_assessment=recovery_assessment,
+        reusable_artifact_ids=["artifact"] if recovery_assessment is RecoveryDisposition.REUSE else [],
+        replay_artifact_ids=["artifact"] if recovery_assessment is not RecoveryDisposition.REUSE else [],
         invalid_reasons=[],
         recommended_next_step=next_step,
     )
@@ -89,7 +95,7 @@ def test_rd_branch_select_next_uses_v3_puct_adapter(tmp_path: Path, monkeypatch:
         _recovery(
             branch_a.branch_id,
             stage_key=StageKey.FRAMING,
-            disposition=RecoveryDisposition.REPLAY,
+            recovery_assessment=RecoveryDisposition.REPLAY,
             next_step="replay framing evidence before advancing to build",
         )
     )
@@ -97,7 +103,7 @@ def test_rd_branch_select_next_uses_v3_puct_adapter(tmp_path: Path, monkeypatch:
         _recovery(
             branch_b.branch_id,
             stage_key=StageKey.BUILD,
-            disposition=RecoveryDisposition.REUSE,
+            recovery_assessment=RecoveryDisposition.REUSE,
             next_step="continue with verify",
         )
     )

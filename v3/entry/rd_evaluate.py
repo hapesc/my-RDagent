@@ -129,7 +129,7 @@ def rd_evaluate(
         assessment=None if recovery_response is None else RecoveryAssessment.model_validate(recovery_response["structuredContent"]["assessment"]),
     )
 
-    if decision.disposition is RecoveryDisposition.REUSE:
+    if decision.recovery_assessment is RecoveryDisposition.REUSE:
         next_skill = "rd-propose" if recommendation == "continue" else "stop"
         next_action = (
             f"Next action: continue {run_id} / {branch_id} with rd-propose."
@@ -164,7 +164,7 @@ def rd_evaluate(
             guidance["text"],
         )
 
-    if decision.disposition is RecoveryDisposition.REVIEW:
+    if decision.recovery_assessment is RecoveryDisposition.REVIEW:
         guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
@@ -193,7 +193,7 @@ def rd_evaluate(
             guidance["text"],
         )
 
-    if decision.disposition is RecoveryDisposition.REPLAY:
+    if decision.recovery_assessment is RecoveryDisposition.REPLAY:
         next_skill = "rd-propose" if recommendation == "continue" else "stop"
         next_action = (
             f"Next action: replay synthesize, then continue {run_id} / {branch_id} with rd-propose."

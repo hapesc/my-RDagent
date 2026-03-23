@@ -120,11 +120,11 @@ def test_resume_planner_reuses_completed_stage_artifacts(tmp_path: Path) -> None
 
     decision = plan_resume_decision(stage=stage, assessment=assessment)
 
-    assert decision.disposition == "reuse"
+    assert decision.recovery_assessment == "reuse"
     assert decision.resume_stage_iteration == 1
     assert decision.should_publish is False
     assert decision.reusable_artifact_ids == ["build-artifact-001"]
-    assert "reusing build iteration 1" in decision.message
+    assert "already has reusable evidence" in decision.message
     assert "continue with verify" in decision.message
 
 
@@ -141,11 +141,11 @@ def test_resume_planner_surfaces_replay_disposition_for_stale_evidence(tmp_path:
 
     decision = plan_resume_decision(stage=stage, assessment=assessment)
 
-    assert decision.disposition == "replay"
+    assert decision.recovery_assessment == "replay"
     assert decision.resume_stage_iteration == 2
     assert decision.should_publish is True
     assert decision.replay_artifact_ids == ["verify-artifact-001"]
-    assert "replaying verify iteration 2" in decision.message
+    assert "needs replay at iteration 2" in decision.message
     assert "stale" in decision.message
 
 
@@ -162,7 +162,7 @@ def test_resume_planner_surfaces_review_disposition_for_blocked_stage(tmp_path: 
 
     decision = plan_resume_decision(stage=stage, assessment=assessment)
 
-    assert decision.disposition == "review"
+    assert decision.recovery_assessment == "review"
     assert decision.resume_stage_iteration == 1
     assert decision.should_publish is False
     assert "blocked" in decision.message
@@ -193,11 +193,11 @@ def test_rd_code_reuses_completed_stage_instead_of_recomputing(tmp_path: Path) -
 
     persisted_stage = state_store.load_stage_snapshot("branch-001", StageKey.BUILD)
 
-    assert result["structuredContent"]["decision"]["disposition"] == "reuse"
+    assert result["structuredContent"]["decision"]["recovery_assessment"] == "reuse"
     assert persisted_stage is not None
     assert persisted_stage.stage_iteration == 1
     assert persisted_stage.summary == "build summary"
-    assert "reusing build iteration 1" in result["content"][0]["text"]
+    assert "already has reusable published evidence" in result["content"][0]["text"]
 
 
 def test_rd_execute_stops_with_review_when_verify_stage_is_blocked(tmp_path: Path) -> None:
@@ -224,7 +224,7 @@ def test_rd_execute_stops_with_review_when_verify_stage_is_blocked(tmp_path: Pat
 
     persisted_stage = state_store.load_stage_snapshot("branch-001", StageKey.VERIFY)
 
-    assert result["structuredContent"]["decision"]["disposition"] == "review"
+    assert result["structuredContent"]["decision"]["recovery_assessment"] == "review"
     assert result["structuredContent"]["outcome"] == "review"
     assert persisted_stage is not None
     assert persisted_stage.stage_iteration == 1

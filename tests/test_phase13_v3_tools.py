@@ -308,7 +308,7 @@ def _seed_selection_state(state_store: ArtifactStateStore) -> tuple[BranchSnapsh
             run_id="run-select",
             branch_id=branch_a.branch_id,
             stage_key=StageKey.FRAMING,
-            disposition=RecoveryDisposition.REPLAY,
+            recovery_assessment=RecoveryDisposition.REPLAY,
             reusable_artifact_ids=[],
             replay_artifact_ids=["artifact-framing-a"],
             invalid_reasons=[],
@@ -320,7 +320,7 @@ def _seed_selection_state(state_store: ArtifactStateStore) -> tuple[BranchSnapsh
             run_id="run-select",
             branch_id=branch_b.branch_id,
             stage_key=StageKey.BUILD,
-            disposition=RecoveryDisposition.REUSE,
+            recovery_assessment=RecoveryDisposition.REUSE,
             reusable_artifact_ids=["artifact-build-b"],
             replay_artifact_ids=[],
             invalid_reasons=[],
@@ -432,7 +432,7 @@ def test_rd_recovery_assess_returns_structured_v3_recovery_content_with_text_fal
     )
 
     assert result["structuredContent"]["assessment"]["branch_id"] == "branch-recovery"
-    assert result["structuredContent"]["assessment"]["disposition"] == RecoveryDisposition.REPLAY.value
+    assert result["structuredContent"]["assessment"]["recovery_assessment"] == RecoveryDisposition.REPLAY.value
     assert result["structuredContent"]["assessment"]["replay_artifact_ids"] == [artifact.artifact_id]
     assert [reason["code"] for reason in result["structuredContent"]["assessment"]["invalid_reasons"]] == [
         RecoveryReasonCode.STAGE_BLOCKED.value,
@@ -670,9 +670,9 @@ def test_importlinter_forbids_v3_tool_layer_fallbacks() -> None:
     assert "service_contracts" in config_text
     assert "data_models" in config_text
     assert "exploration_manager" in config_text
-    assert "app.query_services" not in config_text
-    assert "app.runtime" not in config_text
-    assert "core.loop" not in config_text
+    assert "app.query_services" in config_text
+    assert "app.runtime" in config_text
+    assert "core.loop" in config_text
 
 
 @pytest.mark.parametrize(

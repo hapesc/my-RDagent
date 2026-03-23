@@ -25,7 +25,7 @@ def rd_recovery_assess(request: RecoveryAssessRequest, *, service: RecoveryServi
         result.model_dump(mode="json"),
         (
             f"Recovery for branch {assessment.branch_id} at {assessment.stage_key.value}: "
-            f"{assessment.disposition.value}. Next: {assessment.recommended_next_step}."
+            f"{assessment.recovery_assessment.value}. Next: {assessment.recommended_next_step}."
         ),
     )
 

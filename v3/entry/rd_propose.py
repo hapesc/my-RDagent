@@ -127,7 +127,7 @@ def rd_propose(
         assessment=None if recovery_response is None else RecoveryAssessment.model_validate(recovery_response["structuredContent"]["assessment"]),
     )
 
-    if decision.disposition is RecoveryDisposition.REUSE:
+    if decision.recovery_assessment is RecoveryDisposition.REUSE:
         guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
@@ -155,7 +155,7 @@ def rd_propose(
             guidance["text"],
         )
 
-    if decision.disposition is RecoveryDisposition.REVIEW:
+    if decision.recovery_assessment is RecoveryDisposition.REVIEW:
         guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,
@@ -183,7 +183,7 @@ def rd_propose(
             guidance["text"],
         )
 
-    if decision.disposition is RecoveryDisposition.REPLAY:
+    if decision.recovery_assessment is RecoveryDisposition.REPLAY:
         guidance = build_stage_guidance_response(
             run_id=run_id,
             branch_id=branch_id,

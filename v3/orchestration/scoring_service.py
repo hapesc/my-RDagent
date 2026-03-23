@@ -41,7 +41,7 @@ def selection_potential(branch: BranchSnapshot, recovery: RecoveryAssessment) ->
         RecoveryDisposition.REPLAY: 0.15,
         RecoveryDisposition.REVIEW: 0.05,
         RecoveryDisposition.REBUILD: -1.0,
-    }[recovery.disposition]
+    }[recovery.recovery_assessment]
     return branch.score.exploration_priority + branch.score.result_quality + disposition_bonus
 
 
@@ -57,7 +57,7 @@ def build_selection_rationale(
         RecoveryDisposition.REPLAY: "available after replay",
         RecoveryDisposition.REVIEW: "pending review",
         RecoveryDisposition.REBUILD: "blocked for rebuild",
-    }[recovery.disposition]
+    }[recovery.recovery_assessment]
     return (
         f"Selected via the V3 PUCT adapter because {branch.label} is {disposition_text}, "
         f"retains exploration priority {projected_score.exploration_priority:.4f}, "

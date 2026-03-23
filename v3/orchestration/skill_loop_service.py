@@ -98,7 +98,7 @@ class SkillLoopService:
                 history.append(
                     {
                         "stage_key": stage_key.value,
-                        "disposition": response["structuredContent"]["decision"]["disposition"],
+                        "recovery_assessment": response["structuredContent"]["decision"]["recovery_assessment"],
                         "message": text,
                     }
                 )

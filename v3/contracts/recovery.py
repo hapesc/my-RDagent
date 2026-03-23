@@ -47,7 +47,7 @@ class RecoveryAssessment(BaseModel):
     run_id: str = Field(min_length=1)
     branch_id: str = Field(min_length=1)
     stage_key: StageKey
-    disposition: RecoveryDisposition
+    recovery_assessment: RecoveryDisposition
     reusable_artifact_ids: list[str] = Field(default_factory=list)
     replay_artifact_ids: list[str] = Field(default_factory=list)
     invalid_reasons: list[RecoveryReason] = Field(default_factory=list)

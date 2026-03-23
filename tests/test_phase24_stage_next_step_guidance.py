@@ -342,7 +342,7 @@ def test_resume_planner_messages_follow_current_state_reason_next_action_shape()
         run_id="run-001",
         branch_id="branch-001",
         stage_key=StageKey.BUILD,
-        disposition=RecoveryDisposition.REUSE,
+        recovery_assessment=RecoveryDisposition.REUSE,
         reusable_artifact_ids=["build-artifact-001"],
         replay_artifact_ids=[],
         invalid_reasons=[],

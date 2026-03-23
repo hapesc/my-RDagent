@@ -15,7 +15,7 @@ class ResumeDecision(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     stage_key: StageKey
-    disposition: RecoveryDisposition
+    recovery_assessment: RecoveryDisposition
     resume_stage_iteration: int = Field(ge=1)
     should_publish: bool
     reusable_artifact_ids: list[str] = Field(default_factory=list)
@@ -33,10 +33,10 @@ def plan_resume_decision(
     if assessment is None:
         return _decision_without_assessment(stage)
 
-    if assessment.disposition is RecoveryDisposition.REUSE:
+    if assessment.recovery_assessment is RecoveryDisposition.REUSE:
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=assessment.disposition,
+            recovery_assessment=assessment.recovery_assessment,
             resume_stage_iteration=stage.stage_iteration,
             should_publish=False,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
@@ -50,11 +50,11 @@ def plan_resume_decision(
                 next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
-    if assessment.disposition is RecoveryDisposition.REPLAY:
+    if assessment.recovery_assessment is RecoveryDisposition.REPLAY:
         next_iteration = _next_iteration(stage)
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=assessment.disposition,
+            recovery_assessment=assessment.recovery_assessment,
             resume_stage_iteration=next_iteration,
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
@@ -68,11 +68,11 @@ def plan_resume_decision(
                 next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
-    if assessment.disposition is RecoveryDisposition.REBUILD:
+    if assessment.recovery_assessment is RecoveryDisposition.REBUILD:
         next_iteration = _next_iteration(stage)
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=assessment.disposition,
+            recovery_assessment=assessment.recovery_assessment,
             resume_stage_iteration=next_iteration,
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
@@ -89,7 +89,7 @@ def plan_resume_decision(
     if stage.status in {StageStatus.NOT_STARTED, StageStatus.READY, StageStatus.IN_PROGRESS}:
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=RecoveryDisposition.REBUILD,
+            recovery_assessment=RecoveryDisposition.REBUILD,
             resume_stage_iteration=stage.stage_iteration,
             should_publish=True,
             reusable_artifact_ids=list(assessment.reusable_artifact_ids),
@@ -107,7 +107,7 @@ def plan_resume_decision(
         )
     return ResumeDecision(
         stage_key=stage.stage_key,
-        disposition=RecoveryDisposition.REVIEW,
+        recovery_assessment=RecoveryDisposition.REVIEW,
         resume_stage_iteration=stage.stage_iteration,
         should_publish=False,
         reusable_artifact_ids=list(assessment.reusable_artifact_ids),
@@ -120,7 +120,7 @@ def _decision_without_assessment(stage: StageSnapshot) -> ResumeDecision:
     if stage.status is StageStatus.BLOCKED:
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=RecoveryDisposition.REVIEW,
+            recovery_assessment=RecoveryDisposition.REVIEW,
             resume_stage_iteration=stage.stage_iteration,
             should_publish=False,
             message=_review_message(stage, f"review {stage.stage_key.value} blockers before advancing"),
@@ -128,7 +128,7 @@ def _decision_without_assessment(stage: StageSnapshot) -> ResumeDecision:
     if stage.status is StageStatus.COMPLETED:
         return ResumeDecision(
             stage_key=stage.stage_key,
-            disposition=RecoveryDisposition.REVIEW,
+            recovery_assessment=RecoveryDisposition.REVIEW,
             resume_stage_iteration=stage.stage_iteration,
             should_publish=False,
             message=_format_resume_message(
@@ -142,7 +142,7 @@ def _decision_without_assessment(stage: StageSnapshot) -> ResumeDecision:
         )
     return ResumeDecision(
         stage_key=stage.stage_key,
-        disposition=RecoveryDisposition.REBUILD,
+        recovery_assessment=RecoveryDisposition.REBUILD,
         resume_stage_iteration=stage.stage_iteration,
         should_publish=True,
         message=_format_resume_message(

@@ -93,14 +93,14 @@ class RecoveryService:
                 )
             )
 
-        disposition = self._disposition_for(inputs.stage, replay_artifact_ids, invalid_reasons)
-        recommended_next_step = self._recommended_next_step(inputs.stage, disposition)
+        recovery_assessment = self._disposition_for(inputs.stage, replay_artifact_ids, invalid_reasons)
+        recommended_next_step = self._recommended_next_step(inputs.stage, recovery_assessment)
 
         return RecoveryAssessment(
             run_id=inputs.branch.run_id,
             branch_id=inputs.branch.branch_id,
             stage_key=inputs.stage.stage_key,
-            disposition=disposition,
+            recovery_assessment=recovery_assessment,
             reusable_artifact_ids=reusable_artifact_ids,
             replay_artifact_ids=replay_artifact_ids,
             invalid_reasons=invalid_reasons,
@@ -136,13 +136,13 @@ class RecoveryService:
             return RecoveryDisposition.REUSE
         return RecoveryDisposition.REVIEW
 
-    def _recommended_next_step(self, stage: StageSnapshot, disposition: RecoveryDisposition) -> str:
+    def _recommended_next_step(self, stage: StageSnapshot, recovery_assessment: RecoveryDisposition) -> str:
         next_stage = stage.next_stage_key.value if stage.next_stage_key is not None else "the next stage"
-        if disposition is RecoveryDisposition.REUSE:
+        if recovery_assessment is RecoveryDisposition.REUSE:
             return f"continue with {next_stage}"
-        if disposition is RecoveryDisposition.REPLAY:
+        if recovery_assessment is RecoveryDisposition.REPLAY:
             return f"replay {stage.stage_key.value} evidence before advancing to {next_stage}"
-        if disposition is RecoveryDisposition.REBUILD:
+        if recovery_assessment is RecoveryDisposition.REBUILD:
             return f"rebuild {stage.stage_key.value} artifacts before advancing to {next_stage}"
         return f"review {stage.stage_key.value} blockers before advancing to {next_stage}"
 

@@ -60,7 +60,7 @@ class SelectionService:
             recovery = self._state_store.load_recovery_assessment(branch.branch_id, branch.current_stage_key)
             if recovery is None:
                 continue
-            if recovery.invalid_reasons or recovery.disposition == RecoveryDisposition.REBUILD:
+            if recovery.invalid_reasons or recovery.recovery_assessment == RecoveryDisposition.REBUILD:
                 continue
 
             candidate = PUCTBranchCandidate(

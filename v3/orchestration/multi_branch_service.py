@@ -10,6 +10,7 @@ from typing import Any
 from v3.algorithms.decay import category_entropy
 from v3.contracts.exploration import NodeMetrics
 from v3.contracts.tool_io import (
+    BranchForkRequest,
     BranchPruneRequest,
     ConvergeRoundRequest,
     ConvergeRoundResult,
@@ -75,13 +76,15 @@ class MultiBranchService:
             if request.hypothesis_specs is not None
             else request.hypotheses
         )
+        if not hypothesis_labels:
+            raise ValueError("exploration round requires at least one hypothesis")
         by_label = {primary_branch.label: primary_branch}
         dispatched_branch_ids: list[str] = []
         for hypothesis in hypothesis_labels:
             branch = by_label.get(hypothesis)
             if branch is None:
                 publication = self._branch_lifecycle_service.fork_branch(
-                    __import__("v3.contracts.tool_io", fromlist=["BranchForkRequest"]).BranchForkRequest(
+                    BranchForkRequest(
                         run_id=request.run_id,
                         source_branch_id=primary_branch.branch_id,
                         label=hypothesis,

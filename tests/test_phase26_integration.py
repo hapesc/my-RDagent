@@ -218,10 +218,16 @@ def test_run_exploration_round_rejects_duplicate_first_layer_categories(tmp_path
         ),
     ]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Duplicate approach_category"):
         service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs))
 
+    run = state_store.load_run_snapshot("run-001")
+
     assert dispatches == []
+    assert run is not None
+    assert run.branch_ids == ["branch-001"]
+    assert run.current_round == 0
+    assert state_store.list_dag_nodes("run-001") == []
 
 
 def test_run_exploration_round_falls_back_to_string_hypotheses_and_optional_services(tmp_path: Path) -> None:
@@ -240,6 +246,34 @@ def test_run_exploration_round_falls_back_to_string_hypotheses_and_optional_serv
     assert len(dispatches) == 2
     assert [payload["label"] for payload in dispatches] == ["primary", "alt-a"]
     assert result.dag_node_ids == []
+    assert result.pruned_branch_ids == []
+    assert run is not None
+    assert run.current_round == 1
+
+
+def test_run_exploration_round_rejects_empty_hypothesis_input(tmp_path: Path) -> None:
+    _state_store, service, _dispatches, _ = _build_service(tmp_path)
+
+    with pytest.raises(ValueError, match="exploration round requires at least one hypothesis"):
+        service.run_exploration_round(ExploreRoundRequest(run_id="run-001"))
+
+
+def test_auto_prune_false_skips_present_prune_service(tmp_path: Path) -> None:
+    state_store, service, dispatches, prune_service = _build_service(tmp_path, prune_mode="spy")
+
+    result = service.run_exploration_round(
+        ExploreRoundRequest(
+            run_id="run-001",
+            hypotheses=["primary", "alt-a"],
+            auto_prune=False,
+        )
+    )
+
+    run = state_store.load_run_snapshot("run-001")
+
+    assert isinstance(prune_service, _SpyPruneService)
+    assert prune_service.calls == []
+    assert len(dispatches) == 2
     assert result.pruned_branch_ids == []
     assert run is not None
     assert run.current_round == 1

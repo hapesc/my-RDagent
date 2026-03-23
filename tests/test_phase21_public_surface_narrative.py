@@ -38,7 +38,17 @@ def test_readme_makes_inspect_a_first_class_agent_led_step() -> None:
     assert "Inspect before continuing when the agent needs to confirm the current state, the correct next surface, or the exact continuation contract." in text
     assert "The agent should inspect current state, identify the next valid step, and present it to the user." in text
     assert "uv run rdagent-v3-tool describe rd_run_start" in text
+    assert "cd ~/.codex/rdagent-v3" in text
     assert start_index < inspect_index < tool_catalog_index
+
+
+def test_readme_explains_installed_runtime_bundle_for_direct_tools() -> None:
+    text = _readme_text()
+
+    assert "managed standalone V3 runtime bundle" in text
+    assert "./.codex/rdagent-v3" in text
+    assert "~/.claude/rdagent-v3" in text
+    assert "Direct V3 CLI tools should be called from that installed runtime bundle root" in text
 
 
 def test_readme_continue_step_routes_to_real_skill_and_tool_surfaces() -> None:

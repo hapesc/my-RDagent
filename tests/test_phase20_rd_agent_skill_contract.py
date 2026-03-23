@@ -58,6 +58,10 @@ def test_rd_agent_skill_explains_default_pause_behavior_in_plain_language() -> N
 def test_rd_agent_skill_keeps_tool_catalog_as_agent_side_escalation() -> None:
     text = _skill_text()
 
+    assert "## Tool execution context" in text
+    assert "uv run rdagent-v3-tool" in text
+    assert "installed standalone V3 runtime bundle root" in text
+    assert "do not search other repos or `HOME`" in text
     assert "## When to route to rd-tool-catalog" in text
     assert "agent needs a concrete direct tool in the background" in text
     assert "Do not push the operator into manual tool selection" in text

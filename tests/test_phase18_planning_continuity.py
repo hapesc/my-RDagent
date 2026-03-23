@@ -13,6 +13,7 @@ def test_readme_keeps_public_skills_and_cli_surface() -> None:
     assert "skills plus CLI tools" in readme_text
     assert "uv run python scripts/install_agent_skills.py --runtime codex --scope local --mode link" in readme_text
     assert "uv run python scripts/install_agent_skills.py --runtime claude --scope global --mode link" in readme_text
+    assert "managed standalone V3 runtime bundle" in readme_text
     assert "uv run rdagent-v3-tool list" in readme_text
     assert "uv run rdagent-v3-tool describe rd_run_start" in readme_text
 

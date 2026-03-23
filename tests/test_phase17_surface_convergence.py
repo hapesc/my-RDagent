@@ -43,6 +43,8 @@ def test_readme_describes_skills_plus_cli_tools_surface():
 
     assert "skills plus CLI tools" in readme_text
     assert "uv run python scripts/install_agent_skills.py --runtime codex --scope local --mode link" in readme_text
+    assert "managed standalone V3 runtime bundle" in readme_text
+    assert ".codex/rdagent-v3" in readme_text
     assert "## Default Orchestration" in readme_text
     assert "rd-agent" in readme_text
     assert "default orchestration path" in readme_text
@@ -55,6 +57,7 @@ def test_readme_describes_skills_plus_cli_tools_surface():
     assert "rd-tool-catalog" in readme_text
     assert "uv run rdagent-v3-tool list" in readme_text
     assert "uv run rdagent-v3-tool describe rd_run_start" in readme_text
+    assert "Do not run them from an unrelated caller repo" in readme_text
     assert "## Routing Model" in readme_text
     assert "## Skill Authoring" in readme_text
     assert "$skill-architect" in readme_text

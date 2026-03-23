@@ -9,6 +9,13 @@ Primary orchestration skill for the standalone V3 surface.
 
 Maps to `v3.entry.rd_agent.rd_agent`.
 
+## Tool execution context
+
+- When this skill downshifts to direct tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
+- Inspect only the current working repo's canonical V3 state or an explicitly provided state root.
+- If the current working repo has no canonical V3 state, do not search other repos or `HOME`; stay on the fresh-start path or ask only for the minimum start contract.
+
 ## Trigger requests
 
 - "help me do this task"
@@ -107,6 +114,7 @@ If you switch to a more continuous unattended path, `rd-agent` can advance furth
 
 - Route to `rd-tool-catalog` only when the high-level `rd-agent` boundary is insufficient and the agent needs a concrete direct tool in the background.
 - Route to `rd-tool-catalog` when the work is inspection-only or primitive-only and should not stay on the orchestration surface.
+- After routing there, keep the direct-tool call in the same standalone V3 repo root or installed runtime bundle root rather than changing execution roots.
 - Do not push the operator into manual tool selection for common start or continue flows; keep them on `rd-agent` unless a lower-level primitive is genuinely required.
 
 ## When not to use

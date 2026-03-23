@@ -9,6 +9,16 @@ Decision-oriented skill for the standalone V3 CLI tool surface.
 
 Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `rdagent-v3-tool describe` interface.
 
+## Tool execution context
+
+- Run direct CLI tools from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- The canonical direct-tool path is:
+  - `cd <standalone-v3-root>`
+  - `uv run rdagent-v3-tool list`
+  - `uv run rdagent-v3-tool describe <tool>`
+- Do not run `rdagent-v3-tool` from the caller repo unless the caller repo is that standalone V3 runtime.
+- Inspect only the current working repo's canonical V3 state or an explicitly provided state root; if no canonical local state exists, do not search other repos or `HOME`.
+
 ## Trigger requests
 
 - "which rd tool should I use"

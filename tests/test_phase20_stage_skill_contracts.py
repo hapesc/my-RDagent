@@ -50,6 +50,9 @@ def test_stage_skills_require_agent_led_missing_field_handling() -> None:
 
 def test_stage_skills_keep_tool_catalog_as_agent_side_escalation_only() -> None:
     for text in _all_stage_texts():
+        assert "## Tool execution context" in text
+        assert "uv run rdagent-v3-tool" in text
+        assert "installed standalone V3 runtime bundle root" in text
         assert "## When to route to rd-tool-catalog" in text
         assert "agent-side escalation path" in text
         assert "browse tools manually" in text or "manual tool browsing" in text

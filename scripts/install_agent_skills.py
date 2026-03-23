@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repo-local wrapper for installing standalone agent skills."""
+"""Repo-local wrapper for installing standalone runtime bundles and agent skills."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from v3.devtools.skill_install import install_agent_skills
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Install repo-local skills into Claude and Codex skill roots.",
+        description="Install standalone runtime bundles and generated skills into Claude and Codex roots.",
     )
     parser.add_argument(
         "--runtime",

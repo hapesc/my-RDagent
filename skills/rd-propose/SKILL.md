@@ -9,6 +9,12 @@ Framing-stage skill for the standalone V3 surface.
 
 Maps to `v3.entry.rd_propose.rd_propose`.
 
+## Tool execution context
+
+- If this skill must drop to direct inspection or primitive tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
+- Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
+
 ## Trigger requests
 
 - "complete the framing stage"
@@ -46,6 +52,7 @@ Maps to `v3.entry.rd_propose.rd_propose`.
 
 - Route to `rd-tool-catalog` on the agent side when you need direct inspection of run, branch, stage, artifact, or recovery state before or around framing.
 - Route to `rd-tool-catalog` on the agent side when you need a specific CLI primitive instead of the stage entrypoint.
+- Keep those direct-tool calls in the same standalone V3 repo root or installed runtime bundle root after routing.
 - Route to `rd-tool-catalog` when the high-level continuation boundary is insufficient, but keep the operator on the `rd-propose` path rather than telling them to browse tools first.
 
 ## When not to use

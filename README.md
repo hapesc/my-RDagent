@@ -45,8 +45,8 @@ Run all CLI commands from this repo environment. The standalone contract is:
 ## Agent Skill Setup
 
 Use the repo-local installer to expose the canonical `skills/` packages to
-Codex or Claude Code without copying the repo into another runtime-specific
-surface.
+Codex or Claude Code while also installing a managed standalone V3 runtime bundle
+into the target runtime root.
 
 Install into repo-local Codex and Claude roots:
 
@@ -63,7 +63,16 @@ uv run python scripts/install_agent_skills.py --runtime claude --scope global --
 ```
 
 `link` is the default and preferred mode because it keeps the repo-local
-`skills/` tree as the single source of truth.
+runtime and skill assets as the single source of truth while still generating a
+managed runtime bundle plus installed skills under the target runtime root.
+
+The installer writes:
+
+- installed skills under `./.codex/skills` or `./.claude/skills` for local installs, and under `~/.codex/skills` or `~/.claude/skills` for global installs
+- a managed standalone runtime bundle under `./.codex/rdagent-v3`, `./.claude/rdagent-v3`, `~/.codex/rdagent-v3`, or `~/.claude/rdagent-v3`
+
+Direct V3 CLI tools should be called from that installed runtime bundle root,
+not from an unrelated caller repo.
 
 ## Start -> Inspect -> Continue
 
@@ -107,6 +116,14 @@ Use `skills/rd-tool-catalog/SKILL.md` and `uv run rdagent-v3-tool describe rd_ru
 Inspect the relevant skill contract first when the next move is still
 high-level. Downshift to `rd-tool-catalog` only when the agent needs one
 concrete CLI tool or lower-level inspection detail in the background.
+When that downshift happens, call direct tools from the installed standalone
+runtime bundle root or from a checked-out standalone V3 repo root:
+
+```bash
+cd ~/.codex/rdagent-v3
+uv run rdagent-v3-tool list
+uv run rdagent-v3-tool describe rd_run_start
+```
 
 ### Continue
 
@@ -201,6 +218,10 @@ Describe one tool and inspect its schemas:
 uv run rdagent-v3-tool describe rd_run_start
 uv run rdagent-v3-tool describe rd_explore_round
 ```
+
+Run those commands from the installed standalone runtime bundle root or from a
+checked-out standalone V3 repo root. Do not run them from an unrelated caller repo
+and do not search `HOME` for a plausible state directory.
 
 The tool catalog emits stable machine-readable metadata for:
 

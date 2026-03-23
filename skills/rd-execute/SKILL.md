@@ -9,6 +9,12 @@ Verify-stage skill for the standalone V3 surface.
 
 Maps to `v3.entry.rd_execute.rd_execute`.
 
+## Tool execution context
+
+- If this skill must drop to direct inspection or primitive tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
+- Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
+
 ## Trigger requests
 
 - "complete the verify stage"
@@ -47,6 +53,7 @@ Maps to `v3.entry.rd_execute.rd_execute`.
 
 - Route to `rd-tool-catalog` on the agent side when you need direct inspection of stage state, recovery state, or a verification-related primitive.
 - Route to `rd-tool-catalog` on the agent side when you need to select a specific `inspection` or `primitives` tool instead of using the verify-stage wrapper.
+- Keep those direct-tool calls in the same standalone V3 repo root or installed runtime bundle root after routing.
 - Route to `rd-tool-catalog` when the high-level verification boundary is insufficient, but do not make manual tool browsing the default continuation path for the operator.
 
 ## When not to use

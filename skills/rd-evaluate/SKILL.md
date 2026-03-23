@@ -9,6 +9,12 @@ Synthesize-stage skill for the standalone V3 surface.
 
 Maps to `v3.entry.rd_evaluate.rd_evaluate`.
 
+## Tool execution context
+
+- If this skill must drop to direct inspection or primitive tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
+- Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
+
 ## Trigger requests
 
 - "complete the synthesize stage"
@@ -47,6 +53,7 @@ Maps to `v3.entry.rd_evaluate.rd_evaluate`.
 
 - Route to `rd-tool-catalog` on the agent side when you need to inspect the current run, branch, stage, or artifact state before making a synthesize decision.
 - Route to `rd-tool-catalog` on the agent side when you need one specific CLI tool rather than the synthesize-stage wrapper.
+- Keep those direct-tool calls in the same standalone V3 repo root or installed runtime bundle root after routing.
 - Route to `rd-tool-catalog` when the task is inspection- or primitive-oriented, but keep the operator on the `rd-evaluate` path rather than defaulting to manual tool browsing.
 
 ## When not to use

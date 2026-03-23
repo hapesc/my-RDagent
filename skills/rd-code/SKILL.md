@@ -9,6 +9,12 @@ Build-stage skill for the standalone V3 surface.
 
 Maps to `v3.entry.rd_code.rd_code`.
 
+## Tool execution context
+
+- If this skill must drop to direct inspection or primitive tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
+- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
+- Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
+
 ## Trigger requests
 
 - "complete the build stage"
@@ -46,6 +52,7 @@ Maps to `v3.entry.rd_code.rd_code`.
 
 - Route to `rd-tool-catalog` on the agent side when you need direct inspection of build-stage state, artifacts, or recovery decisions.
 - Route to `rd-tool-catalog` on the agent side when you need one concrete primitive tool instead of the build-stage wrapper.
+- Keep those direct-tool calls in the same standalone V3 repo root or installed runtime bundle root after routing.
 - Route to `rd-tool-catalog` when the task is better served by category-guided CLI tool selection, but keep the operator on the `rd-code` continuation path rather than defaulting to manual tool browsing.
 
 ## When not to use

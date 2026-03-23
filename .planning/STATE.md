@@ -5,13 +5,13 @@ milestone_name: milestone
 current_phase: 26
 current_phase_name: adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
 current_plan: 6
-status: verifying
-stopped_at: Phase 26 gap-closure execution finished; rerun verify-work next
-last_updated: "2026-03-23T10:34:19Z"
+status: verified
+stopped_at: Phase 26 verification passed; plan Phase 27 next
+last_updated: "2026-03-23T10:38:01Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
   completed_plans: 14
   percent: 100
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 26 gap fixes executed — adaptive-dag-path-management-with-selectparents-and-dynamic-pruning
+**Current focus:** Phase 27 planning prep after verified Phase 26 completion
 
 ## Position
 
@@ -37,12 +37,12 @@ just to discover how to start, pause, resume, or continue the loop.
 **Total Plans in Phase:** 6
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
-**Next phase:** Re-run Phase 26 verification before Phase 27
-**Status:** Gap-closure plans executed; ready to rerun verification
+**Next phase:** Phase 27 planning
+**Status:** Phase 26 verified complete; ready to plan Phase 27
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-work 26` to confirm the diagnosed issues are actually closed. Quick task `260323-p50` also landed repo-level CI, Make targets, and release-versioning automation without changing the phase roadmap.
+Quick task `260323-p50` landed CI pipeline, Makefile, version/changelog automation, and cleaned all Ruff lint debt (141→0 violations). `make verify` now passes end-to-end (273 tests, 0 lint errors).
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -51,7 +51,7 @@ Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-wor
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
 - Latest completed plan: Phase 26 plan 06 completed with 6/6 summarized execution plan(s)
-- Current milestone execution trend: v1.3 phase 26 execution and gap closure are done, and the next honest step is re-verification before Phase 27
+- Current milestone execution trend: v1.3 Phase 26 is now verified complete; the next honest step is planning Phase 27
 
 ## Accumulated Context
 
@@ -97,27 +97,28 @@ Phase 26 gap-closure plans 26-05 and 26-06 are executed. Re-run `$gsd-verify-wor
 
 ### Pending Todos
 
-- Re-run Phase 26 verification after gap closure before advancing to Phase 27.
-- If verification passes, mark Phase 26 complete and resume roadmap progression.
+- Plan Phase 27 using the verified Phase 26 DAG/diversity contracts as the baseline.
+- Keep `26-UAT.md` as the regression baseline for future Phase 26/27 behavior changes.
 
 ### Roadmap Evolution
 
 - Phase 25 added: Fix QA-discovered operator guidance and multi-branch UX gaps
 - Phase 27/28 details updated: added canonical refs and Phase 26 constraint sections from 26-CONTEXT.md discussion
+- Phase 26 marked verified complete after rerunning UAT against the 26-05/26-06 gap closures.
 
 ### Blockers/Concerns
 
-- Phase 26 is not yet verified after the latest fixes. Verification must be rerun against the diagnosed UAT issues in `26-UAT.md`.
+- No active Phase 26 blocker remains. The next dependency is a concrete Phase 27 plan.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260323-oy1 | Record runtime-bundle installer and tool-invocation contract hardening | 2026-03-23 | 777d1fc | [260323-oy1-record-runtime-bundle-installer-and-tool](./quick/260323-oy1-record-runtime-bundle-installer-and-tool/) |
-| 260323-p50 | Make repo easy to install, verify, and release | 2026-03-23 | 6f467a8 | [260323-p50-repo-easy-to-install-gsd-repo](./quick/260323-p50-repo-easy-to-install-gsd-repo/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260323-oy1 | Record runtime-bundle installer and tool-invocation contract hardening | 2026-03-23 | 777d1fc | | [260323-oy1-record-runtime-bundle-installer-and-tool](./quick/260323-oy1-record-runtime-bundle-installer-and-tool/) |
+| 260323-p50 | Make repo easy to install, verify, and release | 2026-03-23 | e7128cb | Verified | [260323-p50-repo-easy-to-install-gsd-repo](./quick/260323-p50-repo-easy-to-install-gsd-repo/) |
 
 ## Session Continuity
 
-Last session: 2026-03-23T10:34:19Z
-Stopped at: Quick task 260323-p50 completed; Phase 26 still needs verify-work rerun next
-Resume file: .planning/phases/26-adaptive-dag-path-management-with-selectparents-and-dynamic-pruning/26-UAT.md
+Last session: 2026-03-23T10:38:01Z
+Stopped at: Phase 26 verification passed; next action is planning Phase 27
+Resume file: .planning/STATE.md

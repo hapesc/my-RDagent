@@ -28,38 +28,27 @@ Maps to `v3.entry.rd_propose.rd_propose`.
 - Use this when you already have `run_id`, `branch_id`, a framing summary, and framing artifact IDs.
 - Use this when the task is specifically to move a branch from framing toward build.
 
-## Continue contract
+## Internal workflows
 
-- Use this skill to continue a paused run inside one known step, not to restart the whole standalone flow.
-- The operator-facing job is: continue the current framing step with the exact continuation identifiers and payload, then hand off the successful path to `rd-code`.
-- Keep the interaction at the high-level skill layer unless the agent must inspect lower-level state to recover missing continuation details.
-
-## Required fields
-
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current framing step.
-- `summary`: the current-step summary to publish for this framing continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this framing continuation.
-
-## If information is missing
-
-- First inspect current run or branch state instead of asking the operator to browse tools manually.
-- Then surface the exact missing values, including which field names are still absent and which values the agent already derived from current state.
-- Ask the operator only for values that cannot already be derived.
-- If the agent still needs a direct inspection or recovery primitive, use `rd-tool-catalog` as an agent-side escalation path and return with the resolved continuation fields.
+- Load `workflows/continue.md` when continuing a paused framing step with known
+  `run_id` and `branch_id`.
 
 ## When to route to rd-tool-catalog
 
 - Route to `rd-tool-catalog` on the agent side when you need direct inspection of run, branch, stage, artifact, or recovery state before or around framing.
 - Route to `rd-tool-catalog` on the agent side when you need a specific CLI primitive instead of the stage entrypoint.
 - Keep those direct-tool calls in the same standalone V3 repo root or installed runtime bundle root after routing.
-- Route to `rd-tool-catalog` when the high-level continuation boundary is insufficient, but keep the operator on the `rd-propose` path rather than telling them to browse tools first.
+- Route to `rd-tool-catalog` when the high-level continuation boundary is insufficient, but keep the operator on the `rd-propose` path rather than defaulting to manual tool browsing.
 
 ## When not to use
 
 - Do not use this to start a new end-to-end workflow; use `rd-agent` for the default orchestration path.
 - Do not use this when the branch is already in build, verify, or synthesize and the task belongs to a later stage.
 - Do not use this as a general tool discovery surface.
+- If blocked, route to: `rd-agent` for full-loop restart, or the correct stage
+  skill if the branch is in another stage.
+- If state absent, fresh-start only: do not fabricate continuation context;
+  route to `rd-agent` for the minimum start contract.
 
 ## Failure handling
 

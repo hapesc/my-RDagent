@@ -100,10 +100,10 @@ to discover how to start, pause, resume, or continue the loop.
 - [x] **P27-PRUNE4**: Dynamic pruning adds a fourth signal that protects
   branches carrying unique component classes absent from the current global
   best branch.
-- [ ] **P27-MERGE**: Merge orchestration can analyze complementary branches,
+- [x] **P27-MERGE**: Merge orchestration can analyze complementary branches,
   synthesize a unified candidate, create MERGED DAG edges, and gate acceptance
   with a holdout-style validation check.
-- [ ] **P27-E2E**: Integration coverage proves the full Phase 27 lifecycle:
+- [x] **P27-E2E**: Integration coverage proves the full Phase 27 lifecycle:
   sharing, pruning with signal 4, and complementary merge execution in one
   coherent round.
 
@@ -147,8 +147,8 @@ to discover how to start, pause, resume, or continue the loop.
 | P27-COMPONENT | Phase 27 | Complete |
 | P27-SELECT | Phase 27 | Complete |
 | P27-PRUNE4 | Phase 27 | Complete |
-| P27-MERGE | Phase 27 | Pending |
-| P27-E2E | Phase 27 | Pending |
+| P27-MERGE | Phase 27 | Complete |
+| P27-E2E | Phase 27 | Complete |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete

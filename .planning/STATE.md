@@ -4,17 +4,17 @@ milestone: v1.3
 milestone_name: milestone
 current_phase: 27
 current_phase_name: cross-branch-communication-and-multi-trace-solution-merge
-current_plan: 4
-status: executing
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-03-23T18:49:44.354Z"
-last_activity: 2026-03-23
+current_plan: 5
+status: completed
+stopped_at: Completed 27-VERIFICATION.md
+last_updated: "2026-03-23T19:17:43.290Z"
+last_activity: 2026-03-24
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 19
-  completed_plans: 17
-  percent: 89
+  completed_plans: 19
+  percent: 100
 ---
 
 # Session State
@@ -26,24 +26,24 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 27 — cross-branch-communication-and-multi-trace-solution-merge
+**Current focus:** Phase 28 planning after verified Phase 27 completion
 
 ## Position
 
 **Current Phase:** 27
 **Current Phase Name:** cross-branch-communication-and-multi-trace-solution-merge
 **Total Phases:** 7
-**Current Plan:** 4
+**Current Plan:** 5
 **Total Plans in Phase:** 5
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
-**Next phase:** Phase 27 planning
-**Status:** Ready to execute
+**Next phase:** Phase 28 planning
+**Status:** Phase 27 verified complete; ready to plan Phase 28
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
-**Last activity:** 2026-03-23
+**Last activity:** 2026-03-24
 Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference files created, 6 SKILL.md thinned, Gate 2 smoke test added, 38 tests green.
-**Progress:** [█████████░] 89%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -98,6 +98,8 @@ Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference fil
 - [Phase 27]: Interaction potential, softmax sampling, and component complementarity live in pure helper modules behind a tiny EmbeddingPort boundary — Downstream sharing, pruning, selection, and merge should reuse one exact math implementation instead of re-encoding heuristics inside each orchestration service.
 - [Phase 27]: Sharing candidates are assembled as global-best plus interaction-kernel peers and attached to round dispatches before execution begins — Phase 27 needs one explicit candidate pool per target branch, while SHARED edges and share decisions are persisted after the new DAG nodes exist.
 - [Phase 27]: Hypothesis component classes are now persisted per branch and reused by pruning, sharing, and later merge logic — Signal 4 cannot be truthful if component metadata is reconstructed heuristically or fetched through getattr hacks at each call site.
+- [Phase 27]: Complementary merge now separates pair selection, synthesis, holdout gating, and MERGED-edge recording into one explicit pipeline — Phase 27 merge needs explainable failure points; burying all of that inside the old shortlist merge path would hide whether the rejection came from pair choice, synthesis, or holdout.
+- [Phase 27]: Phase 27 integration coverage now runs the real persistence and orchestration stack for share, prune, and merge instead of concept-only mocks — The honest verification target is the service graph and its DAG artifacts, not a hand-wired approximation that never exercises persisted component metadata.
 
 ### Pending Todos
 
@@ -127,9 +129,11 @@ Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference fil
 | Phase 27 P1 | 6min | 2 tasks | 8 files |
 | Phase 27 P2 | 2h 9m | 3 tasks | 6 files |
 | Phase 27 P3 | 2h 12m | 3 tasks | 11 files |
+| Phase 27 P4 | 21min | 2 tasks | 4 files |
+| Phase 27 P5 | 6min | 1 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-03-23T18:49:44.351Z
-Stopped at: Completed 27-03-PLAN.md
-Resume file: None
+Last session: 2026-03-23T19:17:43.287Z
+Stopped at: Completed 27-VERIFICATION.md
+Resume file: .planning/STATE.md

@@ -41,7 +41,7 @@ state-aware guidance.
   Fix 6 QA issues and expose multi-branch exploration as the default UX.
 - [x] **Phase 26: Adaptive DAG path management with SelectParents and dynamic pruning** - (completed 2026-03-23)
   First layer of R&D-Agent convergence: DAG diversity, parent selection, pruning.
-- [ ] **Phase 27: Cross-branch communication and multi-trace solution merge** -
+- [x] **Phase 27: Cross-branch communication and multi-trace solution merge** - (completed 2026-03-24)
   Layers 2-3: global best injection, probabilistic exchange, unified merge.
 - [ ] **Phase 28: Aggregated validation with holdout calibration and standardized ranking** -
   Layer 4: holdout re-evaluation, standardized ranking, final submission.
@@ -102,7 +102,7 @@ truthful, state-aware answer.
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
-| 27. Cross-branch communication and multi-trace merge | 3/5 | In Progress|  |
+| 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
 
 ## Planning Defaults

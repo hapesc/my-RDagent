@@ -2,6 +2,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RD_AGENT_SKILL = REPO_ROOT / "skills" / "rd-agent" / "SKILL.md"
+RD_AGENT_DIR = REPO_ROOT / "skills" / "rd-agent"
+RD_AGENT_START_CONTRACT = RD_AGENT_DIR / "workflows" / "start-contract.md"
+RD_AGENT_FAILURE_ROUTING = RD_AGENT_DIR / "references" / "failure-routing.md"
 
 
 def _skill_text() -> str:
@@ -21,7 +24,7 @@ def test_rd_agent_skill_names_minimum_start_contract() -> None:
 
 
 def test_rd_agent_skill_separates_minimum_and_recommended_paths() -> None:
-    text = _skill_text()
+    text = RD_AGENT_START_CONTRACT.read_text()
 
     assert "## Minimum start contract" in text
     assert "## Recommended multi-branch contract" in text
@@ -35,16 +38,15 @@ def test_rd_agent_skill_keeps_required_and_optional_field_layers_distinct() -> N
 
     required_start = text.index("## Required fields")
     optional_start = text.index("## Optional fields")
-    minimum_start = text.index("## Minimum start contract")
 
-    assert required_start < optional_start < minimum_start
+    assert required_start < optional_start
     assert "`initial_branch_label`" in text
     assert "`execution_mode`" in text
     assert "`max_stage_iterations`" in text
 
 
 def test_rd_agent_skill_explains_default_pause_behavior_in_plain_language() -> None:
-    text = _skill_text()
+    text = RD_AGENT_START_CONTRACT.read_text()
 
     assert "## Default stop behavior" in text
     assert "`gated + max_stage_iterations=1`" in text
@@ -68,7 +70,7 @@ def test_rd_agent_skill_keeps_tool_catalog_as_agent_side_escalation() -> None:
 
 
 def test_rd_agent_skill_requires_agent_led_missing_field_recovery() -> None:
-    text = _skill_text()
+    text = RD_AGENT_FAILURE_ROUTING.read_text()
 
     assert "## If information is missing" in text
     assert "inspect current run or branch state" in text

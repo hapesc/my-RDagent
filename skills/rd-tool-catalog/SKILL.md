@@ -43,6 +43,10 @@ Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `rdagent-v3-too
 - Do not use this when the high-level skill boundary is sufficient and the caller should stay in `rd-agent` or a stage skill.
 - Do not use this as the default path for starting a run.
 - Do not use this as a replacement for end-to-end orchestration.
+- If blocked, route to: `rd-agent` for orchestration, or the correct stage skill
+  if the caller knows which stage they need.
+- If state absent: this skill does not require persisted V3 state to function;
+  it operates on catalog metadata only.
 
 ## Failure handling
 

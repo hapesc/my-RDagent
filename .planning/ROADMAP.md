@@ -102,7 +102,7 @@ truthful, state-aware answer.
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
-| 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
+| 27. Cross-branch communication and multi-trace merge | 1/5 | In Progress|  |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
 
 ## Planning Defaults

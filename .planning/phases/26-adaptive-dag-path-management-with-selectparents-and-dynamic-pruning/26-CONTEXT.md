@@ -30,8 +30,11 @@ into those phases without breaking changes.
     new iteration."
 - Three-dimensional signal model for parent selection:
   1. **Core quality**: validation score (from `result_quality`), `generalization_gap`
-     (validation vs training score difference), `overfitting_risk` (score trend +
-     cross-fold variance).
+     (validation vs training score difference — also considers convergence speed
+     and feature representation robustness), `overfitting_risk` (composite of:
+     cross-fold consistency, score trend direction, and presence of anomalously
+     high scores that may indicate data leakage or extreme hyperparameter
+     sensitivity).
   2. **Strategic planning**: `budget_ratio` derived from `current_round / max_rounds`
      on `RunSnapshot`. Diversity weight uses **cosine decay**: early rounds favor
      diversity, late rounds favor certainty. `max_rounds` defaults to 20.
@@ -105,6 +108,9 @@ into those phases without breaking changes.
   - `label: str` — human-readable hypothesis name (e.g., "ResNet18 transfer")
   - `approach_category: ApproachCategory` — fixed enum
   - `target_challenge: str` — free-text description of the bottleneck addressed
+    (e.g., "data imbalance", "feature engineering"). In Phase 26 this is
+    informational; in future phases it enables problem-dimension alignment
+    scoring to ensure branches attack distinct technical bottlenecks.
   - `rationale: str` — why this direction is worth exploring
 - **ApproachCategory** fixed enum:
   `FEATURE_ENGINEERING`, `MODEL_ARCHITECTURE`, `DATA_AUGMENTATION`, `ENSEMBLE`,
@@ -260,6 +266,9 @@ into those phases without breaking changes.
 - Interaction kernel with adjustable potential energy for diversity enforcement
 - Cross-run DAG connections (learning from previous runs)
 - Visual DAG rendering for operator inspection
+- Problem-dimension alignment scoring: quantify whether branches target distinct
+  technical bottlenecks using `target_challenge` fields and systematic problem
+  identification output
 
 </deferred>
 

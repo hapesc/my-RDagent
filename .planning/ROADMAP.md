@@ -178,6 +178,23 @@ complementary components + synthesize unified solution from multiple branches).
      successful patterns from topically similar high-scoring peers.
   3. A merge stage can identify complementary components across branches and
      synthesize a unified solution that outperforms any single branch.
+**Canonical refs:** `26-CONTEXT.md §deferred`, `v3/contracts/exploration.py` (DAGEdgeSnapshot)
+**Phase 26 decisions that constrain Phase 27:**
+  - DAG layer provides SHARED and MERGED edge types (defined in Phase 26 but
+    unused). Phase 27 activates these edges for cross-branch communication and
+    merge operations.
+  - SelectParents complementarity signal: Phase 26 reserves the field in the
+    three-dimensional signal model. Phase 27 must implement the computation
+    (component complementarity for merge-stage parent selection).
+  - Merge-stage parent selection: Phase 26 falls back to K=1 when budget_ratio
+    >= 0.8. Phase 27 implements multiple complementary parent selection.
+  - Dynamic pruning complementarity preservation: Phase 26 prunes on signals
+    1-3 only. Phase 27 adds signal 4 (protect branches with unique components
+    valuable for merge).
+  - Interaction kernel negative feedback for diversity enforcement is deferred
+    from Phase 26.
+  - DAGService graph traversal (get_ancestors, get_descendants, get_frontier)
+    is the infrastructure Phase 27 should use for cross-branch discovery.
 **Plans**: TBD
 
 ### Phase 28: Aggregated validation with holdout calibration and standardized ranking
@@ -194,4 +211,16 @@ final submission selection.
      re-evaluated in isolated environments.
   3. Standardized ranking produces a single best submission based on holdout
      performance, not primary validation set performance.
+**Canonical refs:** `26-CONTEXT.md §deferred`, `v3/contracts/exploration.py` (DAGNodeSnapshot)
+**Phase 26 decisions that constrain Phase 28:**
+  - DAG frontier traversal (`DAGService.get_frontier`) is the mechanism for
+    collecting top candidates from all exploration branches.
+  - BranchScore now carries `generalization_gap` and `overfitting_risk` —
+    Phase 28 should use these signals for holdout calibration and overfitting
+    prevention rather than inventing separate metrics.
+  - NodeMetrics on DAGNodeSnapshot store per-node validation_score,
+    generalization_gap, overfitting_risk, diversity_score — Phase 28 reads
+    these directly for ranking.
+  - `max_rounds` on RunSnapshot defines the exploration budget; Phase 28
+    activates after `current_round >= max_rounds`.
 **Plans**: TBD

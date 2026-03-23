@@ -98,10 +98,13 @@ Phase 25 verification was approved and the milestone can move on to Phase 26 pla
 ### Pending Todos
 
 - Plan Phase 26 against the new multi-branch exploration defaults, explicit recovery contracts, and materialized next-stage truth shipped in Phase 25.
+- Phase 26 context captured: independent DAG layer, SelectParentsService, multi-signal pruning, HypothesisSpec with category enum.
+- Cross-phase decisions for Phase 27/28 recorded in ROADMAP.md Phase Details sections under "Phase 26 decisions that constrain Phase N".
 
 ### Roadmap Evolution
 
 - Phase 25 added: Fix QA-discovered operator guidance and multi-branch UX gaps
+- Phase 27/28 details updated: added canonical refs and Phase 26 constraint sections from 26-CONTEXT.md discussion
 
 ### Blockers/Concerns
 

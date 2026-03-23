@@ -1,6 +1,6 @@
 ---
 name: "rd-tool-catalog"
-description: "Decision-oriented skill for selecting direct V3 CLI tools."
+description: "Use for choosing direct standalone V3 CLI tools after deciding a high-level skill boundary is insufficient."
 ---
 
 # rd-tool-catalog
@@ -8,6 +8,13 @@ description: "Decision-oriented skill for selecting direct V3 CLI tools."
 Decision-oriented skill for the standalone V3 CLI tool surface.
 
 Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `rdagent-v3-tool describe` interface.
+
+## Trigger requests
+
+- "which rd tool should I use"
+- "show the CLI tool catalog"
+- "describe this direct V3 tool"
+- "drop to a primitive tool"
 
 ## When to use
 
@@ -27,8 +34,24 @@ Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `rdagent-v3-too
 - Do not use this as the default path for starting a run.
 - Do not use this as a replacement for end-to-end orchestration.
 
+## Failure handling
+
+- If the caller has not yet established that a high-level skill is insufficient, keep them in `rd-agent` or the appropriate stage skill.
+- If the request is still too broad after category narrowing, ask one focused follow-up instead of selecting a primitive tool arbitrarily.
+- If the caller already knows the exact high-level stage wrapper they need, route back out of the catalog to that skill.
+
+## Reference loading
+
+- Load `references/tool-selection.md` only when you need help mapping a vague request onto `category`, `subcategory`, or a representative direct tool.
+- Do not load the reference when the caller already knows the exact tool or when the request should stay in a high-level skill.
+
 ## Routing model
 
 - Stay in high-level skills unless they are insufficient for the task.
 - If you must drop lower, inspect the catalog and narrow by category first.
 - Use `recommended_entrypoint` to decide whether to stay with `rd-agent` or select a direct tool through `rd-tool-catalog`.
+
+## Success contract
+
+- Success means the skill narrows the request to a concrete tool choice or explicitly routes the caller back to the correct high-level skill.
+- The final output should identify the selected category, any relevant primitive subcategory, and the recommended entrypoint.

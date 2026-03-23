@@ -5,11 +5,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 README = REPO_ROOT / "README.md"
 PROJECT = REPO_ROOT / ".planning" / "PROJECT.md"
 ROADMAP = REPO_ROOT / ".planning" / "ROADMAP.md"
-REQUIREMENTS = REPO_ROOT / ".planning" / "REQUIREMENTS.md"
+
+
+def _requirements_path() -> Path:
+    active_requirements = REPO_ROOT / ".planning" / "REQUIREMENTS.md"
+    if active_requirements.exists():
+        return active_requirements
+
+    archived_requirements = sorted((REPO_ROOT / ".planning" / "milestones").glob("v*-REQUIREMENTS.md"))
+    assert archived_requirements, "expected either an active or archived requirements file"
+    return archived_requirements[-1]
 
 
 def test_surface_requirements_exist_for_phase_17():
-    requirements_text = REQUIREMENTS.read_text()
+    requirements_text = _requirements_path().read_text()
 
     assert "SURFACE-01" in requirements_text
     assert "SURFACE-02" in requirements_text
@@ -54,7 +63,7 @@ def test_active_public_surface_docs_do_not_claim_mcp_server_product():
     readme_text = README.read_text()
     project_text = PROJECT.read_text()
     roadmap_text = ROADMAP.read_text()
-    requirements_text = REQUIREMENTS.read_text()
+    requirements_text = _requirements_path().read_text()
 
     assert "MCP server" not in readme_text
     assert "registry language" not in readme_text

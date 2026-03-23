@@ -101,7 +101,7 @@ truthful, state-aware answer.
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
-| 26. Adaptive DAG path management | 0/4 | Planning complete | — |
+| 26. Adaptive DAG path management | 1/4 | In Progress|  |
 | 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
 
@@ -162,7 +162,7 @@ overfitting risk, and dynamically prunes underperforming sub-paths.
      below a configurable threshold.
   3. First-layer diversity is maximized by ensuring initial hypotheses span
      distinct approach categories.
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 Plans:
 - [ ] 26-01-PLAN.md — All Phase 26 contracts, model extensions, algorithms, and DAG CRUD (P26-DAG, P26-SCORE, P26-ROUND, P26-DIVERSITY)
 - [ ] 26-02-PLAN.md — DAGService + SelectParentsService + ScoringService extension (P26-DAG, P26-SELECT, P26-SCORE)

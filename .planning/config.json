@@ -1,5 +1,6 @@
 {
   "workflow": {
-    "nyquist_validation": true
+    "nyquist_validation": true,
+    "_auto_chain_active": false
   }
 }

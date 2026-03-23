@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-current_phase: 24
-current_phase_name: operator-guidance-and-next-step-ux
-current_plan: Not started
-status: completed
-stopped_at: Phase 25 context gathered
-last_updated: "2026-03-23T02:26:29.160Z"
-last_activity: 2026-03-22
+current_phase: 25
+current_phase_name: fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
+current_plan: 2
+status: executing
+stopped_at: Phase 25 plan 01 completed; 25-02 is next
+last_updated: "2026-03-23T03:57:35Z"
+last_activity: 2026-03-23
 progress:
-  total_phases: 4
+  total_phases: 7
   completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 8
+  completed_plans: 6
+  percent: 75
 ---
 
 # Session State
@@ -26,32 +26,32 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Milestone complete — Phase 24 finished
+**Current focus:** Phase 25 — fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
 
 ## Position
 
-**Current Phase:** 24
-**Current Phase Name:** operator-guidance-and-next-step-ux
-**Total Phases:** 3
-**Current Plan:** Not started
-**Total Plans in Phase:** 2
+**Current Phase:** 25
+**Current Phase Name:** fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
+**Total Phases:** 7
+**Current Plan:** 2
+**Total Plans in Phase:** 3
 **Milestone:** v1.3 pipeline experience hardening  
-**Roadmap span:** Phases 22-24
-**Next phase:** Milestone complete
-**Status:** Milestone complete
+**Roadmap span:** Phases 22-28
+**Next phase:** Phase 26 after Phase 25 completion
+**Status:** Ready to execute
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
-**Last activity:** 2026-03-22
-Phase 24 passed verification and the milestone is complete.
-**Progress:** [██████████] 100%
+**Last activity:** 2026-03-23
+Phase 25 plan 01 completed; plan 02 is ready to execute next.
+**Progress:** [████████░░] 75%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 24 completed with 2/2 summarized plan(s)
-- Current milestone execution trend: v1.3 is complete
+- Latest completed plan: Phase 25 plan 01 completed with 1/3 summarized plan(s)
+- Current milestone execution trend: v1.3 phase 25 is in progress
 
 ## Accumulated Context
 
@@ -97,11 +97,11 @@ Phase 24 passed verification and the milestone is complete.
 
 ### Pending Todos
 
-- Plan Phase 24 against the remaining `GUIDE-05` requirement and the freshly
-  completed Phase 23 preflight/state-truth contract.
+- Execute Phase 25 plan 02 to rename `disposition` to `recovery_assessment`
+  across recovery models, services, entry surfaces, and tests.
 
-- Decide how the top-level operator UX should surface blocked-vs-recommended
-  next steps when routing only has partial preflight context.
+- Execute Phase 25 plan 03 after plan 02 to land multi-branch UX defaults and
+  next-stage materialization.
 
 ### Roadmap Evolution
 
@@ -109,17 +109,16 @@ Phase 24 passed verification and the milestone is complete.
 
 ### Blockers/Concerns
 
-- Phase 20 must preserve the completed Phase 19 tool surface rather than
-  reopening direct-tool metadata design.
+- Wave 1 plans share `rd_propose`, `rd_code`, `rd_execute`, and
+  `rd_evaluate`, so plan 25-02 must continue sequentially rather than in
+  parallel with 25-01.
 
-- Stage-skill contract work must align with the new tool-catalog follow-up
-  semantics instead of inventing a conflicting routing model.
-
-- Phase 24 should build on the new preflight truth layer instead of weakening
-  it with optimistic wording or fallback guidance that hides blockers.
+- Phase 25 must preserve the Phase 23 preflight truth and the Phase 24
+  operator-guidance contract while renaming recovery fields and extending the
+  multi-branch start surface.
 
 ## Session Continuity
 
-Last session: 2026-03-23T02:26:29.157Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-CONTEXT.md
+Last session: 2026-03-23T03:57:35Z
+Stopped at: Phase 25 plan 01 completed; 25-02 is next
+Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-02-PLAN.md

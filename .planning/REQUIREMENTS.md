@@ -27,11 +27,11 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### State Truth
 
-- [x] **STATE-01**: User-visible claims such as “next stage ready” are backed
+- [x] **STATE-01**: User-visible claims such as "next stage ready" are backed
   by persisted stage snapshots and current handoff artifacts rather than surface
   prose alone.
-- [x] **STATE-02**: Verification can distinguish “results exist” from
-  “environment is reproducible” and records that difference as a first-class
+- [x] **STATE-02**: Verification can distinguish "results exist" from
+  "environment is reproducible" and records that difference as a first-class
   blocked or passed state.
 
 ### Operator Guidance
@@ -39,6 +39,49 @@ to discover how to start, pause, resume, or continue the loop.
 - [x] **GUIDE-05**: User can ask what to do next and receive a concise answer
   that states the current state, the reason for the recommendation, and the
   exact next action without requiring orchestration jargon.
+
+## v1.3 Convergence Mechanism Requirements
+
+### DAG Topology
+
+- [ ] **P26-DAG**: Independent DAG topology layer with DAGNodeSnapshot,
+  DAGEdgeSnapshot, NodeMetrics contracts, DAGService graph operations, and
+  StateStorePort CRUD methods. Tracks parent-child relationships separately
+  from branch lifecycle model.
+
+### Parent Selection
+
+- [ ] **P26-SELECT**: SelectParentsService answers "which past nodes should
+  feed context into a new iteration" using a three-dimensional signal model:
+  core quality (validation score, generalization gap, overfitting risk),
+  strategic planning (budget-aware diversity weight via cosine decay), and
+  complementarity (reserved for Phase 27). Dynamic parent count: K=3 early,
+  K=1 iteration, K=1 merge (Phase 26 fallback).
+
+### Dynamic Pruning
+
+- [ ] **P26-PRUNE**: Multi-signal dynamic pruning with time-aware cosine-decay
+  threshold, generalization stability protection, anti-overfitting preferential
+  pruning, and min_active_branches=2 safety constraint. Triggers automatically
+  after each exploration round.
+
+### First-Layer Diversity
+
+- [ ] **P26-DIVERSITY**: HypothesisSpec with ApproachCategory enum enforces
+  category uniqueness constraint (at most 1 branch per category in first layer)
+  and computes diversity_score as Shannon entropy of category distribution.
+
+### Round Tracking
+
+- [ ] **P26-ROUND**: RunBoardSnapshot carries current_round and max_rounds.
+  MultiBranchService.run_exploration_round increments current_round after each
+  round. budget_ratio = current_round / max_rounds drives cosine decay curves.
+
+### Score Extension
+
+- [ ] **P26-SCORE**: BranchScore extended with generalization_gap and
+  overfitting_risk fields (backward-compatible defaults). ScoringService
+  extended with compute_generalization_signals function.
 
 ## v2 Requirements
 
@@ -69,12 +112,18 @@ to discover how to start, pause, resume, or continue the loop.
 | STATE-01 | Phase 23 | Complete |
 | STATE-02 | Phase 23 | Complete |
 | GUIDE-05 | Phase 24 | Complete |
+| P26-DAG | Phase 26 | Planned |
+| P26-SELECT | Phase 26 | Planned |
+| P26-PRUNE | Phase 26 | Planned |
+| P26-DIVERSITY | Phase 26 | Planned |
+| P26-ROUND | Phase 26 | Planned |
+| P26-SCORE | Phase 26 | Planned |
 
 **Coverage:**
-- v1 requirements: 7 total
-- Mapped to phases: 7
-- Unmapped: 0 ✓
+- v1 requirements: 7 total, 7 complete
+- v1.3 convergence requirements: 6 total, 0 complete (Phase 26 planned)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after completing Phase 24*
+*Last updated: 2026-03-23 after Phase 26 planning*

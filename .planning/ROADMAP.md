@@ -101,7 +101,7 @@ truthful, state-aware answer.
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
-| 26. Adaptive DAG path management | 0/0 | Not started | — |
+| 26. Adaptive DAG path management | 0/4 | Planning complete | — |
 | 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
 
@@ -154,7 +154,7 @@ adaptive directed acyclic graph path management that maximizes first-layer
 diversity, selects parent nodes based on validation scores / generalization /
 overfitting risk, and dynamically prunes underperforming sub-paths.
 **Depends on**: Phase 25
-**Requirements**: TBD
+**Requirements**: P26-DAG, P26-SELECT, P26-PRUNE, P26-DIVERSITY, P26-ROUND, P26-SCORE
 **Success Criteria** (what must be TRUE):
   1. MultiBranchService supports SelectParents logic that picks the most
      promising nodes based on branch scores and generalization metrics.
@@ -162,7 +162,12 @@ overfitting risk, and dynamically prunes underperforming sub-paths.
      below a configurable threshold.
   3. First-layer diversity is maximized by ensuring initial hypotheses span
      distinct approach categories.
-**Plans**: TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 26-01-PLAN.md — All Phase 26 contracts, model extensions, algorithms, and DAG CRUD (P26-DAG, P26-SCORE, P26-ROUND, P26-DIVERSITY)
+- [ ] 26-02-PLAN.md — DAGService + SelectParentsService + ScoringService extension (P26-DAG, P26-SELECT, P26-SCORE)
+- [ ] 26-03-PLAN.md — Multi-signal pruning algorithm + BranchPruneService upgrade (P26-PRUNE)
+- [ ] 26-04-PLAN.md — MultiBranchService integration: auto-prune, round tracking, DAG nodes, HypothesisSpec wiring (P26-ROUND, P26-DIVERSITY, P26-SELECT, P26-PRUNE)
 
 ### Phase 27: Cross-branch communication and multi-trace solution merge
 **Goal**: Implement layers 2-3 of the R&D-Agent convergence mechanism:

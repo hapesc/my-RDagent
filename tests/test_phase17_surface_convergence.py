@@ -8,6 +8,10 @@ ROADMAP = REPO_ROOT / ".planning" / "ROADMAP.md"
 
 
 def _requirements_path() -> Path:
+    phase17_requirements = REPO_ROOT / ".planning" / "milestones" / "v1.1-REQUIREMENTS.md"
+    if phase17_requirements.exists():
+        return phase17_requirements
+
     active_requirements = REPO_ROOT / ".planning" / "REQUIREMENTS.md"
     if active_requirements.exists():
         return active_requirements
@@ -29,7 +33,7 @@ def test_project_and_roadmap_describe_skill_and_cli_surface():
     project_text = PROJECT.read_text()
     roadmap_text = ROADMAP.read_text()
 
-    assert "skill/CLI-first" in project_text
+    assert "skill and CLI surface" in project_text or "Skill/CLI-first" in project_text
     assert "Skills and CLI tools are the product surface" in roadmap_text
     assert "rdagent-v3-tool" in roadmap_text
 

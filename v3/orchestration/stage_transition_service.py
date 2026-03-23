@@ -22,10 +22,22 @@ class StageTransitionService:
         )
 
     def publish_stage_complete(self, branch_id: str, stage_snapshot: StageSnapshot) -> BranchSnapshot:
-        return self._publish_stage_snapshot(
+        branch = self._publish_stage_snapshot(
             branch_id,
             stage_snapshot.model_copy(update={"status": StageStatus.COMPLETED}),
         )
+        if stage_snapshot.next_stage_key is None:
+            return branch
+
+        next_stage = StageSnapshot(
+            stage_key=stage_snapshot.next_stage_key,
+            stage_iteration=1,
+            status=StageStatus.NOT_STARTED,
+            summary="Prepared and requires preflight before execution.",
+            artifact_ids=[],
+            next_stage_key=self._next_stage_key_for(stage_snapshot.next_stage_key),
+        )
+        return self._publish_stage_snapshot(branch_id, next_stage)
 
     def publish_stage_block(self, branch_id: str, stage_snapshot: StageSnapshot) -> BranchSnapshot:
         return self._publish_stage_snapshot(
@@ -76,6 +88,12 @@ class StageTransitionService:
         if stage_snapshot.status is StageStatus.COMPLETED and stage_snapshot.next_stage_key is None:
             return BranchStatus.COMPLETED
         return BranchStatus.ACTIVE
+
+    def _next_stage_key_for(self, stage_key: StageKey) -> StageKey | None:
+        next_index = _STAGE_ORDER[stage_key] + 1
+        if next_index >= len(StageKey):
+            return None
+        return tuple(StageKey)[next_index]
 
 
 __all__ = ["StageTransitionService"]

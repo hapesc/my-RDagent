@@ -231,7 +231,8 @@ def test_rd_agent_gated_mode_pauses_at_stage_boundary_and_persists_stop_reason(t
     assert run.current_stage_iteration == 1
     assert run.completed_stage_iterations == 0
     assert build_stage is not None
-    assert build_stage.status is StageStatus.READY
+    assert build_stage.status is StageStatus.NOT_STARTED
+    assert build_stage.summary == "Prepared and requires preflight before execution."
     assert "paused after framing" in result["content"][0]["text"].lower()
     assert "operator review" in result["content"][0]["text"].lower()
 

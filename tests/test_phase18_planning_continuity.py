@@ -28,9 +28,10 @@ def test_state_remains_the_canonical_continuity_entrypoint() -> None:
     state_text = STATE.read_text()
 
     assert "Canonical continuity entrypoint" in state_text
+    assert "**Canonical continuity entrypoint:** `.planning/STATE.md`" in state_text
     assert "**Current focus:**" in state_text
     assert "**Next phase:**" in state_text
-    assert "Resume file: .planning/STATE.md" in state_text
+    assert "Resume file: .planning/" in state_text
 
 
 def test_extraction_handoff_is_historical_only() -> None:

@@ -1,15 +1,15 @@
 ---
 phase: 25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
-verified: 2026-03-23T04:27:06Z
-status: human_needed
+verified: 2026-03-23T05:19:59Z
+status: passed
 score: 6/6 phase truths verified
 ---
 
 # Phase 25: Fix QA-Discovered Operator Guidance and Multi-Branch UX Gaps Verification Report
 
 **Phase Goal:** Fix 6 QA-discovered issues and expose multi-branch exploration as the default UX. Change execution_mode default to exploration, auto-generate branch hypotheses in routing guidance, add copy-pasteable skeletons to all guidance paths, materialize next-stage snapshots on completion, unify outcome fields, and rename disposition to recovery_assessment.
-**Verified:** 2026-03-23T04:27:06Z
-**Status:** human_needed
+**Verified:** 2026-03-23T05:19:59Z
+**Status:** passed
 **Verification scope:** executed code, all three Phase 25 summaries, and the full repository regression gate
 
 ## Goal Achievement
@@ -90,25 +90,20 @@ log-only after the final 221-test regression pass.
 
 ## Human Verification Required
 
-### 1. Start-New-Run Guidance Readability
-**Test:** Trigger `route_user_intent("start a new run for <research task>")` or inspect the shared payload in `build_start_new_run_guidance()` and read the generated three-hypothesis recommendation.
-**Expected:** The three suggested approaches are understandable, plausibly distinct, and easy for an operator to edit or replace before starting the run.
-**Why human:** The guidance is deterministic and present, but readability and hypothesis usefulness are subjective UX judgments rather than binary correctness properties.
+Resolved. The operator approved the start-new-run multi-branch hypothesis text as acceptable for Phase 25 sign-off.
 
 ## Gaps Summary
 
-**No blocking implementation gaps found.** Phase 25 achieved its automated goal
-contract and is ready to proceed after one manual UX/readability sign-off on
-the start-new-run hypothesis text.
+**No gaps found.** Phase 25 achieved its goal contract and is ready to proceed.
 
 ## Verification Metadata
 
 **Verification approach:** Goal-backward using the Phase 25 roadmap success criteria  
 **Must-haves source:** ROADMAP.md success criteria + plan summaries  
 **Automated checks:** 8 passed, 0 failed  
-**Human checks required:** 1  
+**Human checks required:** 0  
 **Total verification time:** ~6 min
 
 ---
-*Verified: 2026-03-23T04:27:06Z*
+*Verified: 2026-03-23T05:19:59Z*
 *Verifier: Codex (manual fallback after gsd-verifier callback stall)*

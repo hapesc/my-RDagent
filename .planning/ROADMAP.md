@@ -35,7 +35,7 @@ state-aware guidance.
   runtime/data/state blockers and ensure user-visible stage claims match
   persisted state artifacts.
 - [x] **Phase 24: Operator Guidance and Next-Step UX** - Add a concise (completed 2026-03-22)
-  state-aware “what next?” surface that explains current state, reason, and
+  state-aware "what next?" surface that explains current state, reason, and
   exact next action.
 - [ ] **Phase 25: Fix QA-discovered operator guidance and multi-branch UX gaps** -
   Fix 6 QA issues and expose multi-branch exploration as the default UX.
@@ -75,7 +75,7 @@ keeps user-visible status claims aligned with persisted artifacts.
   2. Before a stage consumes data or artifacts, the pipeline checks required
      files and snapshots and blocks early with a precise reason if something is
      missing.
-  3. User-visible claims such as “next stage ready” and verification outcomes
+  3. User-visible claims such as "next stage ready" and verification outcomes
      are backed by persisted snapshots and current handoff artifacts.
 **Plans**: TBD
 
@@ -100,7 +100,7 @@ truthful, state-aware answer.
 | 22. Intent Routing and Continuation Control | 1/1 | Complete    | 2026-03-22 |
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
-| 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 0/0 | Context gathered | — |
+| 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 0/3 | Planned | — |
 | 26. Adaptive DAG path management | 0/0 | Not started | — |
 | 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
@@ -142,7 +142,11 @@ fields, and rename disposition to recovery_assessment.
   5. All 4 stage entries expose a consistent outcome field in structuredContent.
   6. decision.disposition is renamed to decision.recovery_assessment across
      all surfaces.
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 25-01-PLAN.md — Outcome consistency + guidance completeness + detail_hint removal (SC-3, SC-5)
+- [ ] 25-02-PLAN.md — Disposition to recovery_assessment rename across all surfaces (SC-6)
+- [ ] 25-03-PLAN.md — Multi-branch UX defaults + stage materialization (SC-1, SC-2, SC-4)
 
 ### Phase 26: Adaptive DAG path management with SelectParents and dynamic pruning
 **Goal**: Implement the first layer of the R&D-Agent convergence mechanism:

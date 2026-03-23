@@ -14,6 +14,8 @@ def prune_branch_candidates(
     overfitting_risks: dict[str, float] | None = None,
     budget_ratio: float | None = None,
     min_active_branches: int = 1,
+    branch_component_classes: dict[str, set[str]] | None = None,
+    global_best_component_classes: set[str] | None = None,
 ) -> list[str]:
     if len(candidates) <= 1:
         return []
@@ -43,6 +45,11 @@ def prune_branch_candidates(
         if generalization_gaps is not None:
             gap = generalization_gaps.get(branch_id)
             if gap is not None and 0.0 < gap < 0.1:
+                continue
+        if branch_component_classes is not None and global_best_component_classes is not None:
+            branch_comps = branch_component_classes.get(branch_id, set())
+            unique = branch_comps - global_best_component_classes
+            if unique:
                 continue
         if overfitting_risks is not None and overfitting_risks.get(branch_id, 0.0) > 0.6:
             prioritized.append(branch_id)

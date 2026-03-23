@@ -97,3 +97,15 @@ def test_select_parents_raises_for_missing_branch_nodes(tmp_path: Path) -> None:
 
     with pytest.raises(KeyError):
         service.select_parents(run_id="run-parents", branch_id="missing")
+
+
+def test_select_parents_returns_existing_node_for_later_round_parent_linkage(tmp_path: Path) -> None:
+    state_store = ArtifactStateStore(tmp_path / "state")
+    dag_service = DAGService(state_store)
+    service = SelectParentsService(state_store, dag_service)
+    first = dag_service.create_node(run_id="run-parents", branch_id="branch-a", node_metrics=NodeMetrics(diversity_score=0.4))
+    _seed_run(state_store, current_round=2)
+
+    recommendation = service.select_parents(run_id="run-parents", branch_id="branch-a")
+
+    assert recommendation.parent_node_ids == [first.node_id]

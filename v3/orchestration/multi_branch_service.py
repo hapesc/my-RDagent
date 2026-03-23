@@ -24,6 +24,7 @@ from v3.orchestration.branch_merge_service import BranchMergeService
 from v3.orchestration.branch_prune_service import BranchPruneService
 from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
 from v3.orchestration.dag_service import DAGService
+from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.ports.state_store import StateStorePort
 
@@ -46,6 +47,7 @@ class MultiBranchService:
         dispatcher: DispatchFn | None = None,
         dag_service: DAGService | None = None,
         prune_service: BranchPruneService | None = None,
+        select_parents_service: SelectParentsService | None = None,
     ) -> None:
         self._state_store = state_store
         self._workspace_manager = workspace_manager
@@ -56,6 +58,7 @@ class MultiBranchService:
         self._dispatcher = dispatcher or (lambda payload: {"status": "queued", **payload})
         self._dag_service = dag_service
         self._prune_service = prune_service
+        self._select_parents_service = select_parents_service
 
     def run_exploration_round(self, request: ExploreRoundRequest) -> ExploreRoundResult:
         run = self._state_store.load_run_snapshot(request.run_id)
@@ -79,7 +82,12 @@ class MultiBranchService:
         )
         if not hypothesis_labels:
             raise ValueError("exploration round requires at least one hypothesis")
-        by_label = {primary_branch.label: primary_branch}
+        by_label = {
+            branch.label: branch
+            for branch_id in run.branch_ids
+            if (branch := self._state_store.load_branch_snapshot(branch_id)) is not None
+        }
+        by_label.setdefault(primary_branch.label, primary_branch)
         dispatched_branch_ids: list[str] = []
         for hypothesis in hypothesis_labels:
             branch = by_label.get(hypothesis)
@@ -122,6 +130,19 @@ class MultiBranchService:
                 category_counts = Counter(spec.approach_category.value for spec in request.hypothesis_specs)
                 round_diversity_score = category_entropy(dict(category_counts))
             for branch_id in dispatched_branch_ids:
+                parent_node_ids: list[str] = []
+                if (
+                    run.current_round > 0
+                    and request.hypothesis_specs is not None
+                    and self._select_parents_service is not None
+                ):
+                    try:
+                        parent_node_ids = self._select_parents_service.select_parents(
+                            run_id=request.run_id,
+                            branch_id=branch_id,
+                        ).parent_node_ids
+                    except KeyError:
+                        parent_node_ids = []
                 node_diversity_score = 0.0
                 branch = self._state_store.load_branch_snapshot(branch_id)
                 if branch is not None and category_counts is not None:
@@ -134,7 +155,7 @@ class MultiBranchService:
                 node = self._dag_service.create_node(
                     run_id=request.run_id,
                     branch_id=branch_id,
-                    parent_node_ids=[],
+                    parent_node_ids=parent_node_ids,
                     node_metrics=NodeMetrics(diversity_score=node_diversity_score),
                 )
                 dag_node_ids.append(node.node_id)

@@ -23,6 +23,7 @@ from v3.orchestration.dag_service import DAGService
 from v3.orchestration.multi_branch_service import MultiBranchService
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService
+from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.orchestration.stage_transition_service import StageTransitionService
 from v3.ports.execution import ExecutionPort, ExecutionStartResult
@@ -100,6 +101,7 @@ def _build_service(
     current_round: int = 0,
     with_dag: bool = False,
     prune_mode: str | None = None,
+    with_select_parents: bool = False,
     dispatcher=None,
 ) -> tuple[ArtifactStateStore, MultiBranchService, list[dict[str, str]], object | None]:
     dispatches: list[dict[str, str]] = []
@@ -133,6 +135,11 @@ def _build_service(
         prune_service = BranchPruneService(state_store=state_store, board_service=board_service)
     else:
         prune_service = None
+    select_parents_service = (
+        SelectParentsService(state_store, dag_service)
+        if with_select_parents and dag_service is not None
+        else None
+    )
     service = MultiBranchService(
         state_store=state_store,
         workspace_manager=workspace_manager,
@@ -151,6 +158,7 @@ def _build_service(
         dispatcher=dispatcher or _dispatcher,
         dag_service=dag_service,
         prune_service=prune_service,
+        select_parents_service=select_parents_service,
     )
     return state_store, service, dispatches, prune_service
 
@@ -300,6 +308,60 @@ def test_auto_prune_false_skips_present_prune_service(tmp_path: Path) -> None:
     assert result.pruned_branch_ids == []
     assert run is not None
     assert run.current_round == 1
+
+
+def test_run_exploration_round_creates_non_root_nodes_after_first_round(tmp_path: Path) -> None:
+    state_store, service, _dispatches, _ = _build_service(
+        tmp_path,
+        with_dag=True,
+        with_select_parents=True,
+    )
+    specs = [
+        HypothesisSpec(
+            label="primary",
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="baseline",
+            rationale="Keep the seed branch.",
+        ),
+        HypothesisSpec(
+            label="alt-a",
+            approach_category=ApproachCategory.FEATURE_ENGINEERING,
+            target_challenge="representation",
+            rationale="Explore feature-focused variant.",
+        ),
+    ]
+
+    first = service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs))
+    second = service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs))
+
+    assert len(first.dag_node_ids) == 2
+    later_nodes = [state_store.load_dag_node(node_id) for node_id in second.dag_node_ids]
+    assert all(node is not None for node in later_nodes)
+    assert all(node.parent_node_ids for node in later_nodes if node is not None)
+    assert all(node.depth > 0 for node in later_nodes if node is not None)
+
+
+def test_duplicate_categories_are_allowed_after_first_round(tmp_path: Path) -> None:
+    _state_store, service, dispatches, _ = _build_service(tmp_path, current_round=1, with_dag=True)
+    specs = [
+        HypothesisSpec(
+            label="primary",
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="baseline",
+            rationale="Keep the seed branch.",
+        ),
+        HypothesisSpec(
+            label="alt-a",
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="same-category-later",
+            rationale="Later rounds may reuse the same category.",
+        ),
+    ]
+
+    result = service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs))
+
+    assert len(result.dispatched_branch_ids) == 2
+    assert len(dispatches) == 2
 
 
 def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: Path) -> None:

@@ -27,6 +27,7 @@ from v3.orchestration.operator_guidance import (
 )
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService
+from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.orchestration.skill_loop_service import SkillLoopService, StagePayload
 from v3.orchestration.stage_transition_service import StageTransitionService
@@ -295,6 +296,11 @@ def rd_agent(
             if hypothesis_specs is not None
             else None
         )
+        select_parents_service = (
+            SelectParentsService(state_store, dag_service)
+            if hypothesis_specs is not None and dag_service is not None
+            else None
+        )
         multi_branch_service = MultiBranchService(
             state_store=state_store,
             workspace_manager=workspace_manager,
@@ -313,6 +319,7 @@ def rd_agent(
             dispatcher=dispatcher,
             dag_service=dag_service,
             prune_service=prune_service,
+            select_parents_service=select_parents_service,
         )
         explore_round = multi_branch_service.run_exploration_round(
             ExploreRoundRequest(

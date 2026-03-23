@@ -28,26 +28,10 @@ Maps to `v3.entry.rd_evaluate.rd_evaluate`.
 - Use this when you already have `run_id`, `branch_id`, a synthesize summary, synthesize artifact IDs, and a recommendation of `continue` or `stop`.
 - Use this when the task is specifically to close a branch iteration or send it back to framing.
 
-## Continue contract
+## Internal workflows
 
-- Use this skill to continue a paused run inside the known synthesize step rather than restarting the entire standalone flow.
-- The operator-facing job is: continue the current synthesize step with the exact continuation identifiers and payload, then return the branch decision as `continue` or `stop`.
-- Keep the operator at the high-level skill layer unless the agent must inspect lower-level run, branch, or recovery state to recover missing continuation data.
-
-## Required fields
-
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current synthesize step.
-- `summary`: the current-step summary to publish for this synthesize continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this synthesize continuation.
-- `recommendation`: the extra continuation field for synthesize outcomes, with the exact public values `continue` and `stop`.
-
-## If information is missing
-
-- First inspect current run or branch state instead of asking the operator to browse tools manually.
-- Then surface the exact missing values, including which continuation fields are unresolved and which values the agent already recovered from current state.
-- Ask the operator only for values that cannot already be derived.
-- If the agent still needs a direct inspection or recovery primitive, use `rd-tool-catalog` as an agent-side escalation path and return with the resolved synthesize continuation payload.
+- Load `workflows/continue.md` when continuing a paused synthesize step with known
+  `run_id` and `branch_id`.
 
 ## When to route to rd-tool-catalog
 
@@ -61,6 +45,10 @@ Maps to `v3.entry.rd_evaluate.rd_evaluate`.
 - Do not use this for the default end-to-end orchestration path; use `rd-agent`.
 - Do not use this when the branch is still in framing, build, or verify.
 - Do not use this as a generic tool selector or CLI reference.
+- If blocked, route to: `rd-agent` for full-loop restart, or the correct stage
+  skill if the branch is in another stage.
+- If state absent, fresh-start only: do not fabricate continuation context;
+  route to `rd-agent` for the minimum start contract.
 
 ## Failure handling
 

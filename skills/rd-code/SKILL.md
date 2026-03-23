@@ -28,25 +28,10 @@ Maps to `v3.entry.rd_code.rd_code`.
 - Use this when you already have `run_id`, `branch_id`, a build summary, and build artifact IDs.
 - Use this when the task is specifically to advance a branch from build toward verify.
 
-## Continue contract
+## Internal workflows
 
-- Use this skill to continue a paused run inside the known build step rather than restarting the full standalone flow.
-- The operator-facing job is: continue the current build step with the exact continuation identifiers and payload, then hand the successful path to `rd-execute`.
-- Keep the interaction in the stage-skill layer unless the agent must inspect lower-level run or recovery state to fill in missing continuation details.
-
-## Required fields
-
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current build step.
-- `summary`: the current-step summary to publish for this build continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this build continuation.
-
-## If information is missing
-
-- First inspect current run or branch state instead of sending the operator to browse tools manually.
-- Then surface the exact missing values, including the unresolved field names and any values the agent already recovered from current state.
-- Ask the operator only for values that cannot already be derived.
-- If a direct inspection or recovery primitive is still required, use `rd-tool-catalog` as an agent-side escalation path and return with the resolved continuation payload.
+- Load `workflows/continue.md` when continuing a paused build step with known
+  `run_id` and `branch_id`.
 
 ## When to route to rd-tool-catalog
 
@@ -60,6 +45,10 @@ Maps to `v3.entry.rd_code.rd_code`.
 - Do not use this to orchestrate the full V3 loop; use `rd-agent` for that.
 - Do not use this when the work belongs to framing, verify, or synthesize rather than build.
 - Do not use this as a passive catalog or documentation surface.
+- If blocked, route to: `rd-agent` for full-loop restart, or the correct stage
+  skill if the branch is in another stage.
+- If state absent, fresh-start only: do not fabricate continuation context;
+  route to `rd-agent` for the minimum start contract.
 
 ## Failure handling
 

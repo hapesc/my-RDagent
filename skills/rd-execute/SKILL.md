@@ -28,26 +28,10 @@ Maps to `v3.entry.rd_execute.rd_execute`.
 - Use this when you already have `run_id`, `branch_id`, a verify summary, and verify artifact IDs.
 - Use this when the task is specifically to move a branch from verify toward synthesize or to record blocking reasons.
 
-## Continue contract
+## Internal workflows
 
-- Use this skill to continue a paused run inside the known verification step rather than restarting the whole standalone flow.
-- The operator-facing job is: continue the current verify step with the exact continuation identifiers and payload, then either hand a successful path to `rd-evaluate` or publish blocked verification with explicit blocking reasons.
-- Keep the operator on the high-level skill path unless the agent must inspect lower-level run, stage, or recovery state to fill in missing continuation data.
-
-## Required fields
-
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current verify step.
-- `summary`: the current-step summary to publish for this verify continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this verify continuation.
-- `blocking_reasons`: the extra continuation field for the blocked verification path; provide it only when the verification step must stop as blocked, and leave it absent or empty for normal completion.
-
-## If information is missing
-
-- First inspect current run or branch state instead of asking the operator to browse tools manually.
-- Then surface the exact missing values, including which continuation fields are unresolved and which values the agent already recovered from current state.
-- Ask the operator only for values that cannot already be derived.
-- If the agent still needs a direct inspection or recovery primitive, use `rd-tool-catalog` as an agent-side escalation path and come back with the resolved verification payload or blocking reasons.
+- Load `workflows/continue.md` when continuing a paused verify step with known
+  `run_id` and `branch_id`.
 
 ## When to route to rd-tool-catalog
 
@@ -61,6 +45,10 @@ Maps to `v3.entry.rd_execute.rd_execute`.
 - Do not use this to start the overall workflow; use `rd-agent` first for the default orchestration path.
 - Do not use this for framing, build, or synthesize ownership when the branch is in another stage.
 - Do not use this as a general-purpose catalog interface.
+- If blocked, route to: `rd-agent` for full-loop restart, or the correct stage
+  skill if the branch is in another stage.
+- If state absent, fresh-start only: do not fabricate continuation context;
+  route to `rd-agent` for the minimum start contract.
 
 ## Failure handling
 

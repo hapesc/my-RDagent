@@ -4,17 +4,17 @@ milestone: v1.3
 milestone_name: milestone
 current_phase: 25
 current_phase_name: fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Phase 25 plan 01 completed; 25-02 is next
-last_updated: "2026-03-23T03:57:35Z"
+stopped_at: Phase 25 plan 02 completed; 25-03 is next
+last_updated: "2026-03-23T04:09:01.408Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Session State
@@ -33,7 +33,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Current Phase:** 25
 **Current Phase Name:** fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
 **Total Phases:** 7
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 3
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
@@ -42,15 +42,15 @@ just to discover how to start, pause, resume, or continue the loop.
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Phase 25 plan 01 completed; plan 02 is ready to execute next.
-**Progress:** [████████░░] 75%
+Phase 25 plan 02 completed; plan 03 is ready to execute next.
+**Progress:** [█████████░] 88%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 25 plan 01 completed with 1/3 summarized plan(s)
+- Latest completed plan: Phase 25 plan 02 completed with 2/3 summarized plan(s)
 - Current milestone execution trend: v1.3 phase 25 is in progress
 
 ## Accumulated Context
@@ -97,11 +97,8 @@ Phase 25 plan 01 completed; plan 02 is ready to execute next.
 
 ### Pending Todos
 
-- Execute Phase 25 plan 02 to rename `disposition` to `recovery_assessment`
-  across recovery models, services, entry surfaces, and tests.
-
-- Execute Phase 25 plan 03 after plan 02 to land multi-branch UX defaults and
-  next-stage materialization.
+- Execute Phase 25 plan 03 to land multi-branch UX defaults and next-stage
+  materialization on top of the now-stable guidance and recovery contracts.
 
 ### Roadmap Evolution
 
@@ -109,16 +106,11 @@ Phase 25 plan 01 completed; plan 02 is ready to execute next.
 
 ### Blockers/Concerns
 
-- Wave 1 plans share `rd_propose`, `rd_code`, `rd_execute`, and
-  `rd_evaluate`, so plan 25-02 must continue sequentially rather than in
-  parallel with 25-01.
-
-- Phase 25 must preserve the Phase 23 preflight truth and the Phase 24
-  operator-guidance contract while renaming recovery fields and extending the
-  multi-branch start surface.
+- Plan 25-03 must preserve both newly stabilized surfaces: the Phase 25 plan 01
+  guidance contract and the Phase 25 plan 02 `recovery_assessment` rename.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:57:35Z
-Stopped at: Phase 25 plan 01 completed; 25-02 is next
-Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-02-PLAN.md
+Last session: 2026-03-23T04:09:01.408Z
+Stopped at: Phase 25 plan 02 completed; 25-03 is next
+Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-03-PLAN.md

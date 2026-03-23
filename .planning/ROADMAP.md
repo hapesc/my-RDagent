@@ -100,7 +100,7 @@ truthful, state-aware answer.
 | 22. Intent Routing and Continuation Control | 1/1 | Complete    | 2026-03-22 |
 | 23. Preflight and State Truth Hardening | 2/2 | Complete    | 2026-03-22 |
 | 24. Operator Guidance and Next-Step UX | 2/2 | Complete    | 2026-03-22 |
-| 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 1/3 | In Progress|  |
+| 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 2/3 | In Progress|  |
 | 26. Adaptive DAG path management | 0/0 | Not started | — |
 | 27. Cross-branch communication and multi-trace merge | 0/0 | Not started | — |
 | 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
@@ -142,10 +142,10 @@ fields, and rename disposition to recovery_assessment.
   5. All 4 stage entries expose a consistent outcome field in structuredContent.
   6. decision.disposition is renamed to decision.recovery_assessment across
      all surfaces.
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 - [x] 25-01-PLAN.md — Outcome consistency + guidance completeness + detail_hint removal (SC-3, SC-5)
-- [ ] 25-02-PLAN.md — Disposition to recovery_assessment rename across all surfaces (SC-6)
+- [x] 25-02-PLAN.md — Disposition to recovery_assessment rename across all surfaces (SC-6)
 - [ ] 25-03-PLAN.md — Multi-branch UX defaults + stage materialization (SC-1, SC-2, SC-4)
 
 ### Phase 26: Adaptive DAG path management with SelectParents and dynamic pruning

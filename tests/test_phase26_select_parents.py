@@ -68,9 +68,9 @@ def test_select_parents_uses_budget_phase_to_choose_k_and_ordering(tmp_path: Pat
 
     assert len(early.parent_node_ids) == 3
     assert len(iteration.parent_node_ids) == 1
-    assert len(merge.parent_node_ids) == 1
+    assert len(merge.parent_node_ids) == 2
     assert early.parent_node_ids[0] == node_ids["diverse"]
-    assert merge.parent_node_ids == [node_ids["quality"]]
+    assert merge.parent_node_ids == [node_ids["quality"], node_ids["diverse"]]
 
 
 def test_select_parents_honors_max_parents_override_and_returns_context(tmp_path: Path) -> None:

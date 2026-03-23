@@ -78,6 +78,60 @@ class DAGService:
         parent_map = self._build_parent_map(run_id)
         return get_frontier(parent_map, set(parent_map.keys()))
 
+    def create_typed_edge(
+        self,
+        *,
+        source_node_id: str,
+        target_node_id: str,
+        edge_type: EdgeType,
+        weight: float = 1.0,
+    ) -> DAGEdgeSnapshot:
+        """Create a non-parent DAG edge for sharing/merge topology traceability."""
+
+        source = self._state_store.load_dag_node(source_node_id)
+        if source is None:
+            raise KeyError(f"source node not found: {source_node_id}")
+        target = self._state_store.load_dag_node(target_node_id)
+        if target is None:
+            raise KeyError(f"target node not found: {target_node_id}")
+
+        edge = DAGEdgeSnapshot(
+            source_node_id=source_node_id,
+            target_node_id=target_node_id,
+            edge_type=edge_type,
+            weight=weight,
+        )
+        self._state_store.write_dag_edge(edge)
+        return edge
+
+    def create_shared_edge(
+        self,
+        *,
+        source_node_id: str,
+        target_node_id: str,
+        weight: float = 1.0,
+    ) -> DAGEdgeSnapshot:
+        return self.create_typed_edge(
+            source_node_id=source_node_id,
+            target_node_id=target_node_id,
+            edge_type=EdgeType.SHARED,
+            weight=weight,
+        )
+
+    def create_merged_edge(
+        self,
+        *,
+        source_node_id: str,
+        target_node_id: str,
+        weight: float = 1.0,
+    ) -> DAGEdgeSnapshot:
+        return self.create_typed_edge(
+            source_node_id=source_node_id,
+            target_node_id=target_node_id,
+            edge_type=EdgeType.MERGED,
+            weight=weight,
+        )
+
     def update_node_metrics(self, node_id: str, metrics: NodeMetrics) -> DAGNodeSnapshot:
         node = self._state_store.load_dag_node(node_id)
         if node is None:
@@ -85,6 +139,36 @@ class DAGService:
         updated = node.model_copy(update={"node_metrics": metrics})
         self._state_store.write_dag_node(updated)
         return updated
+
+    def collect_branch_component_scores(
+        self,
+        run_id: str,
+        state_store: StateStorePort,
+    ) -> tuple[dict[str, dict[str, float]], dict[str, set[str]]]:
+        """Collect per-branch component score views for convergence consumers."""
+
+        branch_scores: dict[str, dict[str, float]] = {}
+        branch_classes: dict[str, set[str]] = {}
+        branch_to_nodes: dict[str, list[DAGNodeSnapshot]] = {}
+        for node in self.list_nodes(run_id):
+            branch_to_nodes.setdefault(node.branch_id, []).append(node)
+
+        load_hypothesis_spec = getattr(state_store, "load_hypothesis_spec", None)
+        if load_hypothesis_spec is None:
+            return branch_scores, branch_classes
+
+        for branch_id, branch_nodes in branch_to_nodes.items():
+            hypothesis = load_hypothesis_spec(branch_id)
+            component_classes = getattr(hypothesis, "component_classes", None)
+            if not component_classes:
+                continue
+            classes = {str(component_class) for component_class in component_classes}
+            latest = max(branch_nodes, key=lambda node: node.depth)
+            branch_classes[branch_id] = classes
+            branch_scores[branch_id] = {
+                component_class: latest.node_metrics.validation_score for component_class in classes
+            }
+        return branch_scores, branch_classes
 
     def _build_parent_map(self, run_id: str) -> dict[str, list[str]]:
         return {node.node_id: list(node.parent_node_ids) for node in self._state_store.list_dag_nodes(run_id)}

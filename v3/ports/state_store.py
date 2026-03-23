@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from v3.contracts.artifact import ArtifactSnapshot
 from v3.contracts.branch import BranchSnapshot
@@ -11,6 +11,9 @@ from v3.contracts.exploration import BranchBoardSnapshot, BranchDecisionSnapshot
 from v3.contracts.recovery import RecoveryAssessment
 from v3.contracts.run import RunBoardSnapshot
 from v3.contracts.stage import StageKey, StageSnapshot
+
+if TYPE_CHECKING:
+    from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot
 
 
 @dataclass(frozen=True)
@@ -70,3 +73,13 @@ class StateStorePort(Protocol):
         *,
         branch_id: str | None = None,
     ) -> list[BranchDecisionSnapshot]: ...
+
+    def write_dag_node(self, node: "DAGNodeSnapshot") -> ArtifactRecord: ...
+
+    def load_dag_node(self, node_id: str) -> "DAGNodeSnapshot | None": ...
+
+    def list_dag_nodes(self, run_id: str) -> "list[DAGNodeSnapshot]": ...
+
+    def write_dag_edge(self, edge: "DAGEdgeSnapshot") -> ArtifactRecord: ...
+
+    def list_dag_edges(self, run_id: str) -> "list[DAGEdgeSnapshot]": ...

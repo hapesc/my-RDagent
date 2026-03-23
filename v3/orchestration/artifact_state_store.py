@@ -10,7 +10,12 @@ from pydantic import BaseModel
 
 from v3.contracts.artifact import ArtifactSnapshot
 from v3.contracts.branch import BranchSnapshot
-from v3.contracts.exploration import BranchBoardSnapshot, BranchDecisionSnapshot
+from v3.contracts.exploration import (
+    BranchBoardSnapshot,
+    BranchDecisionSnapshot,
+    DAGEdgeSnapshot,
+    DAGNodeSnapshot,
+)
 from v3.contracts.recovery import RecoveryAssessment
 from v3.contracts.run import RunBoardSnapshot
 from v3.contracts.stage import StageKey, StageSnapshot
@@ -199,6 +204,62 @@ class ArtifactStateStore(StateStorePort):
         if branch_id is None:
             return decisions
         return [decision for decision in decisions if decision.branch_id == branch_id]
+
+    def write_dag_node(self, node: DAGNodeSnapshot) -> ArtifactRecord:
+        path = self._root / "runs" / node.run_id / "dag" / "nodes" / f"{node.node_id}.json"
+        self._write_model(path, node)
+        return ArtifactRecord(
+            artifact_id=f"dag-node:{node.node_id}",
+            storage_uri=str(path),
+            media_type="application/json",
+        )
+
+    def load_dag_node(self, node_id: str) -> DAGNodeSnapshot | None:
+        runs_root = self._root / "runs"
+        if not runs_root.exists():
+            return None
+        for nodes_dir in sorted(runs_root.glob("*/dag/nodes")):
+            result = self._read_model(nodes_dir / f"{node_id}.json", DAGNodeSnapshot)
+            if result is not None:
+                return result
+        return None
+
+    def list_dag_nodes(self, run_id: str) -> list[DAGNodeSnapshot]:
+        nodes_dir = self._root / "runs" / run_id / "dag" / "nodes"
+        if not nodes_dir.exists():
+            return []
+        return [
+            DAGNodeSnapshot.model_validate(json.loads(path.read_text()))
+            for path in sorted(nodes_dir.glob("*.json"))
+        ]
+
+    def write_dag_edge(self, edge: DAGEdgeSnapshot) -> ArtifactRecord:
+        source_node = self.load_dag_node(edge.source_node_id)
+        target_node = self.load_dag_node(edge.target_node_id)
+        run_id = source_node.run_id if source_node is not None else (target_node.run_id if target_node is not None else "unknown")
+        path = (
+            self._root
+            / "runs"
+            / run_id
+            / "dag"
+            / "edges"
+            / f"{edge.source_node_id}-{edge.target_node_id}.json"
+        )
+        self._write_model(path, edge)
+        return ArtifactRecord(
+            artifact_id=f"dag-edge:{edge.source_node_id}-{edge.target_node_id}",
+            storage_uri=str(path),
+            media_type="application/json",
+        )
+
+    def list_dag_edges(self, run_id: str) -> list[DAGEdgeSnapshot]:
+        edges_dir = self._root / "runs" / run_id / "dag" / "edges"
+        if not edges_dir.exists():
+            return []
+        return [
+            DAGEdgeSnapshot.model_validate(json.loads(path.read_text()))
+            for path in sorted(edges_dir.glob("*.json"))
+        ]
 
     def _run_id_for_branch(self, branch_id: str) -> str | None:
         branch = self.load_branch_snapshot(branch_id)

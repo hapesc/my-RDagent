@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 25
 current_phase_name: fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
 current_plan: 3
-status: executing
-stopped_at: Phase 25 plan 02 completed; 25-03 is next
-last_updated: "2026-03-23T04:09:01.408Z"
+status: verifying
+stopped_at: Phase 25 automated verification complete; human review is next
+last_updated: "2026-03-23T04:27:06Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Session State
@@ -26,7 +26,7 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 25 — fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
+**Current focus:** Phase 25 verification review — fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps
 
 ## Position
 
@@ -38,20 +38,20 @@ just to discover how to start, pause, resume, or continue the loop.
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
 **Next phase:** Phase 26 after Phase 25 completion
-**Status:** Ready to execute
+**Status:** Human verification needed
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Phase 25 plan 02 completed; plan 03 is ready to execute next.
-**Progress:** [█████████░] 88%
+Phase 25 automated verification passed; one manual UX/readability review remains.
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 25 plan 02 completed with 2/3 summarized plan(s)
-- Current milestone execution trend: v1.3 phase 25 is in progress
+- Latest completed plan: Phase 25 plan 03 completed with 3/3 summarized plan(s)
+- Current milestone execution trend: v1.3 phase 25 is awaiting human verification
 
 ## Accumulated Context
 
@@ -97,8 +97,7 @@ Phase 25 plan 02 completed; plan 03 is ready to execute next.
 
 ### Pending Todos
 
-- Execute Phase 25 plan 03 to land multi-branch UX defaults and next-stage
-  materialization on top of the now-stable guidance and recovery contracts.
+- Review the start-new-run multi-branch hypothesis text for clarity and usefulness, then confirm Phase 25 as fully verified.
 
 ### Roadmap Evolution
 
@@ -106,11 +105,10 @@ Phase 25 plan 02 completed; plan 03 is ready to execute next.
 
 ### Blockers/Concerns
 
-- Plan 25-03 must preserve both newly stabilized surfaces: the Phase 25 plan 01
-  guidance contract and the Phase 25 plan 02 `recovery_assessment` rename.
+- Automated checks are green, but the new hypothesis-rich start guidance still needs human readability review before final sign-off.
 
 ## Session Continuity
 
-Last session: 2026-03-23T04:09:01.408Z
-Stopped at: Phase 25 plan 02 completed; 25-03 is next
-Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-03-PLAN.md
+Last session: 2026-03-23T04:27:06Z
+Stopped at: Phase 25 automated verification complete; human review is next
+Resume file: .planning/phases/25-fix-qa-discovered-operator-guidance-and-multi-branch-ux-gaps/25-VERIFICATION.md

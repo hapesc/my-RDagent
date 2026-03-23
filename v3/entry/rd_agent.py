@@ -5,16 +5,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from v3.contracts.exploration import ExplorationMode
+from v3.contracts.exploration import ExplorationMode, HypothesisSpec
 from v3.contracts.preflight import PreflightReadiness
 from v3.contracts.run import ExecutionMode
-from v3.contracts.tool_io import RunStartRequest
+from v3.contracts.tool_io import ConvergeRoundRequest, ExploreRoundRequest, RunStartRequest
 from v3.entry.tool_catalog import call_cli_tool
 from v3.orchestration.branch_board_service import BranchBoardService
 from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
 from v3.orchestration.branch_merge_service import BranchMergeService
+from v3.orchestration.branch_prune_service import BranchPruneService
 from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
 from v3.orchestration.convergence_service import ConvergenceService
+from v3.orchestration.dag_service import DAGService
 from v3.orchestration.execution_policy import AgentExecutionPolicy
 from v3.orchestration.multi_branch_service import MultiBranchService
 from v3.orchestration.operator_guidance import (
@@ -241,8 +243,13 @@ def rd_agent(
     exploration_mode: ExplorationMode = ExplorationMode.EXPLORATION,
     max_stage_iterations: int = 1,
     branch_hypotheses: list[str] | None = None,
+    hypothesis_specs: list[HypothesisSpec] | None = None,
     dispatcher=None,
 ) -> dict[str, Any]:
+    derived_hypotheses = branch_hypotheses
+    if hypothesis_specs and not derived_hypotheses:
+        derived_hypotheses = [spec.label for spec in hypothesis_specs]
+
     start_response = call_cli_tool(
         "rd_run_start",
         {
@@ -252,7 +259,7 @@ def rd_agent(
             "initial_branch_label": initial_branch_label,
             "execution_mode": execution_mode,
             "exploration_mode": exploration_mode,
-            "branch_hypotheses": branch_hypotheses,
+            "branch_hypotheses": derived_hypotheses,
             "max_stage_iterations": max_stage_iterations,
         },
         service=run_service,
@@ -270,10 +277,16 @@ def rd_agent(
     state_store.write_run_snapshot(run_snapshot)
     branch_snapshot = start_response["structuredContent"]["branch"]
 
-    if branch_hypotheses and len(branch_hypotheses) > 1:
+    should_multi_branch = (
+        bool(derived_hypotheses and len(derived_hypotheses) > 1)
+        or bool(hypothesis_specs and len(hypothesis_specs) > 1)
+    )
+    if should_multi_branch:
         workspace_manager = BranchWorkspaceManager(getattr(state_store, "_root", ".state"))
         board_service = BranchBoardService(state_store)
         convergence_service = ConvergenceService(state_store=state_store, board_service=board_service)
+        dag_service = DAGService(state_store)
+        prune_service = BranchPruneService(state_store=state_store, board_service=board_service)
         multi_branch_service = MultiBranchService(
             state_store=state_store,
             workspace_manager=workspace_manager,
@@ -290,15 +303,18 @@ def rd_agent(
                 board_service=board_service,
             ),
             dispatcher=dispatcher,
+            dag_service=dag_service,
+            prune_service=prune_service,
         )
         explore_round = multi_branch_service.run_exploration_round(
-            __import__("v3.contracts.tool_io", fromlist=["ExploreRoundRequest"]).ExploreRoundRequest(
+            ExploreRoundRequest(
                 run_id=run_snapshot.run_id,
-                hypotheses=branch_hypotheses,
+                hypotheses=derived_hypotheses or [],
+                hypothesis_specs=hypothesis_specs,
             )
         )
         converge_round = multi_branch_service.run_convergence_round(
-            __import__("v3.contracts.tool_io", fromlist=["ConvergeRoundRequest"]).ConvergeRoundRequest(
+            ConvergeRoundRequest(
                 run_id=run_snapshot.run_id,
             )
         )

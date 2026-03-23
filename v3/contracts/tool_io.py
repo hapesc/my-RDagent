@@ -249,6 +249,7 @@ class ExploreRoundResult(BaseModel):
     dispatched_branch_ids: list[str] = Field(default_factory=list)
     pruned_branch_ids: list[str] = Field(default_factory=list)
     dag_node_ids: list[str] = Field(default_factory=list)
+    round_diversity_score: float | None = None
 
 
 class ConvergeRoundRequest(BaseModel):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
@@ -110,17 +111,31 @@ class MultiBranchService:
             dispatched_branch_ids.append(branch.branch_id)
 
         dag_node_ids: list[str] = []
+        round_diversity_score: float | None = None
         if self._dag_service is not None:
-            diversity_score = 0.0
+            spec_by_label = {
+                spec.label: spec
+                for spec in (request.hypothesis_specs or [])
+            }
+            category_counts: Counter[str] | None = None
             if request.hypothesis_specs is not None:
                 category_counts = Counter(spec.approach_category.value for spec in request.hypothesis_specs)
-                diversity_score = category_entropy(dict(category_counts))
+                round_diversity_score = category_entropy(dict(category_counts))
             for branch_id in dispatched_branch_ids:
+                node_diversity_score = 0.0
+                branch = self._state_store.load_branch_snapshot(branch_id)
+                if branch is not None and category_counts is not None:
+                    spec = spec_by_label.get(branch.label)
+                    if spec is not None:
+                        category_count = category_counts[spec.approach_category.value]
+                        total_specs = len(request.hypothesis_specs or [])
+                        if category_count > 0 and total_specs > 0:
+                            node_diversity_score = -math.log2(category_count / total_specs)
                 node = self._dag_service.create_node(
                     run_id=request.run_id,
                     branch_id=branch_id,
                     parent_node_ids=[],
-                    node_metrics=NodeMetrics(diversity_score=diversity_score),
+                    node_metrics=NodeMetrics(diversity_score=node_diversity_score),
                 )
                 dag_node_ids.append(node.node_id)
 
@@ -154,6 +169,7 @@ class MultiBranchService:
             dispatched_branch_ids=dispatched_branch_ids,
             pruned_branch_ids=pruned_branch_ids,
             dag_node_ids=dag_node_ids,
+            round_diversity_score=round_diversity_score,
         )
 
     def run_convergence_round(self, request: ConvergeRoundRequest) -> ConvergeRoundResult:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 
 import pytest
@@ -193,12 +194,20 @@ def test_run_exploration_round_creates_dag_nodes_increments_round_and_prunes(tmp
     assert [payload["label"] for payload in dispatches] == ["primary", "alt-a", "alt-b"]
     assert len(result.dag_node_ids) == 3
     assert result.pruned_branch_ids == ["simulated-prune"]
+    assert result.round_diversity_score == pytest.approx(math.log2(3), abs=1e-6)
     assert isinstance(prune_service, _SpyPruneService)
     assert prune_service.calls == ["run-001"]
     assert run is not None
     assert run.current_round == 1
     assert len(nodes) == 3
-    assert all(node.node_metrics.diversity_score == pytest.approx(1.585, abs=1e-3) for node in nodes)
+    for node_id, branch_id in zip(result.dag_node_ids, result.dispatched_branch_ids, strict=True):
+        node = state_store.load_dag_node(node_id)
+        assert node is not None
+        assert node.branch_id == branch_id
+        assert node.node_metrics.diversity_score == pytest.approx(math.log2(3), abs=1e-6)
+        assert node.node_metrics.validation_score == 0.0
+        assert node.node_metrics.generalization_gap == 0.0
+        assert node.node_metrics.overfitting_risk == 0.0
 
 
 def test_run_exploration_round_rejects_duplicate_first_layer_categories(tmp_path: Path) -> None:
@@ -249,6 +258,20 @@ def test_run_exploration_round_falls_back_to_string_hypotheses_and_optional_serv
     assert result.pruned_branch_ids == []
     assert run is not None
     assert run.current_round == 1
+
+
+def test_run_exploration_round_reports_unknown_round_diversity_without_specs(tmp_path: Path) -> None:
+    state_store, service, _dispatches, _ = _build_service(tmp_path, with_dag=True)
+
+    result = service.run_exploration_round(
+        ExploreRoundRequest(run_id="run-001", hypotheses=["primary", "alt-a"])
+    )
+
+    nodes = state_store.list_dag_nodes("run-001")
+
+    assert result.round_diversity_score is None
+    assert len(nodes) == 2
+    assert all(node.node_metrics.diversity_score == 0.0 for node in nodes)
 
 
 def test_run_exploration_round_rejects_empty_hypothesis_input(tmp_path: Path) -> None:

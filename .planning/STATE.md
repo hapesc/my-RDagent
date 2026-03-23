@@ -42,7 +42,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-23
-Quick task `260323-qj9` produced skill refactoring blueprint: extraction maps for all 6 skills, 5 shared references, 2 rd-agent workflows, mechanical review checklist, and 6-wave dependency-ordered execution sequence.
+Quick task `260323-r08` produced Blueprint v2: corrected skill refactoring plan that builds on existing installer surface with per-skill workflows/continue.md, fixing all 5 P1/P2 problems from v1.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -118,9 +118,10 @@ Quick task `260323-qj9` produced skill refactoring blueprint: extraction maps fo
 | 260323-p50 | Make repo easy to install, verify, and release | 2026-03-23 | e7128cb | Verified | [260323-p50-repo-easy-to-install-gsd-repo](./quick/260323-p50-repo-easy-to-install-gsd-repo/) |
 | 260323-qfz | Extract actionable skill-improvement guidance from Google skill patterns for RDagent | 2026-03-23 | docs-only | | [260323-qfz-extract-actionable-skill-improvement-gui](./quick/260323-qfz-extract-actionable-skill-improvement-gui/) |
 | 260323-qj9 | Skill refactoring blueprint: extraction maps, shared references, wave-ordered execution | 2026-03-23 | 1e24519 | | [260323-qj9-skill-rdagent-skill](./quick/260323-qj9-skill-rdagent-skill/) |
+| 260323-r08 | Blueprint v2: installer-first skill refactoring with per-skill workflows | 2026-03-23 | 304dae4 | | [260323-r08-blueprint-v2-installer-surface-skill](./quick/260323-r08-blueprint-v2-installer-surface-skill/) |
 
 ## Session Continuity
 
-Last session: 2026-03-23T11:16:00Z
-Stopped at: Completed quick-260323-qj9 skill refactoring blueprint
+Last session: 2026-03-23T15:32:00Z
+Stopped at: Completed quick-260323-r08 blueprint v2 installer-surface skill refactoring
 Resume file: .planning/STATE.md

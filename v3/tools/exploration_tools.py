@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from v3.contracts.tool_io import (
-    BranchFallbackRequest,
-    BranchFallbackResult,
     BranchBoardGetRequest,
     BranchBoardGetResult,
+    BranchFallbackRequest,
+    BranchFallbackResult,
     BranchForkRequest,
     BranchMergeRequest,
     BranchMergeResult,
@@ -73,7 +73,10 @@ def rd_branch_share_assess(request: BranchShareAssessRequest, *, service: Branch
     structured = BranchShareAssessResult.model_validate(result.model_dump(mode="json"))
     return _tool_response(
         structured.model_dump(mode="json"),
-        f"Share assessment for {request.source_branch_id}->{request.target_branch_id}: {'eligible' if result.eligible else 'denied'}.",
+        (
+            f"Share assessment for {request.source_branch_id}->{request.target_branch_id}:"
+            f" {'eligible' if result.eligible else 'denied'}."
+        ),
     )
 
 

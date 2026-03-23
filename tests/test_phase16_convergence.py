@@ -78,7 +78,9 @@ def test_merge_success_publishes_synthesis_artifact_with_source_provenance(tmp_p
     _seed_run(state_store, branches)
     board_service = BranchBoardService(state_store)
     convergence_service = ConvergenceService(state_store=state_store, board_service=board_service)
-    merge_service = BranchMergeService(state_store=state_store, convergence_service=convergence_service, board_service=board_service)
+    merge_service = BranchMergeService(
+        state_store=state_store, convergence_service=convergence_service, board_service=board_service
+    )
 
     result = rd_branch_merge(BranchMergeRequest(run_id="run-converge", minimum_quality=0.8), service=merge_service)
 
@@ -97,12 +99,17 @@ def test_merge_failure_records_reason_and_quality_ordered_shortlist(tmp_path: Pa
     _seed_run(state_store, branches)
     board_service = BranchBoardService(state_store)
     convergence_service = ConvergenceService(state_store=state_store, board_service=board_service)
-    merge_service = BranchMergeService(state_store=state_store, convergence_service=convergence_service, board_service=board_service)
+    merge_service = BranchMergeService(
+        state_store=state_store, convergence_service=convergence_service, board_service=board_service
+    )
 
     result = rd_branch_merge(BranchMergeRequest(run_id="run-converge", minimum_quality=0.7), service=merge_service)
 
     assert result["structuredContent"]["outcome"]["failure_reason"] == "quality_gap_too_wide"
-    assert [entry["branch_id"] for entry in result["structuredContent"]["outcome"]["shortlist"]] == ["branch-a", "branch-b"]
+    assert [entry["branch_id"] for entry in result["structuredContent"]["outcome"]["shortlist"]] == [
+        "branch-a",
+        "branch-b",
+    ]
     assert "quality_gap_too_wide" in result["structuredContent"]["outcome"]["summary"]
 
 
@@ -116,9 +123,13 @@ def test_merge_quality_degradation_falls_back_to_top1_candidate(tmp_path: Path) 
     _seed_run(state_store, branches)
     board_service = BranchBoardService(state_store)
     convergence_service = ConvergenceService(state_store=state_store, board_service=board_service)
-    merge_service = BranchMergeService(state_store=state_store, convergence_service=convergence_service, board_service=board_service)
+    merge_service = BranchMergeService(
+        state_store=state_store, convergence_service=convergence_service, board_service=board_service
+    )
 
-    result = rd_branch_fallback(BranchFallbackRequest(run_id="run-converge", minimum_quality=0.7), service=merge_service)
+    result = rd_branch_fallback(
+        BranchFallbackRequest(run_id="run-converge", minimum_quality=0.7), service=merge_service
+    )
 
     assert result["structuredContent"]["selected_branch_id"] == "branch-a"
     assert [entry["branch_id"] for entry in result["structuredContent"]["shortlist"]] == ["branch-a", "branch-b"]

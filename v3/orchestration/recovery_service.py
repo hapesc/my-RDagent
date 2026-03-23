@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from v3.contracts.artifact import ArtifactReuseLevel, ArtifactSnapshot
+from v3.contracts.artifact import ArtifactReuseLevel
 from v3.contracts.recovery import (
     RecoveryAssessment,
     RecoveryDisposition,
@@ -40,9 +40,7 @@ class RecoveryService:
     def assess_inputs(self, inputs: RecoveryInputs) -> RecoveryAssessment:
         artifacts_by_id = {artifact.artifact_id: artifact for artifact in inputs.artifacts}
         relevant_artifacts = [
-            artifacts_by_id[artifact_id]
-            for artifact_id in inputs.stage.artifact_ids
-            if artifact_id in artifacts_by_id
+            artifacts_by_id[artifact_id] for artifact_id in inputs.stage.artifact_ids if artifact_id in artifacts_by_id
         ]
 
         reusable_artifact_ids = [
@@ -51,9 +49,7 @@ class RecoveryService:
             if artifact.reuse_level in {ArtifactReuseLevel.REUSABLE, ArtifactReuseLevel.REFERENCE}
         ]
         replay_artifact_ids = [
-            artifact_id
-            for artifact_id in inputs.stage.artifact_ids
-            if artifact_id not in reusable_artifact_ids
+            artifact_id for artifact_id in inputs.stage.artifact_ids if artifact_id not in reusable_artifact_ids
         ]
 
         invalid_reasons: list[RecoveryReason] = []

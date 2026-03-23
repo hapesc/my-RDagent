@@ -12,8 +12,8 @@ from v3.contracts.artifact import (
 )
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus, RunStopReason
-from v3.contracts.tool_io import RunStartRequest
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+from v3.contracts.tool_io import RunStartRequest
 from v3.orchestration.artifact_state_store import ArtifactStateStore
 from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService

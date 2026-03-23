@@ -12,10 +12,7 @@ def test_tool_catalog_examples_cover_every_tool() -> None:
         first = tool["examples"][0]
         assert first["label"] == "common_path"
         serialized = repr(first["arguments"])
-        assert any(
-            placeholder in serialized
-            for placeholder in ("run-001", "branch-001", "primary", "memory-001")
-        )
+        assert any(placeholder in serialized for placeholder in ("run-001", "branch-001", "primary", "memory-001"))
 
 
 def test_tool_catalog_routing_guidance_is_explicit() -> None:
@@ -68,9 +65,12 @@ def test_selection_and_recovery_follow_up_explains_the_next_direct_step() -> Non
 def test_stage_oriented_follow_up_uses_shared_skill_vocabulary() -> None:
     tools = {tool["name"]: tool for tool in list_cli_tools()}
 
-    for tool_name in ("rd_run_start", "rd_stage_get", "rd_artifact_list", "rd_recovery_assess", "rd_branch_select_next"):
+    for tool_name in (
+        "rd_run_start",
+        "rd_stage_get",
+        "rd_artifact_list",
+        "rd_recovery_assess",
+        "rd_branch_select_next",
+    ):
         next_action = tools[tool_name]["follow_up"]["next_action"]
-        assert any(
-            skill_name in next_action
-            for skill_name in ("rd-propose", "rd-code", "rd-execute", "rd-evaluate")
-        )
+        assert any(skill_name in next_action for skill_name in ("rd-propose", "rd-code", "rd-execute", "rd-evaluate"))

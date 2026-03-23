@@ -111,9 +111,12 @@ class BranchMergeService:
             branch_id=branch_id,
             kind=BranchDecisionKind.MERGE,
             mode=ExplorationMode.CONVERGENCE,
-            summary=outcome.summary if outcome.failure_reason is None else f"{outcome.summary} Failure: {outcome.failure_reason}.",
+            summary=outcome.summary
+            if outcome.failure_reason is None
+            else f"{outcome.summary} Failure: {outcome.failure_reason}.",
             rationale=outcome.rationale,
-            affected_branch_ids=[entry.branch_id for entry in outcome.shortlist] or ([branch_id] if branch_id != "run-wide" else []),
+            affected_branch_ids=[entry.branch_id for entry in outcome.shortlist]
+            or ([branch_id] if branch_id != "run-wide" else []),
         )
         self._state_store.write_branch_decision(decision)
         run = self._state_store.load_run_snapshot(run_id)

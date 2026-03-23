@@ -185,9 +185,7 @@ def test_memory_state_store_writes_branch_local_and_shared_namespaces(tmp_path: 
     branch_record_path = (
         tmp_path / "state" / "memory" / "run-001" / "branches" / "branch-001" / "records" / "memory-001.json"
     )
-    shared_promotion_path = (
-        tmp_path / "state" / "memory" / "run-001" / "shared" / "promotions" / "memory-001.json"
-    )
+    shared_promotion_path = tmp_path / "state" / "memory" / "run-001" / "shared" / "promotions" / "memory-001.json"
 
     assert record_receipt.storage_uri == str(branch_record_path)
     assert promotion_receipt.storage_uri == str(shared_promotion_path)

@@ -42,13 +42,13 @@ def _publish(
 
 def rd_stage_start(request: StageStartRequest, *, service: StageTransitionService) -> dict[str, Any]:
     stage_snapshot = StageSnapshot(
-            stage_key=request.stage_key,
-            stage_iteration=request.stage_iteration,
-            status=StageStatus.IN_PROGRESS,
-            summary=request.summary,
-            artifact_ids=request.artifact_ids,
-            next_stage_key=request.next_stage_key,
-        )
+        stage_key=request.stage_key,
+        stage_iteration=request.stage_iteration,
+        status=StageStatus.IN_PROGRESS,
+        summary=request.summary,
+        artifact_ids=request.artifact_ids,
+        next_stage_key=request.next_stage_key,
+    )
     return _publish(
         stage_snapshot,
         branch_id=request.branch_id,
@@ -59,13 +59,13 @@ def rd_stage_start(request: StageStartRequest, *, service: StageTransitionServic
 
 def rd_stage_complete(request: StageCompleteRequest, *, service: StageTransitionService) -> dict[str, Any]:
     stage_snapshot = StageSnapshot(
-            stage_key=request.stage_key,
-            stage_iteration=request.stage_iteration,
-            status=StageStatus.COMPLETED,
-            summary=request.summary,
-            artifact_ids=request.artifact_ids,
-            next_stage_key=request.next_stage_key,
-        )
+        stage_key=request.stage_key,
+        stage_iteration=request.stage_iteration,
+        status=StageStatus.COMPLETED,
+        summary=request.summary,
+        artifact_ids=request.artifact_ids,
+        next_stage_key=request.next_stage_key,
+    )
     return _publish(
         stage_snapshot,
         branch_id=request.branch_id,
@@ -76,14 +76,14 @@ def rd_stage_complete(request: StageCompleteRequest, *, service: StageTransition
 
 def rd_stage_block(request: StageBlockRequest, *, service: StageTransitionService) -> dict[str, Any]:
     stage_snapshot = StageSnapshot(
-            stage_key=request.stage_key,
-            stage_iteration=request.stage_iteration,
-            status=StageStatus.BLOCKED,
-            summary=request.summary,
-            artifact_ids=request.artifact_ids,
-            blocking_reasons=request.blocking_reasons,
-            next_stage_key=request.next_stage_key,
-        )
+        stage_key=request.stage_key,
+        stage_iteration=request.stage_iteration,
+        status=StageStatus.BLOCKED,
+        summary=request.summary,
+        artifact_ids=request.artifact_ids,
+        blocking_reasons=request.blocking_reasons,
+        next_stage_key=request.next_stage_key,
+    )
     return _publish(
         stage_snapshot,
         branch_id=request.branch_id,
@@ -111,14 +111,14 @@ def rd_stage_replay(request: StageStartRequest, *, service: StageTransitionServi
 
 def rd_stage_transition(request: StageTransitionRequest, *, service: StageTransitionService) -> dict[str, Any]:
     stage_snapshot = StageSnapshot(
-            stage_key=request.stage_key,
-            stage_iteration=request.stage_iteration,
-            status=request.status,
-            summary=request.summary,
-            artifact_ids=request.artifact_ids,
-            blocking_reasons=request.blocking_reasons,
-            next_stage_key=request.next_stage_key,
-        )
+        stage_key=request.stage_key,
+        stage_iteration=request.stage_iteration,
+        status=request.status,
+        summary=request.summary,
+        artifact_ids=request.artifact_ids,
+        blocking_reasons=request.blocking_reasons,
+        next_stage_key=request.next_stage_key,
+    )
     return _publish(
         stage_snapshot,
         branch_id=request.branch_id,

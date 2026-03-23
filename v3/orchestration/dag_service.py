@@ -87,10 +87,7 @@ class DAGService:
         return updated
 
     def _build_parent_map(self, run_id: str) -> dict[str, list[str]]:
-        return {
-            node.node_id: list(node.parent_node_ids)
-            for node in self._state_store.list_dag_nodes(run_id)
-        }
+        return {node.node_id: list(node.parent_node_ids) for node in self._state_store.list_dag_nodes(run_id)}
 
     def _build_child_map(self, run_id: str) -> dict[str, list[str]]:
         nodes = self._state_store.list_dag_nodes(run_id)

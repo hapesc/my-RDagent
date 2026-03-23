@@ -8,7 +8,7 @@ from typing import Any
 from v3.contracts.exploration import ExplorationMode, HypothesisSpec
 from v3.contracts.preflight import PreflightReadiness
 from v3.contracts.run import ExecutionMode
-from v3.contracts.tool_io import ConvergeRoundRequest, ExploreRoundRequest, RunStartRequest
+from v3.contracts.tool_io import ConvergeRoundRequest, ExploreRoundRequest
 from v3.entry.tool_catalog import call_cli_tool
 from v3.orchestration.branch_board_service import BranchBoardService
 from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
@@ -52,18 +52,17 @@ def _extract_paused_run_context(persisted_state: dict[str, Any] | None) -> dict[
                 item
                 for item in paused_runs
                 if isinstance(item, dict)
-                and (
-                    item.get("is_current")
-                    or item.get("is_selected")
-                    or item.get("current_context")
-                )
+                and (item.get("is_current") or item.get("is_selected") or item.get("current_context"))
             ),
             None,
         )
         selection_reason = (
             "persisted state marked this paused run as the current continuation target."
             if preferred is not None
-            else "persisted state did not mark a preferred paused run, so the first listed paused run is surfaced explicitly."
+            else (
+                "persisted state did not mark a preferred paused run, "
+                "so the first listed paused run is surfaced explicitly."
+            )
         )
         source = preferred if preferred is not None else paused_runs[0]
         if not isinstance(source, dict):
@@ -282,9 +281,8 @@ def rd_agent(
     state_store.write_run_snapshot(run_snapshot)
     branch_snapshot = start_response["structuredContent"]["branch"]
 
-    should_multi_branch = (
-        bool(derived_hypotheses and len(derived_hypotheses) > 1)
-        or bool(hypothesis_specs and len(hypothesis_specs) > 1)
+    should_multi_branch = bool(derived_hypotheses and len(derived_hypotheses) > 1) or bool(
+        hypothesis_specs and len(hypothesis_specs) > 1
     )
     if should_multi_branch:
         workspace_manager = BranchWorkspaceManager(getattr(state_store, "_root", ".state"))

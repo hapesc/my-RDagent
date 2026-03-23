@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from v3.contracts.artifact import ArtifactKind, ArtifactLocator, ArtifactProvenance, ArtifactReuseLevel, ArtifactSnapshot
+from v3.contracts.artifact import (
+    ArtifactKind,
+    ArtifactLocator,
+    ArtifactProvenance,
+    ArtifactReuseLevel,
+    ArtifactSnapshot,
+)
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.run import ExecutionMode
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
@@ -88,7 +94,11 @@ def test_rd_agent_dispatches_parallel_exploration_subagents_with_isolated_worksp
             StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
             StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
             StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
-            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+            StageKey.SYNTHESIZE: {
+                "summary": "Synthesize complete.",
+                "artifact_ids": ["artifact-synthesize-001"],
+                "recommendation": "stop",
+            },
         },
         state_store=state_store,
         run_service=run_service,
@@ -121,7 +131,11 @@ def test_rd_agent_runs_multi_branch_explore_and_converge_round(tmp_path) -> None
             StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
             StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
             StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
-            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+            StageKey.SYNTHESIZE: {
+                "summary": "Synthesize complete.",
+                "artifact_ids": ["artifact-synthesize-001"],
+                "recommendation": "stop",
+            },
         },
         state_store=state_store,
         run_service=run_service,
@@ -153,7 +167,11 @@ def test_rd_agent_reports_branch_board_mode_and_recommended_next_step(tmp_path) 
             StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
             StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
             StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
-            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+            StageKey.SYNTHESIZE: {
+                "summary": "Synthesize complete.",
+                "artifact_ids": ["artifact-synthesize-001"],
+                "recommendation": "stop",
+            },
         },
         state_store=state_store,
         run_service=run_service,

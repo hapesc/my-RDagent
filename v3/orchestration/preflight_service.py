@@ -100,11 +100,7 @@ class PreflightService:
             branch_id=branch_id,
             stage_key=stage_key,
             recommended_next_skill=recommended_next_skill,
-            readiness=(
-                PreflightReadiness.BLOCKED
-                if primary is not None
-                else PreflightReadiness.EXECUTABLE
-            ),
+            readiness=(PreflightReadiness.BLOCKED if primary is not None else PreflightReadiness.EXECUTABLE),
             primary_blocker_category=None if primary is None else primary.category,
             primary_blocker_reason=None if primary is None else primary.reason,
             repair_action=_DEFAULT_PASS_ACTION if primary is None else primary.repair_action,
@@ -168,11 +164,7 @@ class PreflightService:
             if "import-linter" in test_dependencies:
                 required_modules.append("import_linter")
 
-        missing_modules = [
-            module_name
-            for module_name in required_modules
-            if not self._module_available(module_name)
-        ]
+        missing_modules = [module_name for module_name in required_modules if not self._module_available(module_name)]
         if missing_modules:
             joined = ", ".join(missing_modules)
             self._add_blocker(
@@ -215,7 +207,10 @@ class PreflightService:
                 blockers,
                 PreflightBlockerCategory.STATE,
                 f"Branch {branch_id} belongs to run {branch.run_id}, not requested run {run_id}.",
-                f"Repair persisted run/branch/stage snapshots so run {run_id} and branch {branch_id} agree before continuing.",
+                (
+                    f"Repair persisted run/branch/stage snapshots so run {run_id}"
+                    f" and branch {branch_id} agree before continuing."
+                ),
             )
             return False
         if stage is None:
@@ -230,10 +225,7 @@ class PreflightService:
             self._add_blocker(
                 blockers,
                 PreflightBlockerCategory.STATE,
-                (
-                    f"Branch {branch_id} current_stage_key is {branch.current_stage_key.value}, "
-                    f"not {stage_key.value}."
-                ),
+                (f"Branch {branch_id} current_stage_key is {branch.current_stage_key.value}, not {stage_key.value}."),
                 "Repair persisted run/branch/stage snapshots so current_stage_key matches the executing stage.",
             )
             return False
@@ -244,15 +236,24 @@ class PreflightService:
                 blockers,
                 PreflightBlockerCategory.STATE,
                 f"Branch {branch_id} does not embed a {stage_key.value} stage snapshot.",
-                f"Repair persisted run/branch/stage snapshots so branch {branch_id} embeds the {stage_key.value} stage.",
+                (
+                    f"Repair persisted run/branch/stage snapshots so branch"
+                    f" {branch_id} embeds the {stage_key.value} stage."
+                ),
             )
             return False
         if embedded_stage != stage:
             self._add_blocker(
                 blockers,
                 PreflightBlockerCategory.STATE,
-                f"Branch {branch_id} embeds stale {stage_key.value} stage truth that disagrees with the latest snapshot on disk.",
-                "Repair persisted run/branch/stage snapshots so embedded branch state and latest stage snapshots match.",
+                (
+                    f"Branch {branch_id} embeds stale {stage_key.value} stage truth"
+                    f" that disagrees with the latest snapshot on disk."
+                ),
+                (
+                    "Repair persisted run/branch/stage snapshots so embedded"
+                    " branch state and latest stage snapshots match."
+                ),
             )
             return False
         return True
@@ -274,9 +275,7 @@ class PreflightService:
             stage_key=stage_key,
         )
         artifacts_by_id = {artifact.artifact_id for artifact in artifacts}
-        missing_artifacts = [
-            artifact_id for artifact_id in stage.artifact_ids if artifact_id not in artifacts_by_id
-        ]
+        missing_artifacts = [artifact_id for artifact_id in stage.artifact_ids if artifact_id not in artifacts_by_id]
         if missing_artifacts:
             missing = ", ".join(missing_artifacts)
             self._add_blocker(

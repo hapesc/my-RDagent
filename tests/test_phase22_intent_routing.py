@@ -1,14 +1,14 @@
-from v3.entry import rd_agent as rd_agent_module
 from v3.contracts.preflight import (
     PreflightBlockerCategory,
     PreflightBlockersByCategory,
     PreflightReadiness,
     PreflightResult,
 )
+from v3.entry import rd_agent as rd_agent_module
 
 
 def _route_user_intent(*args, **kwargs):
-    return getattr(rd_agent_module, "route_user_intent")(*args, **kwargs)
+    return rd_agent_module.route_user_intent(*args, **kwargs)
 
 
 def _paused_state(*, stage_key: str, branch_id: str = "branch-001") -> dict[str, object]:

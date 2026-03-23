@@ -18,15 +18,9 @@ def test_v3_tool_cli_lists_catalog(capsys) -> None:
     assert all(tool["examples"] for tool in payload)
     assert all(tool["when_to_use"] for tool in payload)
     assert all(tool["when_not_to_use"] for tool in payload)
+    assert all(tool["recommended_entrypoint"] == "rd-agent" for tool in payload if tool["category"] == "orchestration")
     assert all(
-        tool["recommended_entrypoint"] == "rd-agent"
-        for tool in payload
-        if tool["category"] == "orchestration"
-    )
-    assert all(
-        tool["recommended_entrypoint"] == "rd-tool-catalog"
-        for tool in payload
-        if tool["category"] != "orchestration"
+        tool["recommended_entrypoint"] == "rd-tool-catalog" for tool in payload if tool["category"] != "orchestration"
     )
 
 

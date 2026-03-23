@@ -41,11 +41,7 @@ def get_frontier(parent_map: dict[str, list[str]], all_node_ids: set[str]) -> se
         child_map.setdefault(child_id, [])
         for parent_id in parent_ids:
             child_map.setdefault(parent_id, []).append(child_id)
-    return {
-        node_id
-        for node_id in all_node_ids
-        if not child_map.get(node_id)
-    }
+    return {node_id for node_id in all_node_ids if not child_map.get(node_id)}
 
 
 def get_depth(node_id: str, parent_map: dict[str, list[str]]) -> int:

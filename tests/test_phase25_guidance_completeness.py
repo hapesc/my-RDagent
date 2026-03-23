@@ -16,11 +16,12 @@ from v3.contracts.preflight import (
 )
 from v3.contracts.recovery import RecoveryDisposition
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+
 rd_code_module = importlib.import_module("v3.entry.rd_code")
 rd_evaluate_module = importlib.import_module("v3.entry.rd_evaluate")
 rd_execute_module = importlib.import_module("v3.entry.rd_execute")
 rd_propose_module = importlib.import_module("v3.entry.rd_propose")
-from v3.orchestration.operator_guidance import (
+from v3.orchestration.operator_guidance import (  # noqa: E402
     build_paused_run_guidance,
     render_operator_guidance_text,
 )
@@ -168,9 +169,7 @@ def _configure_entry(
     monkeypatch.setattr(
         case.module,
         "rd_branch_get",
-        lambda *args, **kwargs: {
-            "structuredContent": {"branch": {"branch_id": "branch-001", "run_id": "run-001"}}
-        },
+        lambda *args, **kwargs: {"structuredContent": {"branch": {"branch_id": "branch-001", "run_id": "run-001"}}},
     )
     monkeypatch.setattr(
         case.module,
@@ -191,6 +190,7 @@ def _configure_entry(
             lambda *args, **kwargs: {"structuredContent": {"assessment": {"ok": True}}},
         )
     else:
+
         def _missing_recovery(*args: Any, **kwargs: Any) -> dict[str, Any]:
             raise KeyError("missing recovery")
 

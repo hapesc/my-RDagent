@@ -61,10 +61,7 @@ def _generate_branch_hypotheses(intent: str) -> list[str]:
 
 def _minimum_continuation_skeleton(*, run_id: str, branch_id: str) -> str:
     return (
-        f'run_id="{run_id}" '
-        f'branch_id="{branch_id}" '
-        'summary="Summarize the current step." '
-        'artifact_ids=["artifact-001"]'
+        f'run_id="{run_id}" branch_id="{branch_id}" summary="Summarize the current step." artifact_ids=["artifact-001"]'
     )
 
 
@@ -162,11 +159,7 @@ def build_start_new_run_guidance(*, user_intent: str) -> OperatorGuidance:
     hypotheses = _generate_branch_hypotheses(intent_text)
     hypothesis_lines = "\n".join(f"  - {hypothesis}" for hypothesis in hypotheses)
     skeleton = _minimum_start_skeleton(intent_text)
-    branch_skeleton = (
-        f"{skeleton} "
-        'exploration_mode="exploration" '
-        f"branch_hypotheses={hypotheses!r}"
-    )
+    branch_skeleton = f'{skeleton} exploration_mode="exploration" branch_hypotheses={hypotheses!r}'
     return OperatorGuidance(
         recommended_next_skill="rd-agent",
         current_state=(
@@ -206,10 +199,7 @@ def build_paused_run_guidance(
         stage_key=stage_key,
         recommended_next_skill=recommended_next_skill,
         state_descriptor="is paused and awaiting operator input",
-        routing_reason=(
-            "Reason: paused run continuation takes priority over a new run, and "
-            f"{selection_reason}"
-        ),
+        routing_reason=(f"Reason: paused run continuation takes priority over a new run, and {selection_reason}"),
         exact_next_action=exact_next_action,
         current_action_status=current_action_status,
         current_blocker_category=current_blocker_category,

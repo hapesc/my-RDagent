@@ -30,20 +30,20 @@ from v3.contracts.tool_io import (
     BranchGetResult,
     BranchListRequest,
     BranchListResult,
+    BranchMergeRequest,
+    BranchMergeResult,
     BranchPathsGetRequest,
     BranchPathsGetResult,
     BranchPruneRequest,
     BranchPruneResult,
-    BranchShortlistRequest,
-    BranchShortlistResult,
-    BranchMergeRequest,
-    BranchMergeResult,
+    BranchSelectNextRequest,
+    BranchSelectNextResult,
     BranchShareApplyRequest,
     BranchShareApplyResult,
     BranchShareAssessRequest,
     BranchShareAssessResult,
-    BranchSelectNextRequest,
-    BranchSelectNextResult,
+    BranchShortlistRequest,
+    BranchShortlistResult,
     ConvergeRoundRequest,
     ConvergeRoundResult,
     ExploreRoundRequest,
@@ -82,7 +82,6 @@ from v3.tools.recovery_tools import rd_recovery_assess
 from v3.tools.run_tools import rd_run_get, rd_run_start
 from v3.tools.selection_tools import rd_branch_select_next
 from v3.tools.stage_tools import rd_stage_get
-
 
 ToolCategory = Literal["orchestration", "inspection", "primitives"]
 ToolSubcategory = Literal["branch_lifecycle", "branch_knowledge", "branch_selection", "memory"] | None
@@ -146,10 +145,7 @@ _CATEGORY_NOTES = {
     "primitives": "Apply one targeted direct-tool action after narrowing through rd-tool-catalog.",
 }
 _STAGE_SKILL_SEQUENCE = tuple(
-    skill_name
-    for skill_name in dict.fromkeys(
-        value for key, value in STAGE_TO_NEXT_SKILL.items() if key != "evaluate"
-    )
+    skill_name for skill_name in dict.fromkeys(value for key, value in STAGE_TO_NEXT_SKILL.items() if key != "evaluate")
 )
 _STAGE_SKILL_LIST = ", ".join(f"`{skill}`" for skill in _STAGE_SKILL_SEQUENCE)
 
@@ -190,7 +186,10 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
     _ToolSpec(
         name="rd_run_start",
         title="Start V3 Run",
-        description="Start a V3 run and publish the initial run, branch, stage, and artifact truth, with multi-branch exploration as the default mode.",
+        description=(
+            "Start a V3 run and publish the initial run, branch, stage, and artifact truth, "
+            "with multi-branch exploration as the default mode."
+        ),
         category="orchestration",
         subcategory=None,
         recommended_entrypoint="rd-agent",
@@ -198,7 +197,10 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
             _example(
                 {
                     "title": "Phase 19 tool guidance hardening",
-                    "task_summary": "Add tool-catalog examples, routing guidance, and follow-up semantics to the direct V3 CLI surface.",
+                    "task_summary": (
+                        "Add tool-catalog examples, routing guidance, and follow-up semantics "
+                        "to the direct V3 CLI surface."
+                    ),
                     "scenario_label": "data_science",
                     "initial_branch_label": "primary",
                     "execution_mode": "gated",
@@ -218,7 +220,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A new run, primary branch, and initial stage have been published.",
             "rd-agent",
-            "Continue the run with rd-agent using the returned run_id, or inspect the returned branch_id and stage_key before handing the branch to the next valid stage skill "
+            "Continue the run with rd-agent using the returned run_id, "
+            "or inspect the returned branch_id and stage_key before handing "
+            "the branch to the next valid stage skill "
             f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_run_start,
@@ -239,7 +243,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The canonical run-board snapshot has been loaded.",
             "rd-agent",
-            "Inspect the returned status, primary_branch_id, and stop_reason, then continue with rd-agent or inspect a specific branch if you need a narrower direct-tool read.",
+            "Inspect the returned status, primary_branch_id, and stop_reason, "
+            "then continue with rd-agent or inspect a specific branch "
+            "if you need a narrower direct-tool read.",
         ),
         handler=rd_run_get,
         request_model=RunGetRequest,
@@ -269,7 +275,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A new branch and fork decision have been published.",
             "rd-tool-catalog",
-            "Inspect the new branch with rd_branch_get or rd_stage_get, then continue work on that branch through the next valid skill or primitive.",
+            "Inspect the new branch with rd_branch_get or rd_stage_get, "
+            "then continue work on that branch through the next valid "
+            "skill or primitive.",
         ),
         handler=rd_branch_fork,
         request_model=BranchForkRequest,
@@ -345,7 +353,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The share decision for the source and target branches has been evaluated.",
             "rd-tool-catalog",
-            "If the returned decision allows sharing, apply it with rd_branch_share_apply; otherwise continue without promoting that memory.",
+            "If the returned decision allows sharing, apply it with "
+            "rd_branch_share_apply; otherwise continue without "
+            "promoting that memory.",
         ),
         handler=rd_branch_share_assess,
         request_model=BranchShareAssessRequest,
@@ -377,7 +387,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "Eligible branch knowledge has been applied and the board context has been refreshed.",
             "rd-tool-catalog",
-            "Inspect the resulting memory or branch board, then continue the affected branch with the next valid stage action.",
+            "Inspect the resulting memory or branch board, then continue "
+            "the affected branch with the next valid stage action.",
         ),
         handler=rd_branch_share_apply,
         request_model=BranchShareApplyRequest,
@@ -402,7 +413,10 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A quality-ordered shortlist has been built for convergence.",
             "rd-agent",
-            "Return to rd-agent as the default continuation path, or explicitly downshift to rd_converge_round if you intentionally need a direct convergence call after inspecting the shortlist.",
+            "Return to rd-agent as the default continuation path, "
+            "or explicitly downshift to rd_converge_round if you "
+            "intentionally need a direct convergence call "
+            "after inspecting the shortlist.",
         ),
         handler=rd_branch_shortlist,
         request_model=BranchShortlistRequest,
@@ -427,7 +441,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A convergence merge attempt has completed.",
             "rd-agent",
-            "Inspect the merge outcome and shortlist; if the merge did not hold, use rd_branch_fallback or rd_branch_select_next before continuing.",
+            "Inspect the merge outcome and shortlist; if the merge "
+            "did not hold, use rd_branch_fallback or "
+            "rd_branch_select_next before continuing.",
         ),
         handler=rd_branch_merge,
         request_model=BranchMergeRequest,
@@ -472,7 +488,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The canonical branch snapshot has been loaded.",
             "rd-tool-catalog",
-            "Inspect the branch's current stage or artifacts to decide the next direct-tool read or hand the branch back to the next valid stage skill "
+            "Inspect the branch's current stage or artifacts to decide "
+            "the next direct-tool read or hand the branch back to "
+            "the next valid stage skill "
             f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_get,
@@ -498,7 +516,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The run's branch list has been loaded.",
             "rd-tool-catalog",
-            "Choose a branch to inspect with rd_branch_get or let rd_branch_select_next recommend the next branch to advance before returning to the next valid stage skill "
+            "Choose a branch to inspect with rd_branch_get or let "
+            "rd_branch_select_next recommend the next branch to advance "
+            "before returning to the next valid stage skill "
             f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_list,
@@ -555,7 +575,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The requested artifact list has been loaded.",
             "rd-tool-catalog",
-            "Use the returned artifact ids and branch/stage context to inspect the underlying evidence or continue the branch from that stage with the next valid skill "
+            "Use the returned artifact ids and branch/stage context to "
+            "inspect the underlying evidence or continue the branch "
+            "from that stage with the next valid skill "
             f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_artifact_list,
@@ -581,8 +603,10 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "Recovery readiness for the requested branch stage has been evaluated.",
             "rd-tool-catalog",
-            "If recovery is ready, inspect the relevant artifacts or continue the branch with the next valid stage skill "
-            f"({_STAGE_SKILL_LIST}); if it is blocked, fix the missing evidence before retrying.",
+            "If recovery is ready, inspect the relevant artifacts or "
+            "continue the branch with the next valid stage skill "
+            f"({_STAGE_SKILL_LIST}); if it is blocked, "
+            "fix the missing evidence before retrying.",
         ),
         handler=rd_recovery_assess,
         request_model=RecoveryAssessRequest,
@@ -607,7 +631,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A recommendation for the next branch to advance has been produced.",
             "rd-tool-catalog",
-            "Inspect the recommended branch with rd_branch_get or rd_stage_get, then continue work on that branch with the next valid stage skill "
+            "Inspect the recommended branch with rd_branch_get or "
+            "rd_stage_get, then continue work on that branch with "
+            "the next valid stage skill "
             f"({_STAGE_SKILL_LIST}).",
         ),
         handler=rd_branch_select_next,
@@ -645,7 +671,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "A branch-owned memory record has been created.",
             "rd-tool-catalog",
-            "Inspect the new memory with rd_memory_get or promote it with rd_memory_promote if it should become shared.",
+            "Inspect the new memory with rd_memory_get or promote it "
+            "with rd_memory_promote if it should become shared.",
         ),
         handler=rd_memory_create,
         request_model=MemoryCreateRequest,
@@ -670,7 +697,8 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The requested memory record has been loaded.",
             "rd-tool-catalog",
-            "Use the memory in branch work, or promote it with rd_memory_promote if it is ready for the shared namespace.",
+            "Use the memory in branch work, or promote it with "
+            "rd_memory_promote if it is ready for the shared namespace.",
         ),
         handler=rd_memory_get,
         request_model=MemoryGetRequest,
@@ -788,7 +816,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The exploration frontier has advanced and the branch board has been updated.",
             "rd-agent",
-            "Inspect the updated board with rd_branch_board_get if you need to see the frontier, or continue orchestration with rd-agent.",
+            "Inspect the updated board with rd_branch_board_get "
+            "if you need to see the frontier, or continue "
+            "orchestration with rd-agent.",
         ),
         handler=rd_explore_round,
         request_model=ExploreRoundRequest,
@@ -813,7 +843,9 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         follow_up=_follow_up(
             "The current shortlist has been evaluated for convergence.",
             "rd-agent",
-            "Inspect the returned merge and shortlist state, then continue with rd-agent or use fallback/selection tools if convergence did not finish the run.",
+            "Inspect the returned merge and shortlist state, then "
+            "continue with rd-agent or use fallback/selection tools "
+            "if convergence did not finish the run.",
         ),
         handler=rd_converge_round,
         request_model=ConvergeRoundRequest,

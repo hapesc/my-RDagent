@@ -61,7 +61,9 @@ def test_rerun_is_idempotent(tmp_path: Path) -> None:
     target_root = resolve_target_root("codex", "local", repo_root=repo_root)
     assert sorted(path.name for path in target_root.iterdir()) == ["alpha", "beta"]
     assert all((target_root / skill_name).is_dir() for skill_name in ("alpha", "beta"))
-    assert all(((target_root / skill_name) / ".rdagent-skill-install.json").is_file() for skill_name in ("alpha", "beta"))
+    assert all(
+        ((target_root / skill_name) / ".rdagent-skill-install.json").is_file() for skill_name in ("alpha", "beta")
+    )
 
 
 def test_broken_link_is_repaired(tmp_path: Path) -> None:

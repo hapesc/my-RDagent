@@ -194,7 +194,7 @@ class DAGNodeSnapshot(BaseModel):
     node_metrics: NodeMetrics = Field(default_factory=NodeMetrics)
 
     @model_validator(mode="after")
-    def _validate_no_self_reference(self) -> "DAGNodeSnapshot":
+    def _validate_no_self_reference(self) -> DAGNodeSnapshot:
         if self.node_id in self.parent_node_ids:
             raise ValueError("node_id cannot reference itself as a parent")
         return self

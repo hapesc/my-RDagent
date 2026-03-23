@@ -121,7 +121,9 @@ def _seed_branch(state_store: ArtifactStateStore, *, stage: StageSnapshot) -> Br
     return branch
 
 
-def _seed_stage_entry_context(tmp_path: Path) -> tuple[ArtifactStateStore, RunBoardService, RecoveryService, StageTransitionService]:
+def _seed_stage_entry_context(
+    tmp_path: Path,
+) -> tuple[ArtifactStateStore, RunBoardService, RecoveryService, StageTransitionService]:
     state_store = ArtifactStateStore(tmp_path / "state")
     stages = [
         StageSnapshot(

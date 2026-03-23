@@ -80,13 +80,7 @@ class ArtifactStateStore(StateStorePort):
         )
 
     def write_recovery_assessment(self, assessment: RecoveryAssessment) -> ArtifactRecord:
-        path = (
-            self._root
-            / "recovery"
-            / assessment.run_id
-            / assessment.branch_id
-            / f"{assessment.stage_key}.json"
-        )
+        path = self._root / "recovery" / assessment.run_id / assessment.branch_id / f"{assessment.stage_key}.json"
         self._write_model(path, assessment)
         return ArtifactRecord(
             artifact_id=f"recovery:{assessment.branch_id}:{assessment.stage_key}",
@@ -229,22 +223,18 @@ class ArtifactStateStore(StateStorePort):
         if not nodes_dir.exists():
             return []
         return [
-            DAGNodeSnapshot.model_validate(json.loads(path.read_text()))
-            for path in sorted(nodes_dir.glob("*.json"))
+            DAGNodeSnapshot.model_validate(json.loads(path.read_text())) for path in sorted(nodes_dir.glob("*.json"))
         ]
 
     def write_dag_edge(self, edge: DAGEdgeSnapshot) -> ArtifactRecord:
         source_node = self.load_dag_node(edge.source_node_id)
         target_node = self.load_dag_node(edge.target_node_id)
-        run_id = source_node.run_id if source_node is not None else (target_node.run_id if target_node is not None else "unknown")
-        path = (
-            self._root
-            / "runs"
-            / run_id
-            / "dag"
-            / "edges"
-            / f"{edge.source_node_id}-{edge.target_node_id}.json"
+        run_id = (
+            source_node.run_id
+            if source_node is not None
+            else (target_node.run_id if target_node is not None else "unknown")
         )
+        path = self._root / "runs" / run_id / "dag" / "edges" / f"{edge.source_node_id}-{edge.target_node_id}.json"
         self._write_model(path, edge)
         return ArtifactRecord(
             artifact_id=f"dag-edge:{edge.source_node_id}-{edge.target_node_id}",
@@ -257,8 +247,7 @@ class ArtifactStateStore(StateStorePort):
         if not edges_dir.exists():
             return []
         return [
-            DAGEdgeSnapshot.model_validate(json.loads(path.read_text()))
-            for path in sorted(edges_dir.glob("*.json"))
+            DAGEdgeSnapshot.model_validate(json.loads(path.read_text())) for path in sorted(edges_dir.glob("*.json"))
         ]
 
     def _run_id_for_branch(self, branch_id: str) -> str | None:

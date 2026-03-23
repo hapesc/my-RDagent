@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RD_AGENT_SKILL = REPO_ROOT / "skills" / "rd-agent" / "SKILL.md"
 

@@ -7,7 +7,12 @@ from v3.contracts.exploration import BranchDecisionKind
 from v3.contracts.memory import MemoryKind, MemoryNamespace
 from v3.contracts.run import RunBoardSnapshot, RunStatus
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchShareApplyRequest, BranchShareAssessRequest, MemoryCreateRequest, MemoryListRequest
+from v3.contracts.tool_io import (
+    BranchShareApplyRequest,
+    BranchShareAssessRequest,
+    MemoryCreateRequest,
+    MemoryListRequest,
+)
 from v3.orchestration.artifact_state_store import ArtifactStateStore
 from v3.orchestration.branch_board_service import BranchBoardService
 from v3.orchestration.branch_share_service import BranchShareService
@@ -165,6 +170,8 @@ def test_share_apply_promotes_branch_knowledge_with_provenance_and_run_sync(tmp_
     assert result["structuredContent"]["owner_branch_id"] == source_branch.branch_id
     assert result["structuredContent"]["shared_namespace"] == MemoryNamespace.SHARED.value
     assert result["structuredContent"]["decision"]["kind"] == BranchDecisionKind.SHARE.value
-    assert result["structuredContent"]["board"]["active_cards"][1]["shared_from_branch_ids"] == [source_branch.branch_id]
+    assert result["structuredContent"]["board"]["active_cards"][1]["shared_from_branch_ids"] == [
+        source_branch.branch_id
+    ]
     assert target_view.items[0].owner_branch_id == source_branch.branch_id
     assert target_view.items[0].shared_namespace is MemoryNamespace.SHARED

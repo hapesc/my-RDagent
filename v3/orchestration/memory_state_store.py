@@ -24,7 +24,9 @@ class MemoryStateStore(MemoryStorePort):
         self._isolation = BranchIsolationService(self._root)
 
     def write_memory_record(self, record: MemoryRecordSnapshot) -> ArtifactRecord:
-        path = self._isolation.memory_root(record.run_id, record.owner_branch_id) / "records" / f"{record.memory_id}.json"
+        path = (
+            self._isolation.memory_root(record.run_id, record.owner_branch_id) / "records" / f"{record.memory_id}.json"
+        )
         self._write_model(path, record)
         return ArtifactRecord(
             artifact_id=record.memory_id,
@@ -76,8 +78,7 @@ class MemoryStateStore(MemoryStorePort):
         if not base.exists():
             return []
         records = [
-            MemoryRecordSnapshot.model_validate(json.loads(path.read_text()))
-            for path in sorted(base.glob("*.json"))
+            MemoryRecordSnapshot.model_validate(json.loads(path.read_text())) for path in sorted(base.glob("*.json"))
         ]
         return [record for record in records if record.run_id == run_id and record.owner_branch_id == owner_branch_id]
 
@@ -86,8 +87,7 @@ class MemoryStateStore(MemoryStorePort):
         if not base.exists():
             return []
         promotions = [
-            MemoryPromotionSnapshot.model_validate(json.loads(path.read_text()))
-            for path in sorted(base.glob("*.json"))
+            MemoryPromotionSnapshot.model_validate(json.loads(path.read_text())) for path in sorted(base.glob("*.json"))
         ]
         return [promotion for promotion in promotions if promotion.run_id == run_id]
 
@@ -103,9 +103,7 @@ class MemoryStateStore(MemoryStorePort):
         owner_branch_id: str | None = None,
     ) -> list[Path]:
         if run_id is not None and owner_branch_id is not None:
-            return [
-                self._isolation.memory_root(run_id, owner_branch_id) / "records" / f"{memory_id}.json"
-            ]
+            return [self._isolation.memory_root(run_id, owner_branch_id) / "records" / f"{memory_id}.json"]
         run_glob = run_id or "*"
         branch_glob = owner_branch_id or "*"
         return sorted(self._root.glob(f"memory/{run_glob}/branches/{branch_glob}/records/{memory_id}.json"))
@@ -125,9 +123,8 @@ class MemoryStateStore(MemoryStorePort):
         return [
             path
             for path in matches
-            if (
-                promotion := self._read_model(path, MemoryPromotionSnapshot)
-            ) is not None and promotion.owner_branch_id == owner_branch_id
+            if (promotion := self._read_model(path, MemoryPromotionSnapshot)) is not None
+            and promotion.owner_branch_id == owner_branch_id
         ]
 
     def _read_model(self, path: Path, model_type: type[ModelT]) -> ModelT | None:

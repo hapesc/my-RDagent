@@ -34,9 +34,7 @@ def rd_branch_list(request: BranchListRequest, *, state_store: StateStorePort) -
         raise KeyError(f"run not found: {request.run_id}")
 
     branches = [
-        branch
-        for branch_id in run.branch_ids
-        if (branch := state_store.load_branch_snapshot(branch_id)) is not None
+        branch for branch_id in run.branch_ids if (branch := state_store.load_branch_snapshot(branch_id)) is not None
     ]
     if not request.include_completed:
         branches = [branch for branch in branches if branch.status is not BranchStatus.COMPLETED]

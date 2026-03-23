@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from v3.algorithms.prune import prune_branch_candidates
-from v3.contracts.branch import BranchSnapshot, BranchStatus
+from v3.contracts.branch import BranchStatus
 from v3.contracts.exploration import BranchDecisionKind, BranchDecisionSnapshot, BranchResolution, ExplorationMode
 from v3.contracts.tool_io import BranchPruneRequest, BranchPruneResult
 from v3.orchestration.branch_board_service import BranchBoardService

@@ -136,7 +136,9 @@ def _make_service(
 ) -> Any:
     _, preflight_service_cls = _load_preflight_symbols()
     command_exists = {"uv": True} if command_exists is None else command_exists
-    module_exists = {"pydantic": True, "pytest": True, "import_linter": True} if module_exists is None else module_exists
+    module_exists = (
+        {"pydantic": True, "pytest": True, "import_linter": True} if module_exists is None else module_exists
+    )
     return preflight_service_cls(
         state_store,
         project_root=REPO_ROOT,

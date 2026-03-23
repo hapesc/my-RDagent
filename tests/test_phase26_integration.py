@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-from v3.contracts.artifact import ArtifactKind, ArtifactLocator, ArtifactProvenance, ArtifactReuseLevel, ArtifactSnapshot
+from v3.contracts.artifact import (
+    ArtifactKind,
+    ArtifactLocator,
+    ArtifactProvenance,
+    ArtifactReuseLevel,
+    ArtifactSnapshot,
+)
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.exploration import ApproachCategory, ExplorationMode, HypothesisSpec
 from v3.contracts.run import ExecutionMode
@@ -123,7 +129,9 @@ def _build_service(
         )
     )
     state_store.write_run_snapshot(
-        publication.run.model_copy(update={"current_round": current_round, "exploration_mode": ExplorationMode.EXPLORATION})
+        publication.run.model_copy(
+            update={"current_round": current_round, "exploration_mode": ExplorationMode.EXPLORATION}
+        )
     )
     workspace_manager = BranchWorkspaceManager(tmp_path / "state")
     board_service = BranchBoardService(state_store)
@@ -136,9 +144,7 @@ def _build_service(
     else:
         prune_service = None
     select_parents_service = (
-        SelectParentsService(state_store, dag_service)
-        if with_select_parents and dag_service is not None
-        else None
+        SelectParentsService(state_store, dag_service) if with_select_parents and dag_service is not None else None
     )
     service = MultiBranchService(
         state_store=state_store,
@@ -191,9 +197,7 @@ def test_run_exploration_round_creates_dag_nodes_increments_round_and_prunes(tmp
         ),
     ]
 
-    result = service.run_exploration_round(
-        ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs)
-    )
+    result = service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypothesis_specs=specs))
 
     run = state_store.load_run_snapshot("run-001")
     nodes = state_store.list_dag_nodes("run-001")
@@ -271,9 +275,7 @@ def test_run_exploration_round_falls_back_to_string_hypotheses_and_optional_serv
 def test_run_exploration_round_reports_unknown_round_diversity_without_specs(tmp_path: Path) -> None:
     state_store, service, _dispatches, _ = _build_service(tmp_path, with_dag=True)
 
-    result = service.run_exploration_round(
-        ExploreRoundRequest(run_id="run-001", hypotheses=["primary", "alt-a"])
-    )
+    result = service.run_exploration_round(ExploreRoundRequest(run_id="run-001", hypotheses=["primary", "alt-a"]))
 
     nodes = state_store.list_dag_nodes("run-001")
 
@@ -396,7 +398,11 @@ def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: 
             StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
             StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
             StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
-            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+            StageKey.SYNTHESIZE: {
+                "summary": "Synthesize complete.",
+                "artifact_ids": ["artifact-synthesize-001"],
+                "recommendation": "stop",
+            },
         },
         state_store=state_store,
         run_service=run_service,
@@ -471,7 +477,11 @@ def test_rd_agent_legacy_string_hypotheses_remain_side_effect_neutral(tmp_path: 
             StageKey.FRAMING: {"summary": "Framing complete.", "artifact_ids": ["artifact-framing-001"]},
             StageKey.BUILD: {"summary": "Build complete.", "artifact_ids": ["artifact-build-001"]},
             StageKey.VERIFY: {"summary": "Verify complete.", "artifact_ids": ["artifact-verify-001"]},
-            StageKey.SYNTHESIZE: {"summary": "Synthesize complete.", "artifact_ids": ["artifact-synthesize-001"], "recommendation": "stop"},
+            StageKey.SYNTHESIZE: {
+                "summary": "Synthesize complete.",
+                "artifact_ids": ["artifact-synthesize-001"],
+                "recommendation": "stop",
+            },
         },
         state_store=state_store,
         run_service=run_service,

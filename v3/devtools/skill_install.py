@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
 
 SKILL_MANAGED_MARKER = ".rdagent-skill-install.json"
 RUNTIME_MANAGED_MARKER = ".rdagent-runtime-install.json"
@@ -52,11 +52,7 @@ def discover_repo_root(start: Path | None = None) -> Path:
 def discover_skill_dirs(repo_root: Path | None = None) -> list[Path]:
     root = discover_repo_root(repo_root)
     skills_root = root / "skills"
-    return [
-        child
-        for child in sorted(skills_root.iterdir())
-        if child.is_dir() and (child / "SKILL.md").is_file()
-    ]
+    return [child for child in sorted(skills_root.iterdir()) if child.is_dir() and (child / "SKILL.md").is_file()]
 
 
 def resolve_config_root(
@@ -278,7 +274,8 @@ def _render_installed_skill(*, source_text: str, bundle_root: Path, source_dir: 
   - `uv run rdagent-v3-tool list`
   - `uv run rdagent-v3-tool describe <tool>`
 - Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
-- If the current working repo has no canonical V3 state, do not scan other repos or `HOME`; stay on the fresh-start or minimum-contract path.
+- If the current working repo has no canonical V3 state, do not scan other repos
+  or `HOME`; stay on the fresh-start or minimum-contract path.
 - Relative resources for this installed skill still resolve inside `{bundle_root / "skills" / source_dir.name}`.
 """
     return source_text.rstrip() + suffix

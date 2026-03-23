@@ -4,8 +4,6 @@ from pathlib import Path
 
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.exploration import (
-    BranchBoardSnapshot,
-    BranchCardSnapshot,
     BranchDecisionKind,
     BranchDecisionSnapshot,
     BranchResolution,

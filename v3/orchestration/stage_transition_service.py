@@ -63,8 +63,7 @@ class StageTransitionService:
             stage
             for stage in branch.stages
             if not (
-                stage.stage_key == stage_snapshot.stage_key
-                and stage.stage_iteration == stage_snapshot.stage_iteration
+                stage.stage_key == stage_snapshot.stage_key and stage.stage_iteration == stage_snapshot.stage_iteration
             )
         ]
         stages.append(stage_snapshot)

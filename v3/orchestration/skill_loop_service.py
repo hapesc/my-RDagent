@@ -7,6 +7,7 @@ from typing import Any
 
 from v3.contracts.run import RunBoardSnapshot, RunStatus, RunStopReason
 from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+from v3.contracts.tool_io import StageTransitionRequest
 from v3.entry.rd_code import rd_code
 from v3.entry.rd_evaluate import rd_evaluate
 from v3.entry.rd_execute import rd_execute
@@ -16,9 +17,7 @@ from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.stage_transition_service import StageTransitionService
 from v3.ports.state_store import StateStorePort
-from v3.contracts.tool_io import StageTransitionRequest
 from v3.tools.stage_write_tools import rd_stage_transition
-
 
 StagePayload = dict[str, Any]
 
@@ -163,7 +162,8 @@ class SkillLoopService:
                 stage_iteration=stage_iteration,
                 status=StageStatus.READY,
                 summary=(
-                    f"{stage_key.value.capitalize()} iteration {stage_iteration} is prepared and requires preflight before execution."
+                    f"{stage_key.value.capitalize()} iteration {stage_iteration}"
+                    f" is prepared and requires preflight before execution."
                 ),
                 artifact_ids=[],
                 next_stage_key=next_stage_key,

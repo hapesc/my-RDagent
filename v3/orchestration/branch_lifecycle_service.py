@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from uuid import uuid4
 
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
@@ -11,8 +10,8 @@ from v3.contracts.exploration import (
     BranchDecisionSnapshot,
     ExplorationMode,
 )
-from v3.contracts.tool_io import BranchForkRequest, BranchForkResult
 from v3.contracts.stage import StageKey
+from v3.contracts.tool_io import BranchForkRequest, BranchForkResult
 from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
 from v3.orchestration.run_board_service import RunBoardService
 from v3.ports.state_store import StateStorePort
@@ -78,7 +77,9 @@ class BranchLifecycleService:
             status=BranchStatus.ACTIVE,
             current_stage_key=self._stage_key_for_new_branch(run.primary_branch_id, source_branch),
             stages=list(source_branch.stages) if source_branch is not None else [],
-            score=source_branch.score if source_branch is not None else BranchScore(
+            score=source_branch.score
+            if source_branch is not None
+            else BranchScore(
                 exploration_priority=0.5,
                 result_quality=0.0,
                 rationale=f"{label} is a newly forked hypothesis awaiting evidence.",

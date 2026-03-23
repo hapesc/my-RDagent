@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from .artifact import ArtifactKind, ArtifactSnapshot
 from .branch import BranchSnapshot
 from .exploration import (
-    ApproachCategory,
     BranchBoardSnapshot,
     BranchDecisionSnapshot,
     CandidateSummarySnapshot,

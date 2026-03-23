@@ -44,9 +44,7 @@ def test_branch_workspace_manager_allocates_canonical_branch_workspace(tmp_path:
 
     workspace_root = Path(manager.allocate_branch_workspace(run_id="run-001", branch_id="branch-001"))
 
-    assert workspace_root == (
-        tmp_path / "state" / "workspaces" / "run-001" / "branches" / "branch-001" / "workspace"
-    )
+    assert workspace_root == (tmp_path / "state" / "workspaces" / "run-001" / "branches" / "branch-001" / "workspace")
     assert workspace_root.exists()
     assert workspace_root.is_dir()
 

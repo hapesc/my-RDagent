@@ -142,7 +142,9 @@ class SpyExecutionPort:
         )
 
 
-def _seed_run_state(state_store: ArtifactStateStore) -> tuple[BranchSnapshot, BranchSnapshot, ArtifactSnapshot, ArtifactSnapshot]:
+def _seed_run_state(
+    state_store: ArtifactStateStore,
+) -> tuple[BranchSnapshot, BranchSnapshot, ArtifactSnapshot, ArtifactSnapshot]:
     framing_stage = StageSnapshot(
         stage_key=StageKey.FRAMING,
         status=StageStatus.COMPLETED,

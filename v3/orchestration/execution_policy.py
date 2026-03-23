@@ -68,8 +68,7 @@ def evaluate_stage_boundary(
             completed_stage_iterations=max(0, current_iteration - 1),
             next_stage_iteration=current_iteration,
             message=(
-                f"Paused after {stage_key.value} iteration {current_iteration} for operator review "
-                f"before {target}."
+                f"Paused after {stage_key.value} iteration {current_iteration} for operator review before {target}."
             ),
         )
 

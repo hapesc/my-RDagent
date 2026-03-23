@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from v3.contracts.memory import MemoryPromotionSnapshot, MemoryRecordSnapshot, MemoryNamespace
+from v3.contracts.memory import MemoryNamespace, MemoryPromotionSnapshot, MemoryRecordSnapshot
 from v3.contracts.tool_io import (
     MemoryCreateRequest,
     MemoryGetRequest,
@@ -70,7 +70,12 @@ class MemoryService:
         shared_records = self._shared_candidates(request.run_id, request.branch_id)
 
         ranked_local = sorted(
-            (self._rank_record(record, request.task_query, request.stage_key, source_namespace=MemoryNamespace.BRANCH) for record in local_records),
+            (
+                self._rank_record(
+                    record, request.task_query, request.stage_key, source_namespace=MemoryNamespace.BRANCH
+                )
+                for record in local_records
+            ),
             key=lambda ranked: ranked.rank_score,
             reverse=True,
         )
@@ -168,7 +173,14 @@ class MemoryService:
         tag_overlap = len(query_tokens & set(record.tags))
         local_bonus = 1.0 if source_namespace is MemoryNamespace.BRANCH else 0.0
         shared_penalty = 0.2 if source_namespace is MemoryNamespace.SHARED else 0.0
-        rank_score = (record.score * 2.0) + (stage_match * 1.5) + (overlap * 0.25) + (tag_overlap * 0.2) + local_bonus - shared_penalty
+        rank_score = (
+            (record.score * 2.0)
+            + (stage_match * 1.5)
+            + (overlap * 0.25)
+            + (tag_overlap * 0.2)
+            + local_bonus
+            - shared_penalty
+        )
         return _RankedMemory(
             item=self._to_item(record, promotion, source_namespace=source_namespace),
             rank_score=rank_score,
@@ -223,7 +235,13 @@ class MemoryService:
 
     def _record_tokens(self, record: MemoryRecordSnapshot) -> set[str]:
         tokens: set[str] = set()
-        for value in [record.hypothesis, record.reason, record.outcome or "", *record.tags, *self._flatten(record.evidence)]:
+        for value in [
+            record.hypothesis,
+            record.reason,
+            record.outcome or "",
+            *record.tags,
+            *self._flatten(record.evidence),
+        ]:
             tokens.update(self._tokenize(value))
         return tokens
 

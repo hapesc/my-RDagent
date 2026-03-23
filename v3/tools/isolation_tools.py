@@ -25,7 +25,7 @@ def rd_branch_paths_get(request: BranchPathsGetRequest, *, service: BranchIsolat
         f"memory_root={paths.memory_root}, "
         f"shared_memory_root={paths.shared_memory_root}."
     )
-    return _tool_response(result.model_dump(mode='json'), text)
+    return _tool_response(result.model_dump(mode="json"), text)
 
 
 __all__ = ["rd_branch_paths_get"]

@@ -28,7 +28,6 @@ from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.ports.state_store import StateStorePort
 
-
 DispatchFn = Callable[[dict[str, Any]], dict[str, Any]]
 
 
@@ -64,7 +63,9 @@ class MultiBranchService:
         run = self._state_store.load_run_snapshot(request.run_id)
         if run is None:
             raise KeyError(f"run not found: {request.run_id}")
-        primary_branch = self._state_store.load_branch_snapshot(run.primary_branch_id) if run.primary_branch_id else None
+        primary_branch = (
+            self._state_store.load_branch_snapshot(run.primary_branch_id) if run.primary_branch_id else None
+        )
         if primary_branch is None:
             raise KeyError("primary branch missing for exploration round")
 
@@ -121,10 +122,7 @@ class MultiBranchService:
         dag_node_ids: list[str] = []
         round_diversity_score: float | None = None
         if self._dag_service is not None:
-            spec_by_label = {
-                spec.label: spec
-                for spec in (request.hypothesis_specs or [])
-            }
+            spec_by_label = {spec.label: spec for spec in (request.hypothesis_specs or [])}
             category_counts: Counter[str] | None = None
             if request.hypothesis_specs is not None:
                 category_counts = Counter(spec.approach_category.value for spec in request.hypothesis_specs)
@@ -179,9 +177,7 @@ class MultiBranchService:
 
         run = self._state_store.load_run_snapshot(request.run_id)
         if run is not None:
-            self._state_store.write_run_snapshot(
-                run.model_copy(update={"current_round": run.current_round + 1})
-            )
+            self._state_store.write_run_snapshot(run.model_copy(update={"current_round": run.current_round + 1}))
         return ExploreRoundResult(
             selected_branch_id=selected_branch_id,
             recommended_next_step=recommended_next_step,

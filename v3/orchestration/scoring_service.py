@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
-from v3.contracts.branch import BranchSnapshot, BranchScore
+from v3.contracts.branch import BranchScore, BranchSnapshot
 from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
 
 

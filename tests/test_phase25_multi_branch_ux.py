@@ -30,9 +30,7 @@ def test_run_start_request_defaults() -> None:
 
 
 def test_start_new_run_guidance_includes_hypotheses() -> None:
-    guidance = build_start_new_run_guidance(
-        user_intent="Build an image classifier for aerial cactus identification"
-    )
+    guidance = build_start_new_run_guidance(user_intent="Build an image classifier for aerial cactus identification")
 
     assert "I suggest exploring these directions" in guidance.routing_reason
     assert "Approach A:" in guidance.routing_reason
@@ -45,9 +43,7 @@ def test_start_new_run_guidance_includes_hypotheses() -> None:
 
 
 def test_generate_branch_hypotheses() -> None:
-    hypotheses = _generate_branch_hypotheses(
-        "Build an image classifier for aerial cactus identification"
-    )
+    hypotheses = _generate_branch_hypotheses("Build an image classifier for aerial cactus identification")
 
     assert len(hypotheses) == 3
     assert all("Approach" in hypothesis for hypothesis in hypotheses)

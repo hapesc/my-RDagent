@@ -44,13 +44,7 @@ def rd_memory_get(request: MemoryGetRequest, *, service: MemoryService) -> dict[
 
 def rd_memory_list(request: MemoryListRequest, *, service: MemoryService) -> dict[str, Any]:
     result = service.list_memory(request)
-    if result.items:
-        summary = "; ".join(
-            _describe_item(item)
-            for item in result.items
-        )
-    else:
-        summary = "none"
+    summary = "; ".join(_describe_item(item) for item in result.items) if result.items else "none"
     return _tool_response(
         result.model_dump(mode="json"),
         f"Memory results for branch {request.branch_id}: {summary}.",
@@ -79,9 +73,7 @@ def _describe_item(item: Any) -> str:
     elif item.shared_namespace is not None:
         status = f"local + {item.shared_namespace.value}"
 
-    summary = (
-        f"{item.memory_id} [{status}] owner branch {item.owner_branch_id}"
-    )
+    summary = f"{item.memory_id} [{status}] owner branch {item.owner_branch_id}"
     if item.promotion_reason:
         summary += f" promotion reason: {item.promotion_reason}"
     return summary

@@ -103,7 +103,9 @@ def test_select_parents_returns_existing_node_for_later_round_parent_linkage(tmp
     state_store = ArtifactStateStore(tmp_path / "state")
     dag_service = DAGService(state_store)
     service = SelectParentsService(state_store, dag_service)
-    first = dag_service.create_node(run_id="run-parents", branch_id="branch-a", node_metrics=NodeMetrics(diversity_score=0.4))
+    first = dag_service.create_node(
+        run_id="run-parents", branch_id="branch-a", node_metrics=NodeMetrics(diversity_score=0.4)
+    )
     _seed_run(state_store, current_round=2)
 
     recommendation = service.select_parents(run_id="run-parents", branch_id="branch-a")

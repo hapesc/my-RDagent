@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from v3.contracts.exploration import BranchDecisionKind, BranchDecisionSnapshot, ExplorationMode
-from v3.contracts.memory import MemoryNamespace
 from v3.contracts.tool_io import (
     BranchShareApplyRequest,
     BranchShareApplyResult,

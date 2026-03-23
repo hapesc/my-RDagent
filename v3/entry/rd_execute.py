@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from v3.contracts.stage import StageKey
 from v3.contracts.preflight import PreflightReadiness
+from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
+from v3.contracts.stage import StageKey, StageSnapshot
 from v3.contracts.tool_io import (
     ArtifactListRequest,
     BranchGetRequest,
@@ -16,14 +17,12 @@ from v3.contracts.tool_io import (
     StageGetRequest,
     StageStartRequest,
 )
-from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
-from v3.contracts.stage import StageKey, StageSnapshot
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.preflight_service import PreflightService
 from v3.orchestration.operator_guidance import (
     _minimum_continuation_skeleton,
     build_stage_guidance_response,
 )
+from v3.orchestration.preflight_service import PreflightService
+from v3.orchestration.recovery_service import RecoveryService
 from v3.orchestration.resume_planner import plan_resume_decision
 from v3.orchestration.run_board_service import RunBoardService
 from v3.orchestration.stage_transition_service import StageTransitionService
@@ -96,14 +95,17 @@ def rd_execute(
             stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="is blocked before execution",
             routing_reason=(
-                f"Reason: canonical preflight found a {preflight.primary_blocker_category} blocker for the current verify continuation."
+                f"Reason: canonical preflight found a {preflight.primary_blocker_category}"
+                " blocker for the current verify continuation."
             ),
             exact_next_action=(
                 f"Next action: {preflight.repair_action} After repair, continue {run_id} / {branch_id} with rd-execute."
             ),
             recommended_next_skill="rd-execute",
             current_action_status="blocked",
-            current_blocker_category=preflight.primary_blocker_category.value if preflight.primary_blocker_category else None,
+            current_blocker_category=preflight.primary_blocker_category.value
+            if preflight.primary_blocker_category
+            else None,
             current_blocker_reason=preflight.primary_blocker_reason,
             repair_action=preflight.repair_action,
             next_step_detail=next_step_detail,
@@ -127,7 +129,9 @@ def rd_execute(
 
     decision = plan_resume_decision(
         stage=StageSnapshot.model_validate(stage_snapshot),
-        assessment=None if recovery_response is None else RecoveryAssessment.model_validate(recovery_response["structuredContent"]["assessment"]),
+        assessment=None
+        if recovery_response is None
+        else RecoveryAssessment.model_validate(recovery_response["structuredContent"]["assessment"]),
     )
 
     if decision.recovery_assessment is RecoveryDisposition.REUSE:
@@ -164,8 +168,14 @@ def rd_execute(
             branch_id=branch_id,
             stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs manual review before it can continue",
-            routing_reason="Reason: verify state or recovery evidence still needs review before the synthesize handoff is trustworthy.",
-            exact_next_action=f"Next action: review verify blockers, then continue {run_id} / {branch_id} with rd-execute.",
+            routing_reason=(
+                "Reason: verify state or recovery evidence still needs review"
+                " before the synthesize handoff is trustworthy."
+            ),
+            exact_next_action=(
+                "Next action: review verify blockers, then continue"
+                f" {run_id} / {branch_id} with rd-execute."
+            ),
             recommended_next_skill="rd-execute",
             next_step_detail=next_step_detail,
         )
@@ -192,7 +202,10 @@ def rd_execute(
             branch_id=branch_id,
             stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="needs replay before the synthesize handoff",
-            routing_reason="Reason: verify evidence must be replayed so the synthesize handoff is based on fresh output.",
+            routing_reason=(
+                "Reason: verify evidence must be replayed so the"
+                " synthesize handoff is based on fresh output."
+            ),
             exact_next_action=f"Next action: replay verify, then continue {run_id} / {branch_id} with rd-evaluate.",
             recommended_next_skill="rd-evaluate",
             next_step_detail=next_step_detail,
@@ -233,8 +246,14 @@ def rd_execute(
             branch_id=branch_id,
             stage_key=OWNED_STAGE_KEY.value,
             state_descriptor="is blocked by verification results",
-            routing_reason="Reason: verification produced blocking reasons, so the branch cannot hand off to synthesize yet.",
-            exact_next_action=f"Next action: resolve the verification blockers, then continue {run_id} / {branch_id} with rd-execute.",
+            routing_reason=(
+                "Reason: verification produced blocking reasons,"
+                " so the branch cannot hand off to synthesize yet."
+            ),
+            exact_next_action=(
+                "Next action: resolve the verification blockers, then continue"
+                f" {run_id} / {branch_id} with rd-execute."
+            ),
             recommended_next_skill="rd-execute",
             next_step_detail=next_step_detail,
         )

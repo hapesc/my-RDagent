@@ -64,7 +64,10 @@ def plan_resume_decision(
                     f"Current state: {stage.stage_key.value} stage (`{stage.stage_key.value}`) "
                     f"needs replay at iteration {next_iteration}."
                 ),
-                reason="Reason: published evidence is stale and must be replayed before the next handoff is trustworthy.",
+                reason=(
+                    "Reason: published evidence is stale and must be"
+                    " replayed before the next handoff is trustworthy."
+                ),
                 next_action=f"Next action: {assessment.recommended_next_step}.",
             ),
         )
@@ -100,7 +103,8 @@ def plan_resume_decision(
                     f"iteration {stage.stage_iteration} is prepared but not yet executed."
                 ),
                 reason=(
-                    "Reason: the stage still requires canonical preflight truth before execution can be treated as safe."
+                    "Reason: the stage still requires canonical preflight truth"
+                    " before execution can be treated as safe."
                 ),
                 next_action=f"Next action: {assessment.recommended_next_step}.",
             ),

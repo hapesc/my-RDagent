@@ -29,7 +29,9 @@ class ConvergenceService:
             if branch is None:
                 continue
             ranked.append(branch)
-        ranked.sort(key=lambda branch: (-branch.score.result_quality, -branch.score.exploration_priority, branch.branch_id))
+        ranked.sort(
+            key=lambda branch: (-branch.score.result_quality, -branch.score.exploration_priority, branch.branch_id)
+        )
         shortlist = [
             ShortlistEntrySnapshot(
                 branch_id=branch.branch_id,

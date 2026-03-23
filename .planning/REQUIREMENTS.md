@@ -83,6 +83,30 @@ to discover how to start, pause, resume, or continue the loop.
   overfitting_risk fields (backward-compatible defaults). ScoringService
   extended with compute_generalization_signals function.
 
+### Cross-Branch Communication and Merge
+
+- [x] **P27-KERNEL**: Interaction-kernel helpers compute pairwise utility with
+  time decay, score-delta weighting, numerically stable softmax normalization,
+  and budget-aware branch sampling for cross-branch communication.
+- [x] **P27-INJECT**: Branch sharing can inject the global best branch plus
+  sampled peer hypotheses into a target branch context, create SHARED DAG
+  edges, and record share decisions for topology traceability.
+- [x] **P27-COMPONENT**: Phase 27 defines a ComponentClass taxonomy plus
+  component-coverage and semantic-complementarity scoring primitives that
+  quantify how branches differ and where they can be merged.
+- [x] **P27-SELECT**: Merge-stage parent selection uses complementarity-aware
+  scoring to prefer multiple parents with non-overlapping strengths when the
+  budget enters the convergence stage.
+- [x] **P27-PRUNE4**: Dynamic pruning adds a fourth signal that protects
+  branches carrying unique component classes absent from the current global
+  best branch.
+- [ ] **P27-MERGE**: Merge orchestration can analyze complementary branches,
+  synthesize a unified candidate, create MERGED DAG edges, and gate acceptance
+  with a holdout-style validation check.
+- [ ] **P27-E2E**: Integration coverage proves the full Phase 27 lifecycle:
+  sharing, pruning with signal 4, and complementary merge execution in one
+  coherent round.
+
 ## v2 Requirements
 
 ### Future Pipeline UX
@@ -118,10 +142,17 @@ to discover how to start, pause, resume, or continue the loop.
 | P26-DIVERSITY | Phase 26 | Planned |
 | P26-ROUND | Phase 26 | Planned |
 | P26-SCORE | Phase 26 | Planned |
+| P27-KERNEL | Phase 27 | Complete |
+| P27-INJECT | Phase 27 | Complete |
+| P27-COMPONENT | Phase 27 | Complete |
+| P27-SELECT | Phase 27 | Complete |
+| P27-PRUNE4 | Phase 27 | Complete |
+| P27-MERGE | Phase 27 | Pending |
+| P27-E2E | Phase 27 | Pending |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete
-- v1.3 convergence requirements: 6 total, 0 complete (Phase 26 planned)
+- v1.3 convergence requirements: 13 total, completion tracked in the traceability table above
 - Unmapped: 0
 
 ---

@@ -4,17 +4,17 @@ milestone: v1.3
 milestone_name: milestone
 current_phase: 27
 current_phase_name: cross-branch-communication-and-multi-trace-solution-merge
-current_plan: 2
+current_plan: 4
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-03-23T16:24:44.453Z"
+stopped_at: Completed 27-03-PLAN.md
+last_updated: "2026-03-23T18:49:44.354Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 19
-  completed_plans: 15
-  percent: 79
+  completed_plans: 17
+  percent: 89
 ---
 
 # Session State
@@ -33,7 +33,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Current Phase:** 27
 **Current Phase Name:** cross-branch-communication-and-multi-trace-solution-merge
 **Total Phases:** 7
-**Current Plan:** 2
+**Current Plan:** 4
 **Total Plans in Phase:** 5
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
@@ -43,7 +43,7 @@ just to discover how to start, pause, resume, or continue the loop.
 
 **Last activity:** 2026-03-23
 Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference files created, 6 SKILL.md thinned, Gate 2 smoke test added, 38 tests green.
-**Progress:** [████████░░] 79%
+**Progress:** [█████████░] 89%
 
 ## Performance Metrics
 
@@ -96,6 +96,8 @@ Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference fil
 - [Phase 23]: Seeded next-stage summaries now say prepared and requires preflight before execution. — Shared operator text must stop implying ready-by-default execution once Phase 23 truth gating exists.
 - [Phase 27]: NodeMetrics now carries a defaulted complementarity_score field and ComponentClass enum in the canonical exploration contract — Phase 27 sharing and merge need a typed complementarity surface without breaking Phase 26 callers or persisted DAG snapshots.
 - [Phase 27]: Interaction potential, softmax sampling, and component complementarity live in pure helper modules behind a tiny EmbeddingPort boundary — Downstream sharing, pruning, selection, and merge should reuse one exact math implementation instead of re-encoding heuristics inside each orchestration service.
+- [Phase 27]: Sharing candidates are assembled as global-best plus interaction-kernel peers and attached to round dispatches before execution begins — Phase 27 needs one explicit candidate pool per target branch, while SHARED edges and share decisions are persisted after the new DAG nodes exist.
+- [Phase 27]: Hypothesis component classes are now persisted per branch and reused by pruning, sharing, and later merge logic — Signal 4 cannot be truthful if component metadata is reconstructed heuristically or fetched through getattr hacks at each call site.
 
 ### Pending Todos
 
@@ -123,9 +125,11 @@ Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference fil
 | 260323-r08 | Blueprint v2: installer-first skill refactoring with per-skill workflows | 2026-03-23 | 304dae4 | | [260323-r08-blueprint-v2-installer-surface-skill](./quick/260323-r08-blueprint-v2-installer-surface-skill/) |
 | 260323-wsb | Blueprint v2 execution: skill Wave 0-3 extraction + Gate 2 test | 2026-03-24 | a36cfa1 | Verified | [260323-wsb-blueprint-v2-skill-wave-0-3](./quick/260323-wsb-blueprint-v2-skill-wave-0-3/) |
 | Phase 27 P1 | 6min | 2 tasks | 8 files |
+| Phase 27 P2 | 2h 9m | 3 tasks | 6 files |
+| Phase 27 P3 | 2h 12m | 3 tasks | 11 files |
 
 ## Session Continuity
 
-Last session: 2026-03-23T16:24:44.450Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-03-23T18:49:44.351Z
+Stopped at: Completed 27-03-PLAN.md
 Resume file: None

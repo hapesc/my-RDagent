@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from v3.algorithms.dag import get_ancestors, get_depth, get_descendants, get_frontier
-from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot, EdgeType, NodeMetrics
+from v3.contracts.exploration import ComponentClass, DAGEdgeSnapshot, DAGNodeSnapshot, EdgeType, NodeMetrics
 from v3.ports.state_store import StateStorePort
 
 
@@ -153,16 +153,14 @@ class DAGService:
         for node in self.list_nodes(run_id):
             branch_to_nodes.setdefault(node.branch_id, []).append(node)
 
-        load_hypothesis_spec = getattr(state_store, "load_hypothesis_spec", None)
-        if load_hypothesis_spec is None:
-            return branch_scores, branch_classes
-
         for branch_id, branch_nodes in branch_to_nodes.items():
-            hypothesis = load_hypothesis_spec(branch_id)
-            component_classes = getattr(hypothesis, "component_classes", None)
-            if not component_classes:
+            hypothesis = state_store.load_hypothesis_spec(branch_id)
+            if hypothesis is None or not hypothesis.component_classes:
                 continue
-            classes = {str(component_class) for component_class in component_classes}
+            classes = {
+                component_class.value if isinstance(component_class, ComponentClass) else str(component_class)
+                for component_class in hypothesis.component_classes
+            }
             latest = max(branch_nodes, key=lambda node: node.depth)
             branch_classes[branch_id] = classes
             branch_scores[branch_id] = {

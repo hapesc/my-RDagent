@@ -15,6 +15,7 @@ from v3.contracts.exploration import (
     BranchDecisionSnapshot,
     DAGEdgeSnapshot,
     DAGNodeSnapshot,
+    HypothesisSpec,
 )
 from v3.contracts.recovery import RecoveryAssessment
 from v3.contracts.run import RunBoardSnapshot
@@ -106,11 +107,23 @@ class ArtifactStateStore(StateStorePort):
             media_type="application/json",
         )
 
+    def write_hypothesis_spec(self, branch_id: str, hypothesis_spec: HypothesisSpec) -> ArtifactRecord:
+        path = self._isolation.branch_root(branch_id) / "hypothesis-spec.json"
+        self._write_model(path, hypothesis_spec)
+        return ArtifactRecord(
+            artifact_id=f"hypothesis-spec:{branch_id}",
+            storage_uri=str(path),
+            media_type="application/json",
+        )
+
     def load_run_snapshot(self, run_id: str) -> RunBoardSnapshot | None:
         return self._read_model(self._root / "runs" / run_id / "run-board.json", RunBoardSnapshot)
 
     def load_branch_snapshot(self, branch_id: str) -> BranchSnapshot | None:
         return self._read_model(self._isolation.branch_root(branch_id) / "branch.json", BranchSnapshot)
+
+    def load_hypothesis_spec(self, branch_id: str) -> HypothesisSpec | None:
+        return self._read_model(self._isolation.branch_root(branch_id) / "hypothesis-spec.json", HypothesisSpec)
 
     def load_stage_snapshot(
         self,

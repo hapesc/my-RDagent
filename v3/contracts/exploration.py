@@ -243,6 +243,7 @@ class HypothesisSpec(BaseModel):
     approach_category: ApproachCategory
     target_challenge: str = Field(min_length=1)
     rationale: str = Field(min_length=1)
+    component_classes: tuple[ComponentClass, ...] = Field(default_factory=tuple)
 
 
 __all__ = [

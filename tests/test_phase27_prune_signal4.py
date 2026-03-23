@@ -1,6 +1,22 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from v3.algorithms.prune import prune_branch_candidates
+from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from v3.contracts.exploration import (
+    ApproachCategory,
+    ExplorationMode,
+    HypothesisSpec,
+    NodeMetrics,
+)
+from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+from v3.contracts.tool_io import BranchPruneRequest
+from v3.orchestration.artifact_state_store import ArtifactStateStore
+from v3.orchestration.branch_board_service import BranchBoardService
+from v3.orchestration.branch_prune_service import BranchPruneService
+from v3.orchestration.dag_service import DAGService
 
 
 def test_signal4_exempts_branch_with_unique_components() -> None:
@@ -68,3 +84,111 @@ def test_existing_three_signal_behavior_is_unchanged_without_component_data() ->
     )
 
     assert pruned == ["overfit"]
+
+
+def _stage() -> StageSnapshot:
+    return StageSnapshot(
+        stage_key=StageKey.BUILD,
+        status=StageStatus.COMPLETED,
+        summary="Build complete.",
+        next_stage_key=StageKey.VERIFY,
+    )
+
+
+def _branch(branch_id: str, label: str, quality: float) -> BranchSnapshot:
+    return BranchSnapshot(
+        branch_id=branch_id,
+        run_id="run-prune",
+        label=label,
+        status=BranchStatus.ACTIVE,
+        current_stage_key=StageKey.BUILD,
+        stages=[_stage()],
+        score=BranchScore(
+            exploration_priority=quality,
+            result_quality=quality,
+            rationale=f"{label} quality snapshot.",
+        ),
+        lineage=BranchLineage(source_summary=f"{label} lineage."),
+        artifact_ids=[],
+    )
+
+
+def test_branch_prune_service_uses_persisted_component_classes_for_signal4(tmp_path: Path) -> None:
+    state_store = ArtifactStateStore(tmp_path / "state")
+    dag_service = DAGService(state_store)
+    board_service = BranchBoardService(state_store)
+    service = BranchPruneService(
+        state_store=state_store,
+        board_service=board_service,
+        dag_service=dag_service,
+    )
+    best = _branch("branch-best", "best", 0.95)
+    novel = _branch("branch-novel", "novel", 0.20)
+    duplicate = _branch("branch-duplicate", "duplicate", 0.15)
+    for branch in (best, novel, duplicate):
+        state_store.write_branch_snapshot(branch)
+    state_store.write_run_snapshot(
+        RunBoardSnapshot(
+            run_id="run-prune",
+            title="Prune run",
+            status=RunStatus.ACTIVE,
+            execution_mode=ExecutionMode.GATED,
+            exploration_mode=ExplorationMode.EXPLORATION,
+            branch_ids=[best.branch_id, novel.branch_id, duplicate.branch_id],
+            primary_branch_id=best.branch_id,
+            highlighted_artifact_ids=[],
+            summary="Prune summary.",
+            current_round=5,
+            max_rounds=10,
+        )
+    )
+    state_store.write_hypothesis_spec(
+        best.branch_id,
+        HypothesisSpec(
+            label=best.label,
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="quality",
+            rationale="Best branch.",
+            component_classes=("model",),
+        ),
+    )
+    state_store.write_hypothesis_spec(
+        novel.branch_id,
+        HypothesisSpec(
+            label=novel.label,
+            approach_category=ApproachCategory.ENSEMBLE,
+            target_challenge="novelty",
+            rationale="Novel branch.",
+            component_classes=("ensemble",),
+        ),
+    )
+    state_store.write_hypothesis_spec(
+        duplicate.branch_id,
+        HypothesisSpec(
+            label=duplicate.label,
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="duplicate",
+            rationale="Duplicate branch.",
+            component_classes=("model",),
+        ),
+    )
+    dag_service.create_node(
+        run_id="run-prune",
+        branch_id=best.branch_id,
+        node_metrics=NodeMetrics(validation_score=0.95),
+    )
+    dag_service.create_node(
+        run_id="run-prune",
+        branch_id=novel.branch_id,
+        node_metrics=NodeMetrics(validation_score=0.20),
+    )
+    dag_service.create_node(
+        run_id="run-prune",
+        branch_id=duplicate.branch_id,
+        node_metrics=NodeMetrics(validation_score=0.15),
+    )
+
+    result = service.prune(BranchPruneRequest(run_id="run-prune", relative_threshold=0.5))
+
+    assert duplicate.branch_id in result.pruned_branch_ids
+    assert novel.branch_id not in result.pruned_branch_ids

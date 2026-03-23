@@ -9,6 +9,7 @@ from v3.contracts.branch import BranchStatus
 from v3.contracts.exploration import BranchDecisionKind, BranchDecisionSnapshot, BranchResolution, ExplorationMode
 from v3.contracts.tool_io import BranchPruneRequest, BranchPruneResult
 from v3.orchestration.branch_board_service import BranchBoardService
+from v3.orchestration.dag_service import DAGService
 from v3.ports.state_store import StateStorePort
 
 
@@ -19,9 +20,11 @@ class BranchPruneService:
         self,
         state_store: StateStorePort,
         board_service: BranchBoardService | None = None,
+        dag_service: DAGService | None = None,
     ) -> None:
         self._state_store = state_store
         self._board_service = board_service or BranchBoardService(state_store)
+        self._dag_service = dag_service
 
     def prune(self, request: BranchPruneRequest) -> BranchPruneResult:
         run = self._state_store.load_run_snapshot(request.run_id)
@@ -46,6 +49,17 @@ class BranchPruneService:
             if use_multi_signal
             else None
         )
+        branch_component_classes: dict[str, set[str]] | None = None
+        global_best_component_classes: set[str] | None = None
+        if use_multi_signal and self._dag_service is not None:
+            _branch_scores, component_classes = self._dag_service.collect_branch_component_scores(
+                request.run_id,
+                self._state_store,
+            )
+            if component_classes:
+                branch_component_classes = component_classes
+                best_branch = max(active_branches, key=lambda branch: branch.score.result_quality)
+                global_best_component_classes = component_classes.get(best_branch.branch_id, set())
         min_active_branches = request.min_active_branches if use_multi_signal else 1
         pruned_branch_ids = prune_branch_candidates(
             [(branch.branch_id, branch.score.result_quality) for branch in active_branches],
@@ -54,6 +68,8 @@ class BranchPruneService:
             generalization_gaps=generalization_gaps,
             overfitting_risks=overfitting_risks,
             min_active_branches=min_active_branches,
+            branch_component_classes=branch_component_classes,
+            global_best_component_classes=global_best_component_classes,
         )
         decision_ids: list[str] = []
         for branch_id in pruned_branch_ids:

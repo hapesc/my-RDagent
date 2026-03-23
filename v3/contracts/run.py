@@ -57,6 +57,8 @@ class RunBoardSnapshot(BaseModel):
     latest_merge_outcome_id: str | None = None
     latest_branch_board_id: str | None = None
     summary: str = Field(min_length=1)
+    current_round: int = Field(default=0, ge=0)
+    max_rounds: int = Field(default=20, ge=1)
 
 
 __all__ = ["ExecutionMode", "RunBoardSnapshot", "RunStatus", "RunStopReason"]

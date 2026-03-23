@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .stage import StageKey
 
@@ -162,18 +162,96 @@ class BranchBoardRef(BaseModel):
     mode: ExplorationMode
 
 
+class EdgeType(StrEnum):
+    """Typed DAG edge relationships reserved for exploration topology."""
+
+    PARENT = "parent"
+    SHARED = "shared"
+    MERGED = "merged"
+
+
+class NodeMetrics(BaseModel):
+    """Convergence-specific metrics attached to a DAG node."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    validation_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    generalization_gap: float = Field(default=0.0)
+    overfitting_risk: float = Field(default=0.0, ge=0.0, le=1.0)
+    diversity_score: float = Field(default=0.0, ge=0.0)
+
+
+class DAGNodeSnapshot(BaseModel):
+    """Persisted run-scoped DAG node separate from branch lifecycle state."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_id: str = Field(min_length=1)
+    run_id: str = Field(min_length=1)
+    branch_id: str = Field(min_length=1)
+    parent_node_ids: list[str] = Field(default_factory=list)
+    depth: int = Field(default=0, ge=0)
+    node_metrics: NodeMetrics = Field(default_factory=NodeMetrics)
+
+    @model_validator(mode="after")
+    def _validate_no_self_reference(self) -> "DAGNodeSnapshot":
+        if self.node_id in self.parent_node_ids:
+            raise ValueError("node_id cannot reference itself as a parent")
+        return self
+
+
+class DAGEdgeSnapshot(BaseModel):
+    """Persisted DAG edge for topology traversal."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_node_id: str = Field(min_length=1)
+    target_node_id: str = Field(min_length=1)
+    edge_type: EdgeType = EdgeType.PARENT
+    weight: float = Field(default=1.0, ge=0.0)
+
+
+class ApproachCategory(StrEnum):
+    """Structured hypothesis buckets for first-layer diversity enforcement."""
+
+    FEATURE_ENGINEERING = "feature_engineering"
+    MODEL_ARCHITECTURE = "model_architecture"
+    DATA_AUGMENTATION = "data_augmentation"
+    ENSEMBLE = "ensemble"
+    LOSS_FUNCTION = "loss_function"
+    TRAINING_STRATEGY = "training_strategy"
+    OTHER = "other"
+
+
+class HypothesisSpec(BaseModel):
+    """Structured hypothesis metadata for multi-branch exploration."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    label: str = Field(min_length=1)
+    approach_category: ApproachCategory
+    target_challenge: str = Field(min_length=1)
+    rationale: str = Field(min_length=1)
+
+
 __all__ = [
+    "ApproachCategory",
     "BranchBoardRef",
     "BranchBoardSnapshot",
     "BranchCardSnapshot",
     "CandidateSummarySnapshot",
+    "DAGEdgeSnapshot",
+    "DAGNodeSnapshot",
     "BranchDecisionRef",
     "BranchDecisionKind",
     "BranchDecisionSnapshot",
     "BranchResolution",
     "BranchResolutionRef",
+    "EdgeType",
     "ExplorationMode",
+    "HypothesisSpec",
     "MergeOutcomeRef",
     "MergeOutcomeSnapshot",
+    "NodeMetrics",
     "ShortlistEntrySnapshot",
 ]

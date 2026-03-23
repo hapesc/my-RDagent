@@ -29,6 +29,8 @@ class BranchScore(BaseModel):
     exploration_priority: float = Field(ge=0.0)
     result_quality: float = Field(ge=0.0)
     rationale: str = Field(min_length=1)
+    generalization_gap: float = Field(default=0.0)
+    overfitting_risk: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class BranchLineage(BaseModel):

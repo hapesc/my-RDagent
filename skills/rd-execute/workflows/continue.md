@@ -1,26 +1,83 @@
-# Continue contract: rd-execute (verify)
+<purpose>
+Continue a paused verify step for an existing V3 run. Recover missing fields
+from state before asking the operator. Hand the successful path to rd-evaluate,
+or publish explicit blocking reasons.
+</purpose>
 
-Use this skill to continue a paused run inside the known verification step rather than restarting the whole standalone flow.
+<required_reading>
+@skills/_shared/references/stage-contract.md
+@skills/_shared/references/tool-execution-context.md
+</required_reading>
 
-The operator-facing job is: continue the current verify step with the exact
-continuation identifiers and payload, then either hand a successful path to
-`rd-evaluate` or publish blocked verification with explicit blocking reasons.
+<process>
 
-Keep the operator on the high-level skill path unless the agent must inspect
-lower-level run, stage, or recovery state to fill in missing continuation data.
+<step name="validate_fields">
+Check required continuation fields: run_id, branch_id, summary, artifact_ids.
+Also check optional field: blocking_reasons.
 
-## Required fields
+If any required field is missing:
+1. Run `uv run rdagent-v3-tool rd_run_get` and `uv run rdagent-v3-tool rd_branch_get`
+   to inspect current state
+2. Derive what can be derived from the response
+3. Surface exact missing field names and values already recovered
+4. Ask operator ONLY for values that cannot be derived
 
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current verify step.
-- `summary`: the current-step summary to publish for this verify continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this verify continuation.
-- `blocking_reasons`: the extra continuation field for the blocked verification path; provide it only when the verification step must stop as blocked, and leave it absent or empty for normal completion.
+If the blocked path is required but blocking_reasons is unresolved after
+inspection, ask only for the blocking reasons that cannot be derived from
+current verification state.
 
-## If information is missing
+If all present: proceed to next step.
+</step>
 
-- First inspect current run or branch state instead of asking the operator to browse tools manually.
-- Then surface the exact missing values, including which continuation fields are unresolved and which values the agent already recovered from current state.
-- Ask the operator only for values that cannot already be derived.
-- If the agent still needs a direct inspection or recovery primitive, use `rd-tool-catalog` as an agent-side escalation path and come back with the resolved verification payload or blocking reasons.
-- If the blocked path is required but `blocking_reasons` is still unresolved after inspection, ask only for the blocking reasons that cannot be derived from current verification state.
+<step name="check_stage">
+Verify branch is actually in the verify stage.
+
+If not verify:
+- framing → route to rd-propose
+- build → route to rd-code
+- synthesize → route to rd-evaluate
+- unknown or no active run → route to rd-agent
+</step>
+
+<step name="execute_transition">
+Apply verify-stage transition:
+
+```bash
+uv run rdagent-v3-tool rd_stage_publish \
+  --run-id "$RUN_ID" \
+  --branch-id "$BRANCH_ID" \
+  --stage verify \
+  --summary "$SUMMARY" \
+  --artifact-ids "$ARTIFACT_IDS"
+```
+
+If blocking_reasons provided, include `--blocking-reasons "$BLOCKING_REASONS"`.
+
+Evaluate result per outcome_guide in SKILL.md:
+- reused → confirm reuse result, hand to rd-evaluate
+- review → surface review reason, STOP
+- replay → re-publish with recovered payload, then hand to rd-evaluate
+- blocked → publish blocking reasons, keep branch out of rd-evaluate handoff
+- error → load @skills/_shared/references/failure-routing.md, follow recovery
+</step>
+
+<step name="handoff">
+If transition succeeded normally (not blocked):
+- Report: "Verify complete. Next skill: rd-evaluate"
+- Include branch_id and artifact summary for continuity
+
+If blocked:
+- Report: "Verify blocked" with explicit blocking reasons
+- Tell operator what must be resolved before verification can continue
+- Do not hand off to rd-evaluate
+</step>
+
+</process>
+
+<success_criteria>
+- [ ] All required fields validated or recovered from state
+- [ ] Branch confirmed in verify stage before transition attempt
+- [ ] Transition applied via canonical CLI tool (rd_stage_publish)
+- [ ] Outcome matches one of: reused, review, replay, blocked, completed
+- [ ] Handoff to rd-evaluate is explicit, OR blocking reasons are explicit
+</success_criteria>

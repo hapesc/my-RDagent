@@ -1,17 +1,33 @@
-# Start contract and default stop behavior
+<purpose>
+Define the start contract and default stop behavior for rd-agent. Used when
+intent routing determines a fresh run is needed.
+</purpose>
 
-## Minimum start contract
+<process>
 
-The strict minimum to start `rd-agent` is a run title, a task summary, a scenario label, and the first-step payload. In public field terms, that means `title`, `task_summary`, `scenario_label`, `stage_inputs.framing.summary`, and `stage_inputs.framing.artifact_ids`.
+<step name="minimum_contract">
+The strict minimum to start rd-agent:
 
-Use this minimum contract when you only need one concrete starting path and do not need the richer multi-branch setup yet. The first-step payload is the current-step summary plus the artifact ids that support it; the first internal step is `framing`, but the operator-facing truth is still the literal field names above.
+Required fields:
+- title (string)
+- task_summary (string)
+- scenario_label (string)
+- stage_inputs.framing.summary (string)
+- stage_inputs.framing.artifact_ids (list)
 
-## Recommended multi-branch contract
+If any field is missing, surface exactly which fields are needed and provide a
+one-line skeleton example. Do not guess or fabricate values.
+</step>
 
-The recommended path is still skill-first: start with the minimum contract, then add optional control fields when the task benefits from multiple candidate approaches. In practice that usually means keeping the required fields above, setting any explicit execution controls you need, and adding `branch_hypotheses` so `rd-agent` can open a richer multi-branch path instead of a single branch only.
+<step name="recommended_contract">
+For richer multi-branch execution, add optional fields:
 
-Example recommended payload shape:
+- initial_branch_label: label for the first branch
+- execution_mode: "gated" (default) or continuous
+- max_stage_iterations: number of stage cycles before auto-stop (default: 1)
+- branch_hypotheses: list of candidate approach labels for multi-branch
 
+Example payload shape:
 ```text
 title="Skill contract hardening"
 task_summary="Drive the standalone loop for the operator-guidance phase."
@@ -24,12 +40,28 @@ max_stage_iterations=1
 branch_hypotheses=["primary", "lighter-doc-pass", "regression-first"]
 ```
 
-Keep the two layers distinct: `branch_hypotheses` is recommended for the richer path, but it is not part of the strict minimum start contract.
+branch_hypotheses is recommended for the richer path but is NOT part of the
+strict minimum.
+</step>
 
-## Default stop behavior
+<step name="default_stop">
+Default operator path: gated + max_stage_iterations=1.
 
-The default operator path is `gated + max_stage_iterations=1`. In plain language, `rd-agent` will complete the current step, then pause for human review before continuing. the next step is prepared but is not continued automatically. It still requires preflight before execution.
+Behavior:
+1. Complete the current step
+2. Pause for human review
+3. Next step is prepared but NOT continued automatically
+4. Public stop reason: awaiting_operator
 
-If you stay on the default path, the public stop reason is `awaiting_operator`. Internally the first step maps to `framing`, but the main operating rule is simpler: one step finishes, the following step is queued up, and the run stops so a human can review before more work happens.
+To switch to continuous unattended path: operator must explicitly change the
+safety boundary. Use that only when fewer review pauses are intentional.
+</step>
 
-If you switch to a more continuous unattended path, `rd-agent` can advance further before stopping. Use that only when you want fewer review pauses and you are intentionally changing the default safety boundary.
+</process>
+
+<success_criteria>
+- [ ] All minimum contract fields present before run start
+- [ ] Optional fields clearly separated from required
+- [ ] Default stop behavior is gated with human review
+- [ ] Payload shape example is concrete and copyable
+</success_criteria>

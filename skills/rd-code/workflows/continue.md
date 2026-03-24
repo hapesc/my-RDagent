@@ -1,24 +1,70 @@
-# Continue contract: rd-code (build)
+<purpose>
+Continue a paused build step for an existing V3 run. Recover missing fields
+from state before asking the operator. Hand the successful path to rd-execute.
+</purpose>
 
-Use this skill to continue a paused run inside the known build step rather than restarting the full standalone flow.
+<required_reading>
+@skills/_shared/references/stage-contract.md
+@skills/_shared/references/tool-execution-context.md
+</required_reading>
 
-The operator-facing job is: continue the current build step with the exact
-continuation identifiers and payload, then hand the successful path to
-`rd-execute`.
+<process>
 
-Keep the interaction in the stage-skill layer unless the agent must inspect
-lower-level run or recovery state to fill in missing continuation details.
+<step name="validate_fields">
+Check required continuation fields: run_id, branch_id, summary, artifact_ids.
 
-## Required fields
+If any missing:
+1. Run `uv run rdagent-v3-tool rd_run_get` and `uv run rdagent-v3-tool rd_branch_get`
+   to inspect current state
+2. Derive what can be derived from the response
+3. Surface exact missing field names and values already recovered
+4. Ask operator ONLY for values that cannot be derived
 
-- `run_id`: the run identifier for the paused standalone V3 run.
-- `branch_id`: the branch identifier that owns the current build step.
-- `summary`: the current-step summary to publish for this build continuation.
-- `artifact_ids`: the current-step artifact identifiers to publish or replay for this build continuation.
+If all present: proceed to next step.
+</step>
 
-## If information is missing
+<step name="check_stage">
+Verify branch is actually in the build stage.
 
-- First inspect current run or branch state instead of sending the operator to browse tools manually.
-- Then surface the exact missing values, including the unresolved field names and any values the agent already recovered from current state.
-- Ask the operator only for values that cannot already be derived.
-- If a direct inspection or recovery primitive is still required, use `rd-tool-catalog` as an agent-side escalation path and return with the resolved continuation payload.
+If not build:
+- framing → route to rd-propose
+- verify → route to rd-execute
+- synthesize → route to rd-evaluate
+- unknown or no active run → route to rd-agent
+</step>
+
+<step name="execute_transition">
+Apply build-stage transition:
+
+```bash
+uv run rdagent-v3-tool rd_stage_publish \
+  --run-id "$RUN_ID" \
+  --branch-id "$BRANCH_ID" \
+  --stage build \
+  --summary "$SUMMARY" \
+  --artifact-ids "$ARTIFACT_IDS"
+```
+
+Evaluate result per outcome_guide in SKILL.md:
+- reused → confirm reuse result, hand to rd-execute
+- review → surface review reason, STOP (do not claim ready for rd-execute)
+- replay → re-publish with recovered payload, then hand to rd-execute
+- error → load @skills/_shared/references/failure-routing.md, follow recovery
+</step>
+
+<step name="handoff">
+If transition succeeded normally:
+- Report: "Build complete. Next skill: rd-execute"
+- Include branch_id and artifact summary for continuity
+- Do not proceed into verify — the operator or rd-agent decides when to invoke rd-execute
+</step>
+
+</process>
+
+<success_criteria>
+- [ ] All required fields validated or recovered from state
+- [ ] Branch confirmed in build stage before transition attempt
+- [ ] Transition applied via canonical CLI tool (rd_stage_publish)
+- [ ] Outcome matches one of: reused, review, replay, completed
+- [ ] Handoff to rd-execute is explicit (or blocked with reason)
+</success_criteria>

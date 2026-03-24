@@ -152,6 +152,33 @@ class MergeOutcomeRef(BaseModel):
     failure_reason: str | None = None
 
 
+class CandidateRankEntry(BaseModel):
+    """Single entry in the ranked candidate list."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_id: str = Field(min_length=1)
+    branch_id: str = Field(min_length=1)
+    rank: int = Field(ge=1)
+    holdout_mean: float = Field(ge=0.0)
+    holdout_std: float = Field(ge=0.0)
+
+
+class FinalSubmissionSnapshot(BaseModel):
+    """Persisted finalization result with full ranking and traceability."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    submission_id: str = Field(min_length=1)
+    run_id: str = Field(min_length=1)
+    winner_node_id: str = Field(min_length=1)
+    winner_branch_id: str = Field(min_length=1)
+    holdout_mean: float = Field(ge=0.0)
+    holdout_std: float = Field(ge=0.0)
+    ranked_candidates: list[CandidateRankEntry] = Field(default_factory=list)
+    ancestry_chain: list[str] = Field(default_factory=list)
+
+
 class BranchBoardRef(BaseModel):
     """Pointer to the persisted board read-model currently highlighted for a run."""
 
@@ -190,6 +217,8 @@ class NodeMetrics(BaseModel):
     overfitting_risk: float = Field(default=0.0, ge=0.0, le=1.0)
     diversity_score: float = Field(default=0.0, ge=0.0)
     complementarity_score: float = Field(default=0.0, ge=0.0)
+    holdout_mean: float = Field(default=0.0, ge=0.0)
+    holdout_std: float = Field(default=0.0, ge=0.0)
 
 
 class DAGNodeSnapshot(BaseModel):
@@ -251,10 +280,12 @@ __all__ = [
     "BranchBoardRef",
     "BranchBoardSnapshot",
     "BranchCardSnapshot",
+    "CandidateRankEntry",
     "CandidateSummarySnapshot",
     "ComponentClass",
     "DAGEdgeSnapshot",
     "DAGNodeSnapshot",
+    "FinalSubmissionSnapshot",
     "BranchDecisionRef",
     "BranchDecisionKind",
     "BranchDecisionSnapshot",

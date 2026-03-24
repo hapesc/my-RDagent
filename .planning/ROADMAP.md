@@ -103,7 +103,7 @@ truthful, state-aware answer.
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
-| 28. Aggregated validation with holdout calibration | 0/0 | Not started | — |
+| 28. Aggregated validation with holdout calibration | 0/4 | Planned | — |
 
 ## Planning Defaults
 
@@ -208,27 +208,32 @@ complementary components + synthesize unified solution from multiple branches).
 ### Phase 28: Aggregated validation with holdout calibration and standardized ranking
 **Goal**: Implement layer 4 of the R&D-Agent convergence mechanism: aggregated
 validation that prevents overfitting to the primary validation set through
-holdout calibration, parallel re-evaluation, and standardized ranking for
-final submission selection.
+K-fold holdout calibration, parallel re-evaluation via abstract ports, and
+standardized ranking for final submission selection.
 **Depends on**: Phase 27
-**Requirements**: TBD
+**Requirements**: P28-HOLDOUT, P28-RANK, P28-COLLECT, P28-ACTIVATE, P28-REPLACE, P28-SUBMIT, P28-PRESENT
 **Success Criteria** (what must be TRUE):
   1. Top candidate solutions from all exploration branches are collected into
      a candidate set for final evaluation.
-  2. A synthetic holdout set (90-10 split) is created and candidates are
-     re-evaluated in isolated environments.
+  2. K-fold holdout evaluation via abstract ports prevents overfitting to the
+     primary validation set.
   3. Standardized ranking produces a single best submission based on holdout
      performance, not primary validation set performance.
 **Canonical refs:** `26-CONTEXT.md §deferred`, `v3/contracts/exploration.py` (DAGNodeSnapshot)
 **Phase 26 decisions that constrain Phase 28:**
   - DAG frontier traversal (`DAGService.get_frontier`) is the mechanism for
     collecting top candidates from all exploration branches.
-  - BranchScore now carries `generalization_gap` and `overfitting_risk` —
+  - BranchScore now carries `generalization_gap` and `overfitting_risk` --
     Phase 28 should use these signals for holdout calibration and overfitting
     prevention rather than inventing separate metrics.
   - NodeMetrics on DAGNodeSnapshot store per-node validation_score,
-    generalization_gap, overfitting_risk, diversity_score — Phase 28 reads
+    generalization_gap, overfitting_risk, diversity_score -- Phase 28 reads
     these directly for ranking.
   - `max_rounds` on RunSnapshot defines the exploration budget; Phase 28
     activates after `current_round >= max_rounds`.
-**Plans**: TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 28-01-PLAN.md — Contracts, ports, and pure algorithms (P28-HOLDOUT, P28-RANK, P28-COLLECT, P28-SUBMIT)
+- [ ] 28-02-PLAN.md — HoldoutValidationService + proxy replacement (P28-HOLDOUT, P28-REPLACE, P28-COLLECT)
+- [ ] 28-03-PLAN.md — Activation triggers + operator presentation (P28-ACTIVATE, P28-PRESENT)
+- [ ] 28-04-PLAN.md — Full lifecycle integration test (all P28-* requirements)

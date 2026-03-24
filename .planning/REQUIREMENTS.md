@@ -107,6 +107,31 @@ to discover how to start, pause, resume, or continue the loop.
   sharing, pruning with signal 4, and complementary merge execution in one
   coherent round.
 
+### Aggregated Validation and Final Submission
+
+- [ ] **P28-HOLDOUT**: K-fold holdout validation pipeline with abstract
+  HoldoutSplitPort and EvaluationPort protocols. StratifiedKFoldSplitter
+  default implementation produces K=5 folds. HoldoutValidationService
+  orchestrates the full evaluation pipeline.
+- [ ] **P28-RANK**: Standardized ranking by mean holdout score (higher better)
+  with standard deviation tiebreak (lower better). NodeMetrics extended with
+  holdout_mean and holdout_std fields (backward-compatible defaults).
+- [ ] **P28-COLLECT**: Candidate collection from frontier nodes plus MERGED
+  nodes, deduplicated. Quality threshold filter (median validation_score)
+  halves the evaluation cost before K-fold evaluation.
+- [ ] **P28-ACTIVATE**: Dual-mode activation: automatic when current_round >=
+  max_rounds in MultiBranchService.run_exploration_round, plus explicit
+  early-finalization entry point for operator-triggered finalization.
+- [ ] **P28-REPLACE**: validate_merge_holdout proxy in v3/algorithms/merge.py
+  completely replaced by HoldoutValidationService. All call sites in
+  BranchMergeService updated with graceful fallback.
+- [ ] **P28-SUBMIT**: FinalSubmissionSnapshot contract with winner_node_id,
+  winner_branch_id, holdout_mean, holdout_std, ranked candidate list, and DAG
+  ancestry chain for source path traceability.
+- [ ] **P28-PRESENT**: Operator finalization summary via existing
+  OperatorGuidance contract and renderer, displaying winner, holdout score,
+  source branch, and ranking table.
+
 ## v2 Requirements
 
 ### Future Pipeline UX
@@ -149,12 +174,19 @@ to discover how to start, pause, resume, or continue the loop.
 | P27-PRUNE4 | Phase 27 | Complete |
 | P27-MERGE | Phase 27 | Complete |
 | P27-E2E | Phase 27 | Complete |
+| P28-HOLDOUT | Phase 28 | Planned |
+| P28-RANK | Phase 28 | Planned |
+| P28-COLLECT | Phase 28 | Planned |
+| P28-ACTIVATE | Phase 28 | Planned |
+| P28-REPLACE | Phase 28 | Planned |
+| P28-SUBMIT | Phase 28 | Planned |
+| P28-PRESENT | Phase 28 | Planned |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete
-- v1.3 convergence requirements: 13 total, completion tracked in the traceability table above
+- v1.3 convergence requirements: 20 total (13 Phase 26-27 + 7 Phase 28), completion tracked in the traceability table above
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-23 after Phase 26 planning*
+*Last updated: 2026-03-24 after Phase 28 planning*

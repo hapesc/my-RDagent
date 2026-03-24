@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.exploration import (
     ApproachCategory,
+    ComponentClass,
     EdgeType,
     ExplorationMode,
     FinalSubmissionSnapshot,
@@ -301,3 +302,147 @@ def test_final_submission_persistence(tmp_path: Path) -> None:
     assert loaded is not None
     assert loaded.winner_node_id == submission.winner_node_id
     assert len(loaded.ranked_candidates) == len(submission.ranked_candidates)
+
+
+# ------------------------------------------------------------------
+# Regression tests for Codex-found bugs
+# ------------------------------------------------------------------
+
+
+class _MinimalMergeService:
+    """Merge service with only merge() and fallback() — no merge_with_complementarity."""
+
+    def __init__(self, board_service: BranchBoardService) -> None:
+        self._board_service = board_service
+
+    def merge(self, request: BranchMergeRequest):
+        from v3.contracts.tool_io import BranchMergeResult, MergeOutcomeSnapshot
+
+        board = self._board_service.get_board(request.run_id)
+        return BranchMergeResult(
+            outcome=MergeOutcomeSnapshot(
+                outcome_id="minimal-merge",
+                run_id=request.run_id,
+                summary="Minimal merge declined.",
+                rationale="Minimal service.",
+                failure_reason="not_implemented",
+                shortlist=[],
+            ),
+            board=board,
+        )
+
+    def fallback(self, request):
+        raise ValueError("Minimal service has no fallback.")
+
+
+def test_convergence_with_minimal_merge_service(tmp_path: Path) -> None:
+    """Regression: merge service without merge_with_complementarity must not crash."""
+    from v3.contracts.tool_io import ConvergeRoundRequest
+
+    state_store = ArtifactStateStore(tmp_path / "state")
+    dag_service = DAGService(state_store)
+    board_service = BranchBoardService(state_store)
+    workspace_manager = BranchWorkspaceManager(tmp_path / "state")
+    run_board_service = RunBoardService(state_store)
+
+    branches = [_branch("brX", 0.90), _branch("brY", 0.80)]
+    for branch in branches:
+        state_store.write_branch_snapshot(branch)
+    state_store.write_run_snapshot(
+        RunBoardSnapshot(
+            run_id="run-minimal",
+            title="Minimal merge test",
+            status=RunStatus.ACTIVE,
+            execution_mode=ExecutionMode.GATED,
+            exploration_mode=ExplorationMode.EXPLORATION,
+            branch_ids=["brX", "brY"],
+            primary_branch_id="brX",
+            highlighted_artifact_ids=[],
+            summary="Minimal merge test.",
+            current_round=0,
+            max_rounds=2,
+        )
+    )
+    for bid in ("brX", "brY"):
+        dag_service.create_node(run_id="run-minimal", branch_id=bid)
+
+    # Use a merge service that does NOT have merge_with_complementarity
+    service = MultiBranchService(
+        state_store=state_store,
+        workspace_manager=workspace_manager,
+        branch_lifecycle_service=BranchLifecycleService(
+            state_store=state_store,
+            workspace_manager=workspace_manager,
+            run_board_service=run_board_service,
+        ),
+        branch_board_service=board_service,
+        selection_service=SelectionService(state_store=state_store),
+        branch_merge_service=_MinimalMergeService(board_service),
+        dispatcher=lambda payload: payload,
+        dag_service=dag_service,
+        branch_share_service=SimpleNamespace(find_sharing_candidates=lambda **_kw: []),
+    )
+
+    # Must not raise AttributeError
+    result = service.run_convergence_round(ConvergeRoundRequest(run_id="run-minimal"))
+    assert result.selected_branch_id in ("brX", "brY")
+
+
+def test_selection_service_rejects_unknown_adapter_branch_id(tmp_path: Path) -> None:
+    """Regression: adapter returning non-existent branch id raises ValueError, not StopIteration."""
+    from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
+    from v3.orchestration.selection_service import SelectionService
+
+    state_store = ArtifactStateStore(tmp_path / "state")
+    branch = _branch("brReal", 0.90)
+    state_store.write_branch_snapshot(branch)
+    state_store.write_recovery_assessment(
+        RecoveryAssessment(
+            run_id="run-sel",
+            branch_id="brReal",
+            stage_key=StageKey.BUILD,
+            recovery_assessment=RecoveryDisposition.REUSE,
+            reusable_artifact_ids=["a1"],
+            replay_artifact_ids=[],
+            invalid_reasons=[],
+            recommended_next_step="continue",
+        )
+    )
+    state_store.write_hypothesis_spec(
+        "brReal",
+        HypothesisSpec(
+            label="brReal",
+            approach_category=ApproachCategory.MODEL_ARCHITECTURE,
+            target_challenge="test",
+            rationale="test",
+            component_classes=(ComponentClass.MODEL,),
+        ),
+    )
+    state_store.write_run_snapshot(
+        RunBoardSnapshot(
+            run_id="run-sel",
+            title="Selection test",
+            status=RunStatus.ACTIVE,
+            execution_mode=ExecutionMode.GATED,
+            exploration_mode=ExplorationMode.EXPLORATION,
+            branch_ids=["brReal"],
+            primary_branch_id="brReal",
+            highlighted_artifact_ids=[],
+            summary="Selection test.",
+            current_round=0,
+            max_rounds=2,
+        )
+    )
+
+    class _BadAdapter:
+        def select_next_branch(self, candidates):
+            return "nonexistent-branch-id"
+
+    service = SelectionService(state_store=state_store, adapter=_BadAdapter())
+
+    # Must raise ValueError (not StopIteration)
+    try:
+        service.select_next_branch(run_id="run-sel")
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert "nonexistent-branch-id" in str(exc)

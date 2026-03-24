@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -23,7 +24,7 @@ from v3.contracts.tool_io import (
 from v3.orchestration.branch_board_service import BranchBoardService
 from v3.orchestration.dag_service import DAGService
 from v3.orchestration.memory_service import MemoryService
-from v3.ports.embedding_port import EmbeddingPort
+from v3.ports.embedding_port import EmbeddingPort, EmbeddingUnavailableError
 from v3.ports.state_store import StateStorePort
 
 
@@ -201,7 +202,12 @@ class BranchShareService:
 
         try:
             embeddings = self._embedding_port.embed([target_branch.label, *peer_labels])
-        except Exception:
+        except EmbeddingUnavailableError:
+            logging.getLogger(__name__).debug(
+                "Embedding port unavailable for branch %s; skipping sharing",
+                target_branch_id,
+                exc_info=True,
+            )
             return []
 
         if len(embeddings) != len(peer_ids) + 1:

@@ -441,7 +441,8 @@ class MultiBranchService:
                 request.run_id,
                 self._state_store,
             )
-            if branch_component_scores:
+            has_complementarity = hasattr(self._branch_merge_service, "merge_with_complementarity")
+            if branch_component_scores and has_complementarity:
                 merge_result = self._branch_merge_service.merge_with_complementarity(
                     merge_request,
                     branch_component_scores,

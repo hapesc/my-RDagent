@@ -78,7 +78,10 @@ class SelectionService:
         if selected_branch_id is None:
             raise ValueError("PUCT adapter did not select a branch.")
 
-        branch, recovery, candidate = next(item for item in eligible if item[0].branch_id == selected_branch_id)
+        try:
+            branch, recovery, candidate = next(item for item in eligible if item[0].branch_id == selected_branch_id)
+        except StopIteration:
+            raise ValueError(f"Adapter returned unknown branch id: {selected_branch_id}")
         signal = BranchSelectionSignal(
             branch_id=branch.branch_id,
             branch_potential=candidate.potential,

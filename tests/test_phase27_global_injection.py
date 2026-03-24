@@ -68,7 +68,9 @@ class _StaticEmbeddingPort:
 
 class _ExplodingEmbeddingPort:
     def embed(self, texts: list[str]) -> list[list[float]]:
-        raise RuntimeError("embedding unavailable")
+        from v3.ports.embedding_port import EmbeddingUnavailableError
+
+        raise EmbeddingUnavailableError("embedding service unavailable")
 
 
 class _FakeShareService:

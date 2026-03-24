@@ -65,9 +65,7 @@ the right high-level path, especially when paused work already exists.
      recommends the next valid skill instead of defaulting to a new run.
   3. Common continuation flows no longer require the user to reason about raw
      stage mechanics before taking the next action.
-**Plans:** 1 plan
-Plans:
-- [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
+**Plans**: TBD
 
 ### Phase 23: Preflight and State Truth Hardening
 **Goal**: Stage execution surfaces environment and state blockers early and
@@ -83,9 +81,7 @@ keeps user-visible status claims aligned with persisted artifacts.
      missing.
   3. User-visible claims such as "next stage ready" and verification outcomes
      are backed by persisted snapshots and current handoff artifacts.
-**Plans:** 1 plan
-Plans:
-- [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
+**Plans**: TBD
 
 ### Phase 24: Operator Guidance and Next-Step UX
 **Goal**: Users can reliably ask what to do next and receive a concise,
@@ -99,9 +95,7 @@ truthful, state-aware answer.
      only when needed.
   3. The next-step surface stays aligned with the real persisted state and the
      public skill/tool surfaces.
-**Plans:** 1 plan
-Plans:
-- [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
+**Plans**: TBD
 
 ## Progress
 
@@ -215,9 +209,7 @@ complementary components + synthesize unified solution from multiple branches).
     from Phase 26.
   - DAGService graph traversal (get_ancestors, get_descendants, get_frontier)
     is the infrastructure Phase 27 should use for cross-branch discovery.
-**Plans:** 1 plan
-Plans:
-- [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
+**Plans**: TBD
 
 ### Phase 28: Aggregated validation with holdout calibration and standardized ranking
 **Goal**: Implement layer 4 of the R&D-Agent convergence mechanism: aggregated
@@ -282,6 +274,4 @@ all 13 unchecked REQUIREMENTS.md checkboxes that the audit identified as partial
   2. Phase 28 has a VERIFICATION.md with goal-backward cross-check confirming
      all 7 P28-* requirements are satisfied (requires Phase 29 entry wiring).
   3. All 13 REQUIREMENTS.md checkboxes are `[x]` with status `Complete`.
-**Plans:** 1 plan
-Plans:
-- [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
+**Plans**: TBD

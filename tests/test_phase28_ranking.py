@@ -114,6 +114,10 @@ def test_rank_candidates_single_fold_has_zero_std() -> None:
     assert ranked == [("node-1", 0.77, 0.0)]
 
 
+def test_rank_candidates_empty_scores_returns_empty_list() -> None:
+    assert rank_candidates({}) == []
+
+
 def test_filter_by_quality_threshold_keeps_candidates_at_or_above_median() -> None:
     candidates = [
         _node("node-1", "branch-a", 0.9),
@@ -131,6 +135,10 @@ def test_filter_by_quality_threshold_single_candidate_returns_itself() -> None:
     candidate = _node("node-1", "branch-a", 0.9)
 
     assert filter_by_quality_threshold([candidate]) == [candidate]
+
+
+def test_filter_by_quality_threshold_empty_list_returns_empty_list() -> None:
+    assert filter_by_quality_threshold([]) == []
 
 
 def test_collect_candidate_ids_unions_frontier_and_merged_targets() -> None:

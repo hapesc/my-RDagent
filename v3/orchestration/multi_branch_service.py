@@ -15,6 +15,7 @@ from v3.contracts.exploration import (
     BranchDecisionSnapshot,
     EdgeType,
     ExplorationMode,
+    FinalSubmissionSnapshot,
     NodeMetrics,
 )
 from v3.contracts.tool_io import (
@@ -33,6 +34,7 @@ from v3.orchestration.branch_prune_service import BranchPruneService
 from v3.orchestration.branch_share_service import BranchShareService
 from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
 from v3.orchestration.dag_service import DAGService
+from v3.orchestration.holdout_validation_service import HoldoutValidationService
 from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.ports.state_store import StateStorePort
@@ -57,6 +59,7 @@ class MultiBranchService:
         prune_service: BranchPruneService | None = None,
         select_parents_service: SelectParentsService | None = None,
         branch_share_service: BranchShareService | None = None,
+        holdout_validation_service: HoldoutValidationService | None = None,
     ) -> None:
         self._state_store = state_store
         self._workspace_manager = workspace_manager
@@ -69,6 +72,7 @@ class MultiBranchService:
         self._prune_service = prune_service
         self._select_parents_service = select_parents_service
         self._branch_share_service = branch_share_service
+        self._holdout_validation_service = holdout_validation_service
 
     def run_exploration_round(self, request: ExploreRoundRequest) -> ExploreRoundResult:
         run = self._state_store.load_run_snapshot(request.run_id)
@@ -260,9 +264,16 @@ class MultiBranchService:
             pruned_branch_ids = prune_result.pruned_branch_ids
             board = prune_result.board
 
+        finalization_submission = None
         run = self._state_store.load_run_snapshot(request.run_id)
         if run is not None:
-            self._state_store.write_run_snapshot(run.model_copy(update={"current_round": run.current_round + 1}))
+            new_round = run.current_round + 1
+            self._state_store.write_run_snapshot(run.model_copy(update={"current_round": new_round}))
+            if new_round >= run.max_rounds and self._holdout_validation_service is not None:
+                try:
+                    finalization_submission = self._holdout_validation_service.finalize(run_id=request.run_id)
+                except (ValueError, KeyError):
+                    finalization_submission = None
         return ExploreRoundResult(
             selected_branch_id=selected_branch_id,
             recommended_next_step=recommended_next_step,
@@ -273,7 +284,15 @@ class MultiBranchService:
             pruned_branch_ids=pruned_branch_ids,
             dag_node_ids=dag_node_ids,
             round_diversity_score=round_diversity_score,
+            finalization_submission=finalization_submission,
         )
+
+    def finalize_early(self, *, run_id: str) -> FinalSubmissionSnapshot:
+        """Operator-triggered early finalization before budget exhaustion."""
+
+        if self._holdout_validation_service is None:
+            raise ValueError("Cannot finalize: no HoldoutValidationService configured")
+        return self._holdout_validation_service.finalize(run_id=run_id)
 
     def run_convergence_round(self, request: ConvergeRoundRequest) -> ConvergeRoundResult:
         merge_request = BranchMergeRequest(

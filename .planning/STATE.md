@@ -4,16 +4,16 @@ milestone: v1.3
 milestone_name: milestone
 current_phase: 28
 current_phase_name: aggregated-validation-with-holdout-calibration-and-standardized-ranking
-current_plan: 3
-status: executing
-stopped_at: Phase 28 context gathered
-last_updated: "2026-03-24T04:19:58.023Z"
+current_plan: 4
+status: verification-ready
+stopped_at: Phase 28 fully executed; awaiting verification
+last_updated: "2026-03-24T04:35:34.529Z"
 last_activity: 2026-03-24
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 23
   percent: 100
 ---
 
@@ -26,23 +26,23 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 28 — aggregated-validation-with-holdout-calibration-and-standardized-ranking
+**Current focus:** Phase 28 executed; ready for verification and milestone closeout
 
 ## Position
 
 **Current Phase:** 28
 **Current Phase Name:** aggregated-validation-with-holdout-calibration-and-standardized-ranking
 **Total Phases:** 7
-**Current Plan:** 3
+**Current Plan:** 4
 **Total Plans in Phase:** 4
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
-**Next phase:** Phase 28 planning
-**Status:** Ready to execute
+**Next phase:** Verification / milestone closeout
+**Status:** Phase 28 fully executed; ready to verify
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-24
-Quick task `260324-dmn` refactored all 6 skills: GSD command/workflow separation, _shared/references layer, structured <step> workflows, Codex adapters.
+Phase 28 plans 01-04 executed with summaries on disk, ROADMAP at 4/4 complete, and full Phase 16/27/28 regression coverage passing.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -50,8 +50,8 @@ Quick task `260324-dmn` refactored all 6 skills: GSD command/workflow separation
 - Completed plans in shipped milestones: 32
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
-- Latest completed plan: Phase 26 plan 06 completed with 6/6 summarized execution plan(s)
-- Current milestone execution trend: v1.3 Phase 26 is now verified complete; the next honest step is planning Phase 27
+- Latest completed plan: Phase 28 plan 04 completed with 4/4 summarized execution plan(s)
+- Current milestone execution trend: v1.3 roadmap execution is now complete through Phase 28; the next honest step is verification and milestone closure
 
 ## Accumulated Context
 
@@ -101,6 +101,7 @@ Quick task `260324-dmn` refactored all 6 skills: GSD command/workflow separation
 - [Phase 27]: Complementary merge now separates pair selection, synthesis, holdout gating, and MERGED-edge recording into one explicit pipeline — Phase 27 merge needs explainable failure points; burying all of that inside the old shortlist merge path would hide whether the rejection came from pair choice, synthesis, or holdout.
 - [Phase 27]: Phase 27 integration coverage now runs the real persistence and orchestration stack for share, prune, and merge instead of concept-only mocks — The honest verification target is the service graph and its DAG artifacts, not a hand-wired approximation that never exercises persisted component metadata.
 - [Phase 28]: Phase 28 foundations now separate exploration contracts, holdout ports, and pure ranking helpers. — This keeps finalization types importable without circular dependencies and gives later plans one canonical holdout surface to build on.
+- [Phase 28]: Phase 28 now has fully executed plans plus a passing real-service finalization lifecycle test. — The holdout path, activation wiring, guidance rendering, merged-candidate collection, and persistence are all covered by passing unit and integration evidence.
 
 ### Pending Todos
 

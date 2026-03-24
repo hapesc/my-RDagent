@@ -43,7 +43,7 @@ state-aware guidance.
   First layer of R&D-Agent convergence: DAG diversity, parent selection, pruning.
 - [x] **Phase 27: Cross-branch communication and multi-trace solution merge** - (completed 2026-03-24)
   Layers 2-3: global best injection, probabilistic exchange, unified merge.
-- [ ] **Phase 28: Aggregated validation with holdout calibration and standardized ranking** -
+- [x] **Phase 28: Aggregated validation with holdout calibration and standardized ranking** - (completed 2026-03-24)
   Layer 4: holdout re-evaluation, standardized ranking, final submission.
 
 ## Phase Details
@@ -103,7 +103,7 @@ truthful, state-aware answer.
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
-| 28. Aggregated validation with holdout calibration | 2/4 | In Progress|  |
+| 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
 
 ## Planning Defaults
 
@@ -231,7 +231,7 @@ standardized ranking for final submission selection.
     these directly for ranking.
   - `max_rounds` on RunSnapshot defines the exploration budget; Phase 28
     activates after `current_round >= max_rounds`.
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [ ] 28-01-PLAN.md — Contracts, ports, and pure algorithms (P28-HOLDOUT, P28-RANK, P28-COLLECT, P28-SUBMIT)
 - [ ] 28-02-PLAN.md — HoldoutValidationService + proxy replacement (P28-HOLDOUT, P28-REPLACE, P28-COLLECT)

@@ -44,14 +44,14 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### DAG Topology
 
-- [ ] **P26-DAG**: Independent DAG topology layer with DAGNodeSnapshot,
+- [x] **P26-DAG**: Independent DAG topology layer with DAGNodeSnapshot,
   DAGEdgeSnapshot, NodeMetrics contracts, DAGService graph operations, and
   StateStorePort CRUD methods. Tracks parent-child relationships separately
   from branch lifecycle model.
 
 ### Parent Selection
 
-- [ ] **P26-SELECT**: SelectParentsService answers "which past nodes should
+- [x] **P26-SELECT**: SelectParentsService answers "which past nodes should
   feed context into a new iteration" using a three-dimensional signal model:
   core quality (validation score, generalization gap, overfitting risk),
   strategic planning (budget-aware diversity weight via cosine decay), and
@@ -60,26 +60,26 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Dynamic Pruning
 
-- [ ] **P26-PRUNE**: Multi-signal dynamic pruning with time-aware cosine-decay
+- [x] **P26-PRUNE**: Multi-signal dynamic pruning with time-aware cosine-decay
   threshold, generalization stability protection, anti-overfitting preferential
   pruning, and min_active_branches=2 safety constraint. Triggers automatically
   after each exploration round.
 
 ### First-Layer Diversity
 
-- [ ] **P26-DIVERSITY**: HypothesisSpec with ApproachCategory enum enforces
+- [x] **P26-DIVERSITY**: HypothesisSpec with ApproachCategory enum enforces
   category uniqueness constraint (at most 1 branch per category in first layer)
   and computes diversity_score as Shannon entropy of category distribution.
 
 ### Round Tracking
 
-- [ ] **P26-ROUND**: RunBoardSnapshot carries current_round and max_rounds.
+- [x] **P26-ROUND**: RunBoardSnapshot carries current_round and max_rounds.
   MultiBranchService.run_exploration_round increments current_round after each
   round. budget_ratio = current_round / max_rounds drives cosine decay curves.
 
 ### Score Extension
 
-- [ ] **P26-SCORE**: BranchScore extended with generalization_gap and
+- [x] **P26-SCORE**: BranchScore extended with generalization_gap and
   overfitting_risk fields (backward-compatible defaults). ScoringService
   extended with compute_generalization_signals function.
 
@@ -109,26 +109,26 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Aggregated Validation and Final Submission
 
-- [ ] **P28-HOLDOUT**: K-fold holdout validation pipeline with abstract
+- [x] **P28-HOLDOUT**: K-fold holdout validation pipeline with abstract
   HoldoutSplitPort and EvaluationPort protocols. StratifiedKFoldSplitter
   default implementation produces K=5 folds. HoldoutValidationService
   orchestrates the full evaluation pipeline.
-- [ ] **P28-RANK**: Standardized ranking by mean holdout score (higher better)
+- [x] **P28-RANK**: Standardized ranking by mean holdout score (higher better)
   with standard deviation tiebreak (lower better). NodeMetrics extended with
   holdout_mean and holdout_std fields (backward-compatible defaults).
-- [ ] **P28-COLLECT**: Candidate collection from frontier nodes plus MERGED
+- [x] **P28-COLLECT**: Candidate collection from frontier nodes plus MERGED
   nodes, deduplicated. Quality threshold filter (median validation_score)
   halves the evaluation cost before K-fold evaluation.
-- [ ] **P28-ACTIVATE**: Dual-mode activation: automatic when current_round >=
+- [x] **P28-ACTIVATE**: Dual-mode activation: automatic when current_round >=
   max_rounds in MultiBranchService.run_exploration_round, plus explicit
   early-finalization entry point for operator-triggered finalization.
-- [ ] **P28-REPLACE**: validate_merge_holdout proxy in v3/algorithms/merge.py
+- [x] **P28-REPLACE**: validate_merge_holdout proxy in v3/algorithms/merge.py
   completely replaced by HoldoutValidationService. All call sites in
   BranchMergeService updated with graceful fallback.
-- [ ] **P28-SUBMIT**: FinalSubmissionSnapshot contract with winner_node_id,
+- [x] **P28-SUBMIT**: FinalSubmissionSnapshot contract with winner_node_id,
   winner_branch_id, holdout_mean, holdout_std, ranked candidate list, and DAG
   ancestry chain for source path traceability.
-- [ ] **P28-PRESENT**: Operator finalization summary via existing
+- [x] **P28-PRESENT**: Operator finalization summary via existing
   OperatorGuidance contract and renderer, displaying winner, holdout score,
   source branch, and ranking table.
 
@@ -161,12 +161,12 @@ to discover how to start, pause, resume, or continue the loop.
 | STATE-01 | Phase 23 | Complete |
 | STATE-02 | Phase 23 | Complete |
 | GUIDE-05 | Phase 24 | Complete |
-| P26-DAG | Phase 26 → 30 | Pending |
-| P26-SELECT | Phase 26 → 30 | Pending |
-| P26-PRUNE | Phase 26 → 30 | Pending |
-| P26-DIVERSITY | Phase 26 → 30 | Pending |
-| P26-ROUND | Phase 26 → 30 | Pending |
-| P26-SCORE | Phase 26 → 30 | Pending |
+| P26-DAG | Phase 26, verified Phase 30 | Complete |
+| P26-SELECT | Phase 26, verified Phase 30 | Complete |
+| P26-PRUNE | Phase 26, verified Phase 30 | Complete |
+| P26-DIVERSITY | Phase 26, verified Phase 30 | Complete |
+| P26-ROUND | Phase 26, verified Phase 30 | Complete |
+| P26-SCORE | Phase 26, verified Phase 30 | Complete |
 | P27-KERNEL | Phase 27 | Complete |
 | P27-INJECT | Phase 27 | Complete |
 | P27-COMPONENT | Phase 27 | Complete |
@@ -174,19 +174,19 @@ to discover how to start, pause, resume, or continue the loop.
 | P27-PRUNE4 | Phase 27 | Complete |
 | P27-MERGE | Phase 27 | Complete |
 | P27-E2E | Phase 27 | Complete |
-| P28-HOLDOUT | Phase 28 → 29, 30 | Pending |
-| P28-RANK | Phase 28 → 30 | Pending |
-| P28-COLLECT | Phase 28 → 30 | Pending |
-| P28-ACTIVATE | Phase 28 → 29, 30 | Pending |
-| P28-REPLACE | Phase 28 → 30 | Pending |
-| P28-SUBMIT | Phase 28 → 29, 30 | Pending |
-| P28-PRESENT | Phase 28 → 29, 30 | Pending |
+| P28-HOLDOUT | Phase 28-29, verified Phase 30 | Complete |
+| P28-RANK | Phase 28, verified Phase 30 | Complete |
+| P28-COLLECT | Phase 28, verified Phase 30 | Complete |
+| P28-ACTIVATE | Phase 28-29, verified Phase 30 | Complete |
+| P28-REPLACE | Phase 28, verified Phase 30 | Complete |
+| P28-SUBMIT | Phase 28-29, verified Phase 30 | Complete |
+| P28-PRESENT | Phase 28-29, verified Phase 30 | Complete |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete
-- v1.3 convergence requirements: 20 total (13 Phase 26-28 implemented, gap closure via Phase 29-30), completion tracked in the traceability table above
+- v1.3 convergence requirements: 20 total, 20 complete
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-24 after gap closure phases 29-30 added*
+*Last updated: 2026-03-24 after Phase 30 verification closure*

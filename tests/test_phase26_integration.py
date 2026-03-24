@@ -33,6 +33,7 @@ from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.orchestration.stage_transition_service import StageTransitionService
 from v3.ports.execution import ExecutionPort, ExecutionStartResult
+from v3.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
 
 
 @dataclass
@@ -409,6 +410,8 @@ def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: 
         recovery_service=RecoveryService(state_store),
         transition_service=StageTransitionService(state_store),
         hypothesis_specs=specs,
+        holdout_evaluation_port=StubEvaluationPort(),
+        holdout_split_port=StubHoldoutSplitPort(),
     )
 
     run = state_store.load_run_snapshot("run-001")

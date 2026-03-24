@@ -42,7 +42,7 @@ just to discover how to start, pause, resume, or continue the loop.
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-24
-Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference files created, 6 SKILL.md thinned, Gate 2 smoke test added, 38 tests green.
+Quick task `260324-dmn` refactored all 6 skills: GSD command/workflow separation, _shared/references layer, structured <step> workflows, Codex adapters.
 **Progress:** [██████████] 100%
 
 ## Performance Metrics
@@ -126,6 +126,7 @@ Quick task `260323-wsb` executed BLUEPRINT v2 Wave 0-3: 7 workflow/reference fil
 | 260323-qj9 | Skill refactoring blueprint: extraction maps, shared references, wave-ordered execution | 2026-03-23 | 1e24519 | | [260323-qj9-skill-rdagent-skill](./quick/260323-qj9-skill-rdagent-skill/) |
 | 260323-r08 | Blueprint v2: installer-first skill refactoring with per-skill workflows | 2026-03-23 | 304dae4 | | [260323-r08-blueprint-v2-installer-surface-skill](./quick/260323-r08-blueprint-v2-installer-surface-skill/) |
 | 260323-wsb | Blueprint v2 execution: skill Wave 0-3 extraction + Gate 2 test | 2026-03-24 | a36cfa1 | Verified | [260323-wsb-blueprint-v2-skill-wave-0-3](./quick/260323-wsb-blueprint-v2-skill-wave-0-3/) |
+| 260324-dmn | refactor(skills): adopt GSD command/workflow separation architecture | 2026-03-24 | 7632cce | | [260324-dmn-refactor-skills-adopt-gsd-command-workfl](./quick/260324-dmn-refactor-skills-adopt-gsd-command-workfl/) |
 | Phase 27 P1 | 6min | 2 tasks | 8 files |
 | Phase 27 P2 | 2h 9m | 3 tasks | 6 files |
 | Phase 27 P3 | 2h 12m | 3 tasks | 11 files |

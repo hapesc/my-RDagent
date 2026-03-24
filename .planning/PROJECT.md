@@ -55,6 +55,9 @@ playbook.
   `HoldoutValidationService`, `BranchShareService`, and finalization operator
   guidance into the production multi-branch path, so Phase 27/28 convergence
   work is reachable from the real entry layer instead of isolated service tests.
+- Phase 30 is complete: Phases 26 and 28 now have formal verification reports,
+  and the remaining v1.3 convergence traceability debt is fully closed in
+  `.planning/REQUIREMENTS.md`.
 
 ## Current Milestone: v1.3 Pipeline Experience Hardening
 
@@ -97,6 +100,7 @@ next-step guidance.
 - ✓ Pipeline surfaces runtime, dependency, data, and state blockers before a stage claims to be executable — validated in Phase 23 / v1.3
 - ✓ User-facing progress and next-step guidance now stay aligned with persisted state and preflight truth for paused-run and stage-entry surfaces — validated in Phase 23 / v1.3
 - ✓ User can ask what to do next and receive a concise answer that states the current state, the reason, and the exact next action without orchestration jargon — validated in Phase 24 / v1.3
+- ✓ Phase 26 and Phase 28 convergence work now has formal verification artifacts and fully closed requirement traceability — validated in Phase 30 / v1.3
 
 ### Active
 
@@ -159,4 +163,4 @@ None — v1.3 active requirements are complete.
 | Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight and state-truth hardening validated in Phase 23 |
 
 ---
-*Last updated: 2026-03-24 after completing Phase 29*
+*Last updated: 2026-03-24 after completing Phase 30*

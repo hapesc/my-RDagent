@@ -45,7 +45,7 @@ state-aware guidance.
   Layers 2-3: global best injection, probabilistic exchange, unified merge.
 - [x] **Phase 28: Aggregated validation with holdout calibration and standardized ranking** - (completed 2026-03-24)
   Layer 4: holdout re-evaluation, standardized ranking, final submission.
-- [ ] **Phase 29: Entry-layer service wiring** -
+- [x] **Phase 29: Entry-layer service wiring** - (completed 2026-03-24)
   Wire HoldoutValidationService, BranchShareService, and finalization guidance into rd_agent entry.
 - [ ] **Phase 30: Verification and traceability closure** -
   Generate VERIFICATION.md for Phase 26 and 28, close 13 REQUIREMENTS.md checkboxes.
@@ -108,7 +108,7 @@ truthful, state-aware answer.
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
-| 29. Entry-layer service wiring | 0/1 | Planning | — |
+| 29. Entry-layer service wiring | 0/1 | Complete    | 2026-03-24 |
 | 30. Verification and traceability closure | 0/0 | Pending | — |
 
 ## Planning Defaults
@@ -258,7 +258,7 @@ reachable through the production code path — not just isolated tests.
      reaches the operator through the public response payload.
   3. An integration test proves the full flow: rd_agent → exploration →
      holdout finalization → winner, end-to-end through the public entry.
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 29-01-PLAN.md — Wire BranchShareService + HoldoutValidationService + finalization guidance into rd_agent entry (all Phase 29 requirements)
 

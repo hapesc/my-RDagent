@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from v3.algorithms.merge import LLMTraceMerger, MergeDesign, SimpleTraceMerger, validate_merge_holdout
+from v3.algorithms.merge import LLMTraceMerger, MergeDesign, SimpleTraceMerger
 from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
 from v3.contracts.exploration import EdgeType
 from v3.contracts.run import RunBoardSnapshot, RunStatus
@@ -117,12 +117,6 @@ def test_simple_trace_merger_remains_backward_compatible() -> None:
     result = merger.merge([{"design": {"summary": "test"}}], "task", "scenario")
 
     assert result.summary == "test"
-
-
-def test_validate_merge_holdout_accepts_only_improving_candidates() -> None:
-    assert validate_merge_holdout(0.81, 0.80) is True
-    assert validate_merge_holdout(0.79, 0.80) is False
-
 
 def test_merge_with_complementarity_selects_best_pair_and_creates_merged_edges(tmp_path: Path) -> None:
     state_store = ArtifactStateStore(tmp_path / "state")

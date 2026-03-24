@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from v3.algorithms.complementarity import component_coverage_distance
-from v3.algorithms.merge import MergeAdapter, validate_merge_holdout
+from v3.algorithms.merge import MergeAdapter
 from v3.contracts.exploration import (
     BranchDecisionKind,
     BranchDecisionSnapshot,
@@ -182,7 +182,7 @@ class BranchMergeService:
             if merge_design is not None and merge_design.holdout_score is not None
             else best_single_score + best_distance * 0.1
         )
-        if not validate_merge_holdout(holdout_score, best_single_score):
+        if not (holdout_score >= best_single_score):
             outcome = MergeOutcomeSnapshot(
                 outcome_id=f"merge-outcome-{uuid4().hex[:12]}",
                 run_id=request.run_id,

@@ -98,17 +98,9 @@ class LLMTraceMerger:
         joined = " + ".join(part for part in summaries if part) or task_summary
         return f"{action} for {scenario_name}: {joined}"
 
-
-def validate_merge_holdout(merged_score: float, best_single_score: float) -> bool:
-    """Phase 27 proxy gate; Phase 28 can replace this with true holdout evaluation."""
-
-    return merged_score >= best_single_score
-
-
 __all__ = [
     "LLMTraceMerger",
     "MergeAdapter",
     "MergeDesign",
     "SimpleTraceMerger",
-    "validate_merge_holdout",
 ]

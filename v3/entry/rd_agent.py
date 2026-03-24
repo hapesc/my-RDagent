@@ -19,8 +19,13 @@ from v3.orchestration.convergence_service import ConvergenceService
 from v3.orchestration.dag_service import DAGService
 from v3.orchestration.execution_policy import AgentExecutionPolicy
 from v3.orchestration.multi_branch_service import MultiBranchService
+from v3.orchestration.branch_share_service import BranchShareService
+from v3.orchestration.holdout_validation_service import HoldoutValidationService
+from v3.orchestration.memory_service import MemoryService
+from v3.orchestration.memory_state_store import MemoryStateStore
 from v3.orchestration.operator_guidance import (
     STAGE_TO_NEXT_SKILL,
+    build_finalization_guidance,
     build_paused_run_guidance,
     build_start_new_run_guidance,
     operator_guidance_to_dict,
@@ -31,6 +36,8 @@ from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.orchestration.skill_loop_service import SkillLoopService, StagePayload
 from v3.orchestration.stage_transition_service import StageTransitionService
+from v3.ports.holdout_port import EvaluationPort, HoldoutSplitPort, StratifiedKFoldSplitter
+from v3.ports.memory_store import MemoryStorePort
 from v3.ports.state_store import StateStorePort
 
 
@@ -246,6 +253,9 @@ def rd_agent(
     hypothesis_specs: list[HypothesisSpec] | None = None,
     auto_prune: bool = True,
     dispatcher=None,
+    memory_store: MemoryStorePort | None = None,
+    holdout_split_port: HoldoutSplitPort | None = None,
+    holdout_evaluation_port: EvaluationPort | None = None,
 ) -> dict[str, Any]:
     if branch_hypotheses and hypothesis_specs:
         raise ValueError("Provide either branch_hypotheses or hypothesis_specs, not both")
@@ -299,6 +309,46 @@ def rd_agent(
             if hypothesis_specs is not None and dag_service is not None
             else None
         )
+
+        # MemoryService requires MemoryStorePort, which is implemented by
+        # MemoryStateStore (NOT ArtifactStateStore -- they are independent classes).
+        # Use explicit memory_store if provided; otherwise construct from state_store._root.
+        if memory_store is None:
+            memory_store_root = getattr(state_store, "_root", ".state")
+            memory_store = MemoryStateStore(memory_store_root)
+        memory_service = MemoryService(memory_store)
+
+        # holdout_evaluation_port is REQUIRED when hypothesis_specs is provided.
+        # Without a real evaluator, HoldoutValidationService.finalize() would crash
+        # with AttributeError (None.evaluate()), and _try_finalize only catches
+        # ValueError/KeyError -- so the error propagates destructively.
+        if hypothesis_specs is not None and holdout_evaluation_port is None:
+            raise ValueError(
+                "holdout_evaluation_port is required when hypothesis_specs is provided. "
+                "Pass a real EvaluationPort for holdout finalization, or use "
+                "StubEvaluationPort() for testing."
+            )
+
+        branch_share_service = (
+            BranchShareService(
+                state_store,
+                memory_service,
+                board_service=board_service,
+                dag_service=dag_service,
+            )
+            if hypothesis_specs is not None and dag_service is not None
+            else None
+        )
+        holdout_validation_service = (
+            HoldoutValidationService(
+                state_store=state_store,
+                dag_service=dag_service,
+                split_port=holdout_split_port or StratifiedKFoldSplitter(),
+                evaluation_port=holdout_evaluation_port,
+            )
+            if hypothesis_specs is not None and dag_service is not None
+            else None
+        )
         multi_branch_service = MultiBranchService(
             state_store=state_store,
             workspace_manager=workspace_manager,
@@ -318,6 +368,8 @@ def rd_agent(
             dag_service=dag_service,
             prune_service=prune_service,
             select_parents_service=select_parents_service,
+            branch_share_service=branch_share_service,
+            holdout_validation_service=holdout_validation_service,
         )
         explore_round = multi_branch_service.run_exploration_round(
             ExploreRoundRequest(
@@ -332,6 +384,14 @@ def rd_agent(
                 run_id=run_snapshot.run_id,
             )
         )
+
+        finalization_guidance = None
+        finalization_submission_data = None
+        if explore_round.finalization_submission is not None:
+            fg = build_finalization_guidance(submission=explore_round.finalization_submission)
+            finalization_guidance = operator_guidance_to_dict(fg)
+            finalization_submission_data = explore_round.finalization_submission.model_dump(mode="json")
+
         run_snapshot = state_store.load_run_snapshot(run_snapshot.run_id) or run_snapshot
         return {
             "structuredContent": {
@@ -342,6 +402,8 @@ def rd_agent(
                 "selected_branch_id": converge_round.selected_branch_id,
                 "dispatches": explore_round.dispatched_branch_ids,
                 "merge_summary": converge_round.merge_summary,
+                "finalization_guidance": finalization_guidance,
+                "finalization_submission": finalization_submission_data,
             },
             "content": [
                 {

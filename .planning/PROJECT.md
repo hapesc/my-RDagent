@@ -51,6 +51,10 @@ playbook.
 - The direct V3 tool catalog now uses the same stage-skill follow-up vocabulary
   as the high-level skill surfaces, so public skill and tool guidance no longer
   drift on "what next?" semantics.
+- Phase 29 is complete: the public `rd_agent` entrypoint now wires
+  `HoldoutValidationService`, `BranchShareService`, and finalization operator
+  guidance into the production multi-branch path, so Phase 27/28 convergence
+  work is reachable from the real entry layer instead of isolated service tests.
 
 ## Current Milestone: v1.3 Pipeline Experience Hardening
 
@@ -155,4 +159,4 @@ None — v1.3 active requirements are complete.
 | Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight and state-truth hardening validated in Phase 23 |
 
 ---
-*Last updated: 2026-03-22 after completing Phase 24*
+*Last updated: 2026-03-24 after completing Phase 29*

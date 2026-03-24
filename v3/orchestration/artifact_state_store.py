@@ -15,6 +15,7 @@ from v3.contracts.exploration import (
     BranchDecisionSnapshot,
     DAGEdgeSnapshot,
     DAGNodeSnapshot,
+    FinalSubmissionSnapshot,
     HypothesisSpec,
 )
 from v3.contracts.recovery import RecoveryAssessment
@@ -262,6 +263,21 @@ class ArtifactStateStore(StateStorePort):
         return [
             DAGEdgeSnapshot.model_validate(json.loads(path.read_text())) for path in sorted(edges_dir.glob("*.json"))
         ]
+
+    def write_final_submission(self, submission: FinalSubmissionSnapshot) -> ArtifactRecord:
+        path = self._root / "runs" / submission.run_id / "exploration" / "final-submission.json"
+        self._write_model(path, submission)
+        return ArtifactRecord(
+            artifact_id=f"final-submission:{submission.run_id}",
+            storage_uri=str(path),
+            media_type="application/json",
+        )
+
+    def load_final_submission(self, run_id: str) -> FinalSubmissionSnapshot | None:
+        return self._read_model(
+            self._root / "runs" / run_id / "exploration" / "final-submission.json",
+            FinalSubmissionSnapshot,
+        )
 
     def _run_id_for_branch(self, branch_id: str) -> str | None:
         branch = self.load_branch_snapshot(branch_id)

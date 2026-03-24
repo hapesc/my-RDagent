@@ -13,7 +13,7 @@ from v3.contracts.run import RunBoardSnapshot
 from v3.contracts.stage import StageKey, StageSnapshot
 
 if TYPE_CHECKING:
-    from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot, HypothesisSpec
+    from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot, FinalSubmissionSnapshot, HypothesisSpec
 
 
 @dataclass(frozen=True)
@@ -87,3 +87,7 @@ class StateStorePort(Protocol):
     def write_dag_edge(self, edge: DAGEdgeSnapshot) -> ArtifactRecord: ...
 
     def list_dag_edges(self, run_id: str) -> list[DAGEdgeSnapshot]: ...
+
+    def write_final_submission(self, submission: FinalSubmissionSnapshot) -> ArtifactRecord: ...
+
+    def load_final_submission(self, run_id: str) -> FinalSubmissionSnapshot | None: ...

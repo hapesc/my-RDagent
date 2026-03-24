@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from v3.contracts.exploration import FinalSubmissionSnapshot
 from v3.contracts.operator_guidance import OperatorGuidance
 
 STAGE_TO_NEXT_SKILL = {
@@ -92,6 +93,40 @@ def build_stage_operator_guidance(
         current_blocker_reason=current_blocker_reason,
         repair_action=repair_action,
         next_step_detail=next_step_detail,
+    )
+
+
+def build_finalization_guidance(*, submission: FinalSubmissionSnapshot) -> OperatorGuidance:
+    ranking_lines = [
+        (
+            f"- rank={entry.rank} node_id={entry.node_id} branch_id={entry.branch_id} "
+            f"holdout_mean={entry.holdout_mean:.4f} holdout_std={entry.holdout_std:.4f}"
+        )
+        for entry in submission.ranked_candidates
+    ]
+    ranking_detail = "\n".join(ranking_lines) if ranking_lines else "- no ranked candidates recorded"
+    return OperatorGuidance(
+        recommended_next_skill="rd-evaluate",
+        current_state=(
+            "Current state: finalization complete for "
+            f"run {submission.run_id}; winner {submission.winner_node_id} "
+            f"from branch {submission.winner_branch_id}."
+        ),
+        routing_reason=(
+            "Reason: the run now has a holdout-backed final ranking, so the operator should review the "
+            "winner and the supporting leaderboard instead of continuing open-ended exploration."
+        ),
+        exact_next_action=(
+            "Next action: inspect the ranked final submission, confirm whether the winning node should become "
+            "the accepted outcome, and continue with evaluation or reporting."
+        ),
+        next_step_detail=(
+            f"winner_node_id={submission.winner_node_id} "
+            f"holdout_mean={submission.holdout_mean:.4f} "
+            f"holdout_std={submission.holdout_std:.4f}\n"
+            "ranking:\n"
+            f"{ranking_detail}"
+        ),
     )
 
 
@@ -216,6 +251,7 @@ def build_paused_run_guidance(
 __all__ = [
     "STAGE_TO_NEXT_SKILL",
     "_generate_branch_hypotheses",
+    "build_finalization_guidance",
     "build_stage_guidance_response",
     "build_stage_operator_guidance",
     "build_paused_run_guidance",

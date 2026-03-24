@@ -161,12 +161,12 @@ to discover how to start, pause, resume, or continue the loop.
 | STATE-01 | Phase 23 | Complete |
 | STATE-02 | Phase 23 | Complete |
 | GUIDE-05 | Phase 24 | Complete |
-| P26-DAG | Phase 26 | Planned |
-| P26-SELECT | Phase 26 | Planned |
-| P26-PRUNE | Phase 26 | Planned |
-| P26-DIVERSITY | Phase 26 | Planned |
-| P26-ROUND | Phase 26 | Planned |
-| P26-SCORE | Phase 26 | Planned |
+| P26-DAG | Phase 26 → 30 | Pending |
+| P26-SELECT | Phase 26 → 30 | Pending |
+| P26-PRUNE | Phase 26 → 30 | Pending |
+| P26-DIVERSITY | Phase 26 → 30 | Pending |
+| P26-ROUND | Phase 26 → 30 | Pending |
+| P26-SCORE | Phase 26 → 30 | Pending |
 | P27-KERNEL | Phase 27 | Complete |
 | P27-INJECT | Phase 27 | Complete |
 | P27-COMPONENT | Phase 27 | Complete |
@@ -174,19 +174,19 @@ to discover how to start, pause, resume, or continue the loop.
 | P27-PRUNE4 | Phase 27 | Complete |
 | P27-MERGE | Phase 27 | Complete |
 | P27-E2E | Phase 27 | Complete |
-| P28-HOLDOUT | Phase 28 | Planned |
-| P28-RANK | Phase 28 | Planned |
-| P28-COLLECT | Phase 28 | Planned |
-| P28-ACTIVATE | Phase 28 | Planned |
-| P28-REPLACE | Phase 28 | Planned |
-| P28-SUBMIT | Phase 28 | Planned |
-| P28-PRESENT | Phase 28 | Planned |
+| P28-HOLDOUT | Phase 28 → 29, 30 | Pending |
+| P28-RANK | Phase 28 → 30 | Pending |
+| P28-COLLECT | Phase 28 → 30 | Pending |
+| P28-ACTIVATE | Phase 28 → 29, 30 | Pending |
+| P28-REPLACE | Phase 28 → 30 | Pending |
+| P28-SUBMIT | Phase 28 → 29, 30 | Pending |
+| P28-PRESENT | Phase 28 → 29, 30 | Pending |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete
-- v1.3 convergence requirements: 20 total (13 Phase 26-27 + 7 Phase 28), completion tracked in the traceability table above
+- v1.3 convergence requirements: 20 total (13 Phase 26-28 implemented, gap closure via Phase 29-30), completion tracked in the traceability table above
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-24 after Phase 28 planning*
+*Last updated: 2026-03-24 after gap closure phases 29-30 added*

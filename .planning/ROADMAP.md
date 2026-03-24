@@ -45,6 +45,10 @@ state-aware guidance.
   Layers 2-3: global best injection, probabilistic exchange, unified merge.
 - [x] **Phase 28: Aggregated validation with holdout calibration and standardized ranking** - (completed 2026-03-24)
   Layer 4: holdout re-evaluation, standardized ranking, final submission.
+- [ ] **Phase 29: Entry-layer service wiring** -
+  Wire HoldoutValidationService, BranchShareService, and finalization guidance into rd_agent entry.
+- [ ] **Phase 30: Verification and traceability closure** -
+  Generate VERIFICATION.md for Phase 26 and 28, close 13 REQUIREMENTS.md checkboxes.
 
 ## Phase Details
 
@@ -104,6 +108,8 @@ truthful, state-aware answer.
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
+| 29. Entry-layer service wiring | 0/0 | Pending | — |
+| 30. Verification and traceability closure | 0/0 | Pending | — |
 
 ## Planning Defaults
 
@@ -237,3 +243,33 @@ Plans:
 - [ ] 28-02-PLAN.md — HoldoutValidationService + proxy replacement (P28-HOLDOUT, P28-REPLACE, P28-COLLECT)
 - [ ] 28-03-PLAN.md — Activation triggers + operator presentation (P28-ACTIVATE, P28-PRESENT)
 - [ ] 28-04-PLAN.md — Full lifecycle integration test (all P28-* requirements)
+
+### Phase 29: Entry-layer service wiring
+**Goal**: Wire Phase 27 and Phase 28 services into the public rd_agent entrypoint
+so that cross-branch sharing, holdout finalization, and operator guidance are
+reachable through the production code path — not just isolated tests.
+**Depends on**: Phase 28
+**Requirements**: P28-HOLDOUT, P28-ACTIVATE, P28-SUBMIT, P28-PRESENT, P27-KERNEL, P27-INJECT, GUIDE-05
+**Gap Closure**: Closes 3 integration gaps and 2 broken E2E flows from audit
+**Success Criteria** (what must be TRUE):
+  1. `MultiBranchService` in `rd_agent.py` is constructed with
+     `holdout_validation_service` and `branch_share_service`.
+  2. `build_finalization_guidance()` is called in the entry layer and its output
+     reaches the operator through the public response payload.
+  3. An integration test proves the full flow: rd_agent → exploration →
+     holdout finalization → winner, end-to-end through the public entry.
+**Plans**: TBD
+
+### Phase 30: Verification and traceability closure
+**Goal**: Generate formal VERIFICATION.md for Phase 26 and Phase 28, and close
+all 13 unchecked REQUIREMENTS.md checkboxes that the audit identified as partial.
+**Depends on**: Phase 29
+**Requirements**: P26-DAG, P26-SELECT, P26-PRUNE, P26-DIVERSITY, P26-ROUND, P26-SCORE, P28-HOLDOUT, P28-RANK, P28-COLLECT, P28-ACTIVATE, P28-REPLACE, P28-SUBMIT, P28-PRESENT
+**Gap Closure**: Closes documentation/traceability gaps from audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 26 has a VERIFICATION.md with goal-backward cross-check confirming
+     all 6 P26-* requirements are satisfied.
+  2. Phase 28 has a VERIFICATION.md with goal-backward cross-check confirming
+     all 7 P28-* requirements are satisfied (requires Phase 29 entry wiring).
+  3. All 13 REQUIREMENTS.md checkboxes are `[x]` with status `Complete`.
+**Plans**: TBD

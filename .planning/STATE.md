@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-current_phase: 27
-current_phase_name: cross-branch-communication-and-multi-trace-solution-merge
-current_plan: 5
-status: planning
+current_phase: 28
+current_phase_name: aggregated-validation-with-holdout-calibration-and-standardized-ranking
+current_plan: 1
+status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-03-24T02:21:05.100Z"
+last_updated: "2026-03-24T04:04:53.125Z"
 last_activity: 2026-03-24
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 23
+  completed_plans: 20
   percent: 100
 ---
 
@@ -26,19 +26,19 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Phase 28 planning after verified Phase 27 completion
+**Current focus:** Phase 28 — aggregated-validation-with-holdout-calibration-and-standardized-ranking
 
 ## Position
 
-**Current Phase:** 27
-**Current Phase Name:** cross-branch-communication-and-multi-trace-solution-merge
+**Current Phase:** 28
+**Current Phase Name:** aggregated-validation-with-holdout-calibration-and-standardized-ranking
 **Total Phases:** 7
-**Current Plan:** 5
-**Total Plans in Phase:** 5
+**Current Plan:** 1
+**Total Plans in Phase:** 4
 **Milestone:** v1.3 pipeline experience hardening  
 **Roadmap span:** Phases 22-28
 **Next phase:** Phase 28 planning
-**Status:** Phase 27 verified complete; ready to plan Phase 28
+**Status:** Executing Phase 28
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-24
@@ -100,6 +100,7 @@ Quick task `260324-dmn` refactored all 6 skills: GSD command/workflow separation
 - [Phase 27]: Hypothesis component classes are now persisted per branch and reused by pruning, sharing, and later merge logic — Signal 4 cannot be truthful if component metadata is reconstructed heuristically or fetched through getattr hacks at each call site.
 - [Phase 27]: Complementary merge now separates pair selection, synthesis, holdout gating, and MERGED-edge recording into one explicit pipeline — Phase 27 merge needs explainable failure points; burying all of that inside the old shortlist merge path would hide whether the rejection came from pair choice, synthesis, or holdout.
 - [Phase 27]: Phase 27 integration coverage now runs the real persistence and orchestration stack for share, prune, and merge instead of concept-only mocks — The honest verification target is the service graph and its DAG artifacts, not a hand-wired approximation that never exercises persisted component metadata.
+- [Phase 28]: Phase 28 foundations now separate exploration contracts, holdout ports, and pure ranking helpers. — This keeps finalization types importable without circular dependencies and gives later plans one canonical holdout surface to build on.
 
 ### Pending Todos
 

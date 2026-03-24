@@ -103,7 +103,7 @@ truthful, state-aware answer.
 | 25. Fix QA-discovered operator guidance and multi-branch UX gaps | 3/3 | Complete   | 2026-03-23 |
 | 26. Adaptive DAG path management | 6/6 | Complete | 2026-03-23 |
 | 27. Cross-branch communication and multi-trace merge | 5/5 | Complete   | 2026-03-24 |
-| 28. Aggregated validation with holdout calibration | 0/4 | Planned | — |
+| 28. Aggregated validation with holdout calibration | 1/4 | In Progress|  |
 
 ## Planning Defaults
 
@@ -231,7 +231,7 @@ standardized ranking for final submission selection.
     these directly for ranking.
   - `max_rounds` on RunSnapshot defines the exploration budget; Phase 28
     activates after `current_round >= max_rounds`.
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 Plans:
 - [ ] 28-01-PLAN.md — Contracts, ports, and pure algorithms (P28-HOLDOUT, P28-RANK, P28-COLLECT, P28-SUBMIT)
 - [ ] 28-02-PLAN.md — HoldoutValidationService + proxy replacement (P28-HOLDOUT, P28-REPLACE, P28-COLLECT)

@@ -222,18 +222,21 @@ def test_no_finalization_without_holdout_specs(tmp_path):
 # ------------------------------------------------------------------
 
 
-class _ScoreByBranchPort:
-    """Evaluation port that returns deterministic scores per branch."""
+class _ScoreByLabelPort:
+    """Evaluation port that returns deterministic scores per branch label."""
 
-    def __init__(self, branch_scores: dict[str, float], state_store: ArtifactStateStore) -> None:
-        self._branch_scores = branch_scores
+    def __init__(self, label_scores: dict[str, float], state_store: ArtifactStateStore) -> None:
+        self._label_scores = label_scores
         self._state_store = state_store
 
     def evaluate(self, *, candidate_node_id: str, fold) -> float:
         node = self._state_store.load_dag_node(candidate_node_id)
         if node is None:
             return 0.5
-        return self._branch_scores.get(node.branch_id, 0.5)
+        branch = self._state_store.load_branch_snapshot(node.branch_id)
+        if branch is None:
+            return 0.5
+        return self._label_scores.get(branch.label, 0.5)
 
 
 def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
@@ -255,14 +258,14 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
 
     run_service = RunBoardService(state_store=state_store, execution_port=_make_execution_port())
 
-    # Branch 0 (primary) scores 0.9, branch 1 (alt-a) scores 0.5, branch 2 (alt-b) scores 0.3
-    evaluation_port = _ScoreByBranchPort(
-        branch_scores={},  # will be populated based on actual branch IDs
+    evaluation_port = _ScoreByLabelPort(
+        label_scores={
+            "primary": 0.1,
+            "alt-a": 0.2,
+            "alt-b": 0.9,
+        },
         state_store=state_store,
     )
-    # We need to capture the branch IDs after they're created.
-    # Use StubEvaluationPort which returns 0.5 for all candidates -- the winner
-    # is the one with highest holdout_mean (all tied at 0.5, first in sorted order wins).
     result = rd_agent(
         title="E2E test",
         task_summary="Test full lifecycle.",
@@ -272,7 +275,7 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
         execution_mode=ExecutionMode.UNATTENDED,
         max_stage_iterations=1,
         hypothesis_specs=_hypothesis_specs_3(),
-        holdout_evaluation_port=StubEvaluationPort(),
+        holdout_evaluation_port=evaluation_port,
         holdout_split_port=StubHoldoutSplitPort(),
         stage_inputs={
             StageKey.FRAMING: {"summary": "Framing.", "artifact_ids": ["a1"]},
@@ -294,10 +297,29 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
     assert "finalization_guidance" in sc
     assert isinstance(sc["finalization_guidance"], dict)
     assert "finalization" in sc["finalization_guidance"]["current_state"].lower()
+    assert sc["selected_branch_id"] == sc["finalization_submission"]["winner_branch_id"]
+    assert sc["recommended_next_step"] == "review final submission"
+    assert "convergence skipped" in sc["merge_summary"].lower()
+    winner_node = state_store.load_dag_node(sc["finalization_submission"]["winner_node_id"])
+    assert winner_node is not None
+    winner_branch = state_store.load_branch_snapshot(winner_node.branch_id)
+    assert winner_branch is not None
+    assert winner_branch.label == "alt-b"
     # Standard keys still present
     assert "run" in sc
     assert "board" in sc
     assert "dispatches" in sc
+
+
+def test_hypothesis_specs_require_holdout_evaluation_port(tmp_path):
+    """Structured hypothesis entry requires an evaluation port for holdout finalization."""
+    from v3.entry.rd_agent import rd_agent
+
+    kwargs = _base_kwargs(tmp_path, hypothesis_specs=_hypothesis_specs_2())
+    kwargs.pop("holdout_evaluation_port")
+
+    with pytest.raises(ValueError, match="holdout_evaluation_port is required when hypothesis_specs is provided"):
+        rd_agent(**kwargs)
 
 
 # ------------------------------------------------------------------

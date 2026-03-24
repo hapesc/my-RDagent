@@ -1,9 +1,9 @@
 ---
 phase: 29
 slug: entry-layer-service-wiring
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-24
 ---
 
@@ -38,13 +38,14 @@ created: 2026-03-24
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 29-01-01 | 01 | 1 | P28-HOLDOUT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_multi_branch_service_receives_holdout_service -x` | ❌ W0 | ⬜ pending |
-| 29-01-02 | 01 | 1 | P28-ACTIVATE | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_auto_finalization_triggers_through_entry -x` | ❌ W0 | ⬜ pending |
-| 29-01-03 | 01 | 1 | P28-SUBMIT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_finalization_submission_in_response -x` | ❌ W0 | ⬜ pending |
-| 29-01-04 | 01 | 1 | P28-PRESENT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_finalization_guidance_in_response -x` | ❌ W0 | ⬜ pending |
-| 29-01-05 | 01 | 1 | P27-KERNEL | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_branch_share_service_injected -x` | ❌ W0 | ⬜ pending |
-| 29-01-06 | 01 | 1 | P27-INJECT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_global_best_injection_through_entry -x` | ❌ W0 | ⬜ pending |
-| 29-01-07 | 01 | 1 | GUIDE-05 | e2e integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_e2e_rd_agent_to_winner -x` | ❌ W0 | ⬜ pending |
+| 29-01-01 | 01 | 1 | P28-HOLDOUT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_multi_branch_receives_holdout_and_share_services -x` | ✅ | ✅ green |
+| 29-01-02 | 01 | 1 | P28-ACTIVATE | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_finalization_triggers_through_entry -x` | ✅ | ✅ green |
+| 29-01-03 | 01 | 1 | P28-SUBMIT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_finalization_triggers_through_entry -x` | ✅ | ✅ green |
+| 29-01-04 | 01 | 1 | P28-PRESENT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_finalization_triggers_through_entry -x` | ✅ | ✅ green |
+| 29-01-05 | 01 | 1 | P27-KERNEL | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_branch_share_service_injected -x` | ✅ | ✅ green |
+| 29-01-06 | 01 | 1 | P27-INJECT | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_global_best_injection_through_entry -x` | ✅ | ✅ green |
+| 29-01-07 | 01 | 1 | GUIDE-05 | e2e integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_e2e_rd_agent_to_winner -x` | ✅ | ✅ green |
+| 29-01-08 | 01 | 1 | Contract hardening | integration | `.venv/bin/pytest tests/test_phase29_entry_wiring.py::test_hypothesis_specs_require_holdout_evaluation_port -x` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,7 +53,7 @@ created: 2026-03-24
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_phase29_entry_wiring.py` — stubs for all 7 requirements; no conftest changes needed (existing ArtifactStateStore + StubHoldoutSplitPort + StubEvaluationPort are sufficient)
+- [x] `tests/test_phase29_entry_wiring.py` — all Phase 29 entry-wiring requirements plus the follow-up contract guard regression are covered with executable tests
 
 *Existing infrastructure covers shared fixtures.*
 
@@ -66,11 +67,11 @@ created: 2026-03-24
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete — superseded by `29-VERIFICATION.md` final verifier sign-off and the 55-test closeout regression bundle.

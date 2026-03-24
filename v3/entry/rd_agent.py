@@ -257,6 +257,14 @@ def rd_agent(
     holdout_split_port: HoldoutSplitPort | None = None,
     holdout_evaluation_port: EvaluationPort | None = None,
 ) -> dict[str, Any]:
+    """Public orchestration entrypoint for single-branch and multi-branch V3 runs.
+
+    `branch_hypotheses` keeps the legacy label-only multi-branch path. Passing
+    `hypothesis_specs` activates the structured multi-branch path, which now
+    depends on holdout-backed finalization; therefore `holdout_evaluation_port`
+    is required and `holdout_split_port` is optional (defaulting to
+    `StratifiedKFoldSplitter()`).
+    """
     if branch_hypotheses and hypothesis_specs:
         raise ValueError("Provide either branch_hypotheses or hypothesis_specs, not both")
 
@@ -379,29 +387,45 @@ def rd_agent(
                 auto_prune=auto_prune,
             )
         )
-        converge_round = multi_branch_service.run_convergence_round(
-            ConvergeRoundRequest(
-                run_id=run_snapshot.run_id,
-            )
-        )
-
         finalization_guidance = None
         finalization_submission_data = None
+        response_board = explore_round.board
+        selected_branch_id = explore_round.selected_branch_id
+        recommended_next_step = explore_round.recommended_next_step
+        merge_summary = "Exploration round completed; convergence not yet evaluated."
         if explore_round.finalization_submission is not None:
-            fg = build_finalization_guidance(submission=explore_round.finalization_submission)
+            submission = explore_round.finalization_submission
+            fg = build_finalization_guidance(submission=submission)
             finalization_guidance = operator_guidance_to_dict(fg)
-            finalization_submission_data = explore_round.finalization_submission.model_dump(mode="json")
+            finalization_submission_data = submission.model_dump(mode="json")
+            selected_branch_id = submission.winner_branch_id
+            recommended_next_step = "review final submission"
+            merge_summary = (
+                "Holdout finalization selected winner "
+                f"{submission.winner_node_id} from branch {submission.winner_branch_id}; "
+                "convergence skipped because the holdout ranking is authoritative."
+            )
+        else:
+            converge_round = multi_branch_service.run_convergence_round(
+                ConvergeRoundRequest(
+                    run_id=run_snapshot.run_id,
+                )
+            )
+            response_board = converge_round.board
+            selected_branch_id = converge_round.selected_branch_id
+            recommended_next_step = converge_round.recommended_next_step
+            merge_summary = converge_round.merge_summary
 
         run_snapshot = state_store.load_run_snapshot(run_snapshot.run_id) or run_snapshot
         return {
             "structuredContent": {
                 "run": run_snapshot.model_dump(mode="json"),
-                "board": converge_round.board.model_dump(mode="json"),
-                "mode": converge_round.board.mode.value,
-                "recommended_next_step": converge_round.recommended_next_step,
-                "selected_branch_id": converge_round.selected_branch_id,
+                "board": response_board.model_dump(mode="json"),
+                "mode": response_board.mode.value,
+                "recommended_next_step": recommended_next_step,
+                "selected_branch_id": selected_branch_id,
                 "dispatches": explore_round.dispatched_branch_ids,
-                "merge_summary": converge_round.merge_summary,
+                "merge_summary": merge_summary,
                 "finalization_guidance": finalization_guidance,
                 "finalization_submission": finalization_submission_data,
             },
@@ -410,7 +434,7 @@ def rd_agent(
                     "type": "text",
                     "text": (
                         f"Multi-branch round explored {len(explore_round.dispatched_branch_ids)} branch(es) "
-                        f"and selected {converge_round.selected_branch_id}."
+                        f"and selected {selected_branch_id}."
                     ),
                 }
             ],

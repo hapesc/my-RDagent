@@ -168,6 +168,19 @@ the caller to choose direct primitives up front. It is also the correct public
 entry when the caller only says "help me do this task" or "what should I do
 next?" and needs state-aware routing.
 
+For advanced Python-entrypoint callers, the multi-branch surface now has two
+distinct contracts:
+
+- `branch_hypotheses`: legacy label-only multi-branch exploration
+- `hypothesis_specs`: structured multi-branch exploration with DAG + holdout
+  finalization; this path requires `holdout_evaluation_port` and may optionally
+  override `holdout_split_port` (default: `StratifiedKFoldSplitter()`)
+
+When structured multi-branch exploration reaches finalization, the public
+response should be treated as finalization-first: the selected branch is the
+holdout winner and the next action is to review the final submission rather
+than continue convergence/fallback routing.
+
 ## Stage Skills
 
 This section supports the `Continue` step above. When the caller already knows

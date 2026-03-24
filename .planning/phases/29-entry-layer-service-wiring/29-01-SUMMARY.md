@@ -70,6 +70,28 @@ completed: 2026-03-24
 - Added holdout_evaluation_port required-parameter guard (ValueError) preventing AttributeError propagation through _try_finalize
 - Created 8 integration tests proving: service injection, finalization trigger, no-finalization guard, E2E winner flow, P27-INJECT paths, and MemoryStateStore DI
 
+## Post-review closeout
+
+After Phase 29 review, we applied one follow-up hardening pass before closing
+the phase:
+
+- Fixed the public response semantics so finalization is authoritative: when
+  `explore_round.finalization_submission` exists, `rd_agent()` now returns the
+  holdout winner as `selected_branch_id`, sets
+  `recommended_next_step="review final submission"`, and skips convergence
+  fallback in the public payload.
+- Strengthened the entry-level regression by replacing the placeholder
+  equal-score E2E case with a deterministic label-scored holdout evaluator that
+  proves the winner branch is surfaced truthfully.
+- Added the narrow contract regression asserting `hypothesis_specs` requires
+  `holdout_evaluation_port`.
+- Documented the structured multi-branch contract in `README.md`,
+  `skills/rd-agent/SKILL.md`, and
+  `skills/rd-agent/workflows/start-contract.md`, including the hard dependency
+  on `holdout_evaluation_port`.
+- Restored the rd-agent skill contract test surface by adding the missing
+  skill-local `skills/rd-agent/references/failure-routing.md` reference.
+
 ## Task Commits
 
 Each task was committed atomically:
@@ -83,8 +105,12 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 - `v3/entry/rd_agent.py` - Added imports for BranchShareService, HoldoutValidationService, MemoryService, MemoryStateStore; added memory_store, holdout_split_port, holdout_evaluation_port params; wired services with unified guard; added finalization guidance to response
-- `tests/test_phase29_entry_wiring.py` - 8 integration tests (426 lines) proving full E2E flow through public entrypoint
+- `tests/test_phase29_entry_wiring.py` - Integration tests proving full E2E flow through public entrypoint, finalization-first response semantics, and the required holdout-evaluation-port guard
 - `tests/test_phase26_integration.py` - Added holdout_evaluation_port to rd_agent call (regression fix from new required-param guard)
+- `README.md` - Documented the structured multi-branch contract and finalization-first public response semantics
+- `skills/rd-agent/SKILL.md` - Declared the structured multi-branch optional fields and preserved the Phase 20 public-skill contract headings
+- `skills/rd-agent/workflows/start-contract.md` - Documented `hypothesis_specs`, `holdout_evaluation_port`, and `holdout_split_port` in the recommended multi-branch contract
+- `skills/rd-agent/references/failure-routing.md` - Added the missing skill-local failure-routing reference used by the rd-agent contract tests
 
 ## Decisions Made
 - MemoryStateStore constructed as fallback from `state_store._root` when `memory_store` param is None -- keeps backward compatibility while ensuring correct MemoryStorePort implementation
@@ -119,6 +145,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 - All Phase 27/28 services are now reachable through the public rd_agent entrypoint
 - Phase 29 closes the 3 integration gaps and 2 broken E2E flows identified in v1.3 milestone audit
+- The public entry response is now unambiguous at finalization time: callers no longer need to reconcile a convergence fallback branch with a distinct holdout winner
 - Full EmbeddingPort wiring for SHARED DAG edge creation deferred to future phase (documented with TODO comments)
 - v1.3 milestone is ready for verification and closeout
 

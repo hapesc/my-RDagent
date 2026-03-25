@@ -137,7 +137,7 @@ def test_prune_policy_keeps_at_least_one_active_branch() -> None:
     from rd_agent.orchestration.branch_prune_service import BranchPruneService
     from rd_agent.tools.exploration_tools import rd_branch_prune
 
-    state_store = ArtifactStateStore(Path.cwd() / ".tmp-phase16-prune-state")
+    state_store = ArtifactStateStore(Path(__file__).resolve().parent / "fixtures" / "phase16-prune-state")
     branches = [
         _branch("branch-prune-a", exploration_priority=0.6, result_quality=0.92, current_stage_key=StageKey.BUILD),
         _branch("branch-prune-b", exploration_priority=0.45, result_quality=0.42, current_stage_key=StageKey.BUILD),

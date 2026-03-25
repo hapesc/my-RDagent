@@ -5,7 +5,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.claude/settings.local.json
-.claude/skills/
-.codex/skills/
+.DS_Store
+.claude/
+.codex/
 .gstack/
+.tmp/
+.tmp-*/
+.ruff_cache/

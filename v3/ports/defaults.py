@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import random
 from collections import Counter
@@ -68,7 +69,7 @@ class DefaultEmbeddingPort:
             for token, count in term_frequency.items():
                 tf_value = count / max(len(tokens), 1)
                 idf_value = math.log((1 + document_count) / (1 + document_frequency.get(token, 0))) + 1.0
-                bucket = hash(token) % self._dim
+                bucket = int.from_bytes(hashlib.sha256(token.encode("utf-8")).digest()[:8], "big") % self._dim
                 vector[bucket] += tf_value * idf_value
             norm = math.sqrt(sum(value * value for value in vector))
             if norm > 0.0:

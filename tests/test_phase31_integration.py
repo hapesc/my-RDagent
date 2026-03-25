@@ -218,6 +218,9 @@ def test_rd_agent_with_holdout_port_sets_finalization_skipped_false(tmp_path, mo
     result = rd_agent(**kwargs)
 
     assert result["structuredContent"]["finalization_skipped"] is False
+    assert result["structuredContent"]["finalization_guidance"] is not None
+    assert "exploring round 1/1" in result["structuredContent"]["finalization_guidance"]["current_state"]
+    assert result["structuredContent"]["board"]["mode"] == "finalized"
 
 
 def test_explore_round_request_accepts_branch_list():

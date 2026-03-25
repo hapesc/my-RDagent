@@ -263,10 +263,11 @@ def rd_agent(
     """Public orchestration entrypoint for single-branch and multi-branch V3 runs.
 
     `branch_hypotheses` keeps the legacy label-only multi-branch path. Passing
-    `hypothesis_specs` activates the structured multi-branch path, which now
-    depends on holdout-backed finalization; therefore `holdout_evaluation_port`
-    is required and `holdout_split_port` is optional (defaulting to
-    `StratifiedKFoldSplitter()`).
+    `hypothesis_specs` activates the structured multi-branch path. When
+    `holdout_evaluation_port` is present, the run can perform holdout-backed
+    finalization and `holdout_split_port` remains optional (defaulting to
+    `StratifiedKFoldSplitter()`). Without an evaluation port, entry degrades
+    gracefully and skips finalization.
     """
     if branch_hypotheses and hypothesis_specs:
         raise ValueError("Provide either branch_hypotheses or hypothesis_specs, not both")
@@ -391,10 +392,12 @@ def rd_agent(
         merge_summary = "Exploration round completed; convergence not yet evaluated."
         if explore_round.finalization_submission is not None:
             submission = explore_round.finalization_submission
+            latest_run_snapshot = state_store.load_run_snapshot(run_snapshot.run_id) or run_snapshot
+            response_board = board_service.get_board(run_snapshot.run_id)
             fg = build_finalization_guidance(
                 submission=submission,
-                current_round=run_snapshot.current_round,
-                max_rounds=run_snapshot.max_rounds,
+                current_round=latest_run_snapshot.current_round,
+                max_rounds=latest_run_snapshot.max_rounds,
             )
             finalization_guidance = operator_guidance_to_dict(fg)
             finalization_submission_data = submission.model_dump(mode="json")

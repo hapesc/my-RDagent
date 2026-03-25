@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+
 import pytest
 
 from v3.algorithms.complementarity import cosine_similarity
@@ -119,3 +123,28 @@ def test_default_embedding_port_similarity_is_higher_for_similar_texts() -> None
     dissimilar = cosine_similarity(vectors[0], vectors[2])
 
     assert similar > dissimilar
+
+
+def test_default_embedding_port_is_stable_across_python_hash_seeds() -> None:
+    script = "\n".join(
+        [
+            "import json",
+            "from v3.ports.defaults import DefaultEmbeddingPort",
+            "vectors = DefaultEmbeddingPort(dim=32).embed(['same text', 'different words'])",
+            "print(json.dumps(vectors))",
+        ]
+    )
+
+    def _render(seed: str) -> str:
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = seed
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        return completed.stdout.strip()
+
+    assert _render("1") == _render("2")

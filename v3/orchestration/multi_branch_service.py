@@ -434,6 +434,10 @@ class MultiBranchService:
             return False
         return run.current_round >= run.max_rounds and self._holdout_validation_service is not None
 
+    def has_holdout_finalization(self) -> bool:
+        """Report whether holdout-backed finalization is configured."""
+        return self._holdout_validation_service is not None
+
     # ------------------------------------------------------------------
     # Early finalization
     # ------------------------------------------------------------------

@@ -299,6 +299,7 @@ class FinalizeEarlyResult(BaseModel):
     finalized: bool
     run_id: str = Field(min_length=1)
     exploration_mode: str = Field(min_length=1)
+    submission: FinalSubmissionSnapshot
 
 
 class StageGetRequest(BaseModel):

@@ -29,7 +29,7 @@ def rd_should_finalize(
         should_finalize=should_finalize,
         current_round=run.current_round,
         max_rounds=run.max_rounds,
-        holdout_available=should_finalize,
+        holdout_available=multi_branch_service.has_holdout_finalization(),
     )
     return {
         "structuredContent": result.model_dump(mode="json"),
@@ -54,12 +54,10 @@ def rd_finalize_early(
         finalized=True,
         run_id=request.run_id,
         exploration_mode="finalized",
+        submission=submission,
     )
     return {
-        "structuredContent": {
-            **result.model_dump(mode="json"),
-            "submission": submission.model_dump(mode="json"),
-        },
+        "structuredContent": result.model_dump(mode="json"),
         "content": [
             {
                 "type": "text",

@@ -411,10 +411,23 @@ class MultiBranchService:
             self._state_store.write_run_snapshot(run.model_copy(update={"current_round": new_round}))
             if new_round >= run.max_rounds and self._holdout_validation_service is not None:
                 try:
-                    return self._holdout_validation_service.finalize(run_id=run_id)
+                    submission = self._holdout_validation_service.finalize(run_id=run_id)
+                    updated_run = self._state_store.load_run_snapshot(run_id)
+                    if updated_run is not None:
+                        self._state_store.write_run_snapshot(
+                            updated_run.model_copy(update={"exploration_mode": ExplorationMode.FINALIZED})
+                        )
+                    return submission
                 except (ValueError, KeyError):
                     return None
         return None
+
+    def should_finalize(self, run_id: str) -> bool:
+        """Query whether the run is ready for finalization."""
+        run = self._state_store.load_run_snapshot(run_id)
+        if run is None:
+            return False
+        return run.current_round >= run.max_rounds and self._holdout_validation_service is not None
 
     # ------------------------------------------------------------------
     # Early finalization
@@ -425,7 +438,13 @@ class MultiBranchService:
 
         if self._holdout_validation_service is None:
             raise ValueError("Cannot finalize: no HoldoutValidationService configured")
-        return self._holdout_validation_service.finalize(run_id=run_id)
+        submission = self._holdout_validation_service.finalize(run_id=run_id)
+        run = self._state_store.load_run_snapshot(run_id)
+        if run is not None:
+            self._state_store.write_run_snapshot(
+                run.model_copy(update={"exploration_mode": ExplorationMode.FINALIZED})
+            )
+        return submission
 
     # ------------------------------------------------------------------
     # Convergence round

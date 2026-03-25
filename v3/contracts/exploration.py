@@ -14,6 +14,7 @@ class ExplorationMode(StrEnum):
 
     EXPLORATION = "exploration"
     CONVERGENCE = "convergence"
+    FINALIZED = "finalized"
 
 
 class BranchResolution(StrEnum):

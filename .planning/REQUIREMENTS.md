@@ -134,11 +134,11 @@ to discover how to start, pause, resume, or continue the loop.
 
 ### Finalization State and Default Ports (Phase 31)
 
-- [ ] **P31-MODE**: ExplorationMode extended with FINALIZED member. Both
+- [x] **P31-MODE**: ExplorationMode extended with FINALIZED member. Both
   _try_finalize() and finalize_early() write FINALIZED to run snapshot on
   success. BranchBoardSnapshot.mode propagates FINALIZED from run state.
   Public should_finalize(run_id) method on MultiBranchService.
-- [ ] **P31-DEFAULTS**: Default port implementations in v3/ports/defaults.py:
+- [x] **P31-DEFAULTS**: Default port implementations in v3/ports/defaults.py:
   DefaultHoldoutSplitPort (real shuffle K-fold), DefaultEvaluationPort
   (parameterized eval_fn), DefaultEmbeddingPort (TF-IDF, zero external deps).
 - [ ] **P31-DEGRADE**: rd_agent() removes ValueError on missing

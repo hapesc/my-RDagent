@@ -120,7 +120,7 @@ Plans:
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
 | 29. Entry-layer service wiring | 0/1 | Complete    | 2026-03-24 |
 | 30. Verification and traceability closure | 1/1 | Complete    | 2026-03-24 |
-| 31. Finalization state interface enhancement and default external ports | 0/2 | Planning complete | - |
+| 31. Finalization state interface enhancement and default external ports | 1/2 | In Progress|  |
 
 ## Planning Defaults
 
@@ -311,7 +311,7 @@ ports such as holdout and embedding.
   5. CLI tools rd_should_finalize and rd_finalize_early are registered in
      the tool catalog.
   6. Round progress appears in operator guidance text.
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 31-01-PLAN.md — FINALIZED enum + mode write + should_finalize + default ports (P31-MODE, P31-DEFAULTS)

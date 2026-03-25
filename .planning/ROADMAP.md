@@ -24,7 +24,7 @@ operator-facing next-step guidance.
 assistant than an exposed state machine by improving routing, preflight, and
 state-aware guidance.
 
-**Coverage:** 7/7 active v1 requirements mapped + 4 new phases for multi-branch convergence
+**Coverage:** 7/7 active v1 requirements mapped + 5 follow-on hardening phases
 
 ## Phases
 
@@ -49,6 +49,10 @@ state-aware guidance.
   Wire HoldoutValidationService, BranchShareService, and finalization guidance into rd_agent entry.
 - [x] **Phase 30: Verification and traceability closure** - (completed 2026-03-24)
   Generate VERIFICATION.md for Phase 26 and 28, close 13 REQUIREMENTS.md checkboxes.
+- [ ] **Phase 31: Finalization state interface enhancement and default external ports** -
+  Clarify the downstream finalization-vs-exploration state surface and add
+  default implementations for external dependency ports such as holdout and
+  embedding.
 
 ## Phase Details
 
@@ -116,6 +120,7 @@ Plans:
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
 | 29. Entry-layer service wiring | 0/1 | Complete    | 2026-03-24 |
 | 30. Verification and traceability closure | 1/1 | Complete    | 2026-03-24 |
+| 31. Finalization state interface enhancement and default external ports | 0/2 | Planning complete | - |
 
 ## Planning Defaults
 
@@ -285,3 +290,29 @@ all 13 unchecked REQUIREMENTS.md checkboxes that the audit identified as partial
 **Plans:** 1/1 plans complete
 Plans:
 - [ ] 30-01-PLAN.md — Generate Phase 26+28 VERIFICATION.md and close 13 REQUIREMENTS.md checkboxes
+
+### Phase 31: Finalization state interface enhancement and default external ports
+
+**Goal:** Make the finalization-state interface explicit enough that downstream
+callers can reliably distinguish exploration from finalization, while reducing
+setup friction by providing default implementations for external dependency
+ports such as holdout and embedding.
+**Requirements**: P31-MODE, P31-DEFAULTS, P31-DEGRADE, P31-HYBRID, P31-CLI, P31-PROGRESS
+**Depends on:** Phase 30
+**Success Criteria** (what must be TRUE):
+  1. ExplorationMode.FINALIZED is a valid enum member and both finalization
+     paths write it to run state on success.
+  2. DefaultHoldoutSplitPort, DefaultEvaluationPort, and DefaultEmbeddingPort
+     exist in v3/ports/defaults.py with production-viable implementations.
+  3. rd_agent() does not raise when holdout_evaluation_port is absent;
+     finalization_skipped surfaces in structuredContent.
+  4. Hybrid sharing merges kernel and agent-injected candidates with
+     correct deduplication.
+  5. CLI tools rd_should_finalize and rd_finalize_early are registered in
+     the tool catalog.
+  6. Round progress appears in operator guidance text.
+**Plans:** 2 plans
+
+Plans:
+- [ ] 31-01-PLAN.md — FINALIZED enum + mode write + should_finalize + default ports (P31-MODE, P31-DEFAULTS)
+- [ ] 31-02-PLAN.md — Entry degradation + hybrid sharing + CLI tools + round progress (P31-DEGRADE, P31-HYBRID, P31-CLI, P31-PROGRESS)

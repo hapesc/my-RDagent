@@ -132,6 +132,26 @@ to discover how to start, pause, resume, or continue the loop.
   OperatorGuidance contract and renderer, displaying winner, holdout score,
   source branch, and ranking table.
 
+### Finalization State and Default Ports (Phase 31)
+
+- [ ] **P31-MODE**: ExplorationMode extended with FINALIZED member. Both
+  _try_finalize() and finalize_early() write FINALIZED to run snapshot on
+  success. BranchBoardSnapshot.mode propagates FINALIZED from run state.
+  Public should_finalize(run_id) method on MultiBranchService.
+- [ ] **P31-DEFAULTS**: Default port implementations in v3/ports/defaults.py:
+  DefaultHoldoutSplitPort (real shuffle K-fold), DefaultEvaluationPort
+  (parameterized eval_fn), DefaultEmbeddingPort (TF-IDF, zero external deps).
+- [ ] **P31-DEGRADE**: rd_agent() removes ValueError on missing
+  holdout_evaluation_port, falls back to convergence path, adds
+  finalization_skipped to structuredContent response.
+- [ ] **P31-HYBRID**: BranchShareService.compute_sharing_candidates() accepts
+  agent_branch_list parameter, merges kernel and agent candidates with
+  deduplication, degrades to agent-only when EmbeddingPort is None.
+- [ ] **P31-CLI**: CLI tool catalog registers rd_should_finalize (inspection)
+  and rd_finalize_early (primitives) with state_store dependency.
+- [ ] **P31-PROGRESS**: Operator guidance includes round progress text
+  ("exploring round N/M") in current_state.
+
 ## v2 Requirements
 
 ### Future Pipeline UX
@@ -181,12 +201,19 @@ to discover how to start, pause, resume, or continue the loop.
 | P28-REPLACE | Phase 28, verified Phase 30 | Complete |
 | P28-SUBMIT | Phase 28-29, verified Phase 30 | Complete |
 | P28-PRESENT | Phase 28-29, verified Phase 30 | Complete |
+| P31-MODE | Phase 31 | Planned |
+| P31-DEFAULTS | Phase 31 | Planned |
+| P31-DEGRADE | Phase 31 | Planned |
+| P31-HYBRID | Phase 31 | Planned |
+| P31-CLI | Phase 31 | Planned |
+| P31-PROGRESS | Phase 31 | Planned |
 
 **Coverage:**
 - v1 requirements: 7 total, 7 complete
 - v1.3 convergence requirements: 20 total, 20 complete
+- v1.3 finalization/UX requirements: 6 total, 0 complete
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-24 after Phase 30 verification closure*
+*Last updated: 2026-03-25 after Phase 31 planning*

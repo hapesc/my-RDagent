@@ -9,25 +9,6 @@ from state before asking the operator. Return the branch decision as continue
 @skills/_shared/references/tool-execution-context.md
 </required_reading>
 
-## Required fields
-
-- `run_id`
-- `branch_id`
-- `summary`
-- `artifact_ids`
-- `recommendation`
-- `continue`
-- `stop`
-
-Use this workflow to continue a paused run rather than restarting it.
-Treat `summary` as the current-step summary and `artifact_ids` as the current-step artifact list.
-
-## If information is missing
-
-- inspect current run or branch state first
-- surface the exact missing values and any values already recovered
-- Ask the operator only for values that cannot already be derived
-
 <process>
 
 <step name="validate_fields">

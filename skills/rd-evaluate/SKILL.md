@@ -38,26 +38,14 @@ Maps to `v3.entry.rd_evaluate.rd_evaluate`.
 - recommendation (string): "continue" or "stop"
 </required_fields>
 
-## Tool execution context
-
-- If this skill must drop to direct inspection or primitive tools, run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the installed standalone V3 runtime bundle root that owns this skill.
-- Do not run direct tools from the caller repo unless the caller repo is that standalone V3 runtime.
-- Keep state inspection scoped to the current working repo's canonical V3 state or an explicitly provided state root.
-
-## When to route to rd-tool-catalog
-
-- Route to `rd-tool-catalog` on the agent side when direct inspection or one concrete primitive is needed before making a synthesize decision.
-- Keep `rd-tool-catalog` as an agent-side escalation path rather than defaulting the operator into manual tool browsing.
-
 <process>
 Execute the continue workflow from @skills/rd-evaluate/workflows/continue.md end-to-end.
 </process>
 
-## Outcome guide
-
-- `reused`: published synthesize evidence still valid → honor existing recommendation
-- `review`: synthesize needs manual review → surface reason, do NOT claim settled
-- `replay`: synthesize needs fresh publish → replay then apply recommendation
-- completed with `continue`: the next high-level action is `rd-propose`
-- completed with `stop`: stop the loop and report that no next stage skill should be run
+<outcome_guide>
+- reused: published synthesize evidence still valid → honor existing recommendation
+- review: synthesize needs manual review → surface reason, do NOT claim settled
+- replay: synthesize needs fresh publish → replay then apply recommendation
+- completed with continue: next skill is rd-propose (back to framing)
+- completed with stop: loop ends, no next stage skill
 </outcome_guide>

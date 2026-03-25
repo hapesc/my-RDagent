@@ -88,7 +88,6 @@ class _FakeShareService:
         target_branch_id: str,
         current_round: int,
         budget_ratio: float,
-        agent_branch_list: list[str] | None = None,
     ) -> list[str]:
         return list(self._candidate_map.get(target_branch_id, []))
 

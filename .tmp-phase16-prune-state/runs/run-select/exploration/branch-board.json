@@ -1,0 +1,32 @@
+{
+  "board_id": "branch-board:run-select",
+  "run_id": "run-select",
+  "mode": "exploration",
+  "active_cards": [
+    {
+      "branch_id": "branch-prune-a",
+      "label": "branch-prune-a label",
+      "status": "active",
+      "resolution": null,
+      "current_stage_key": "build",
+      "explanation": "branch-prune-a public score.",
+      "latest_decision_kind": null,
+      "latest_decision_id": null,
+      "shared_from_branch_ids": []
+    }
+  ],
+  "history_cards": [
+    {
+      "branch_id": "branch-prune-b",
+      "label": "branch-prune-b label",
+      "status": "superseded",
+      "resolution": "pruned",
+      "current_stage_key": "build",
+      "explanation": "Pruned branch-prune-b label after falling below the multi-signal frontier cutoff.",
+      "latest_decision_kind": "prune",
+      "latest_decision_id": "decision-prune-fb3f832fafe4",
+      "shared_from_branch_ids": []
+    }
+  ],
+  "summary": "1 active branch(es); 1 historical branch(es)."
+}

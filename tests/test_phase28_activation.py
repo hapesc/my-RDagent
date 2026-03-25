@@ -4,22 +4,22 @@ from pathlib import Path
 
 import pytest
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import BranchBoardSnapshot, ExplorationMode, FinalSubmissionSnapshot
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchMergeRequest, ExploreRoundRequest, ExploreRoundResult
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_merge_service import BranchMergeService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.convergence_service import ConvergenceService
-from v3.orchestration.dag_service import DAGService
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.operator_guidance import build_finalization_guidance, render_operator_guidance_text
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.selection_service import SelectionService
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import BranchBoardSnapshot, ExplorationMode, FinalSubmissionSnapshot
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchMergeRequest, ExploreRoundRequest, ExploreRoundResult
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_merge_service import BranchMergeService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.convergence_service import ConvergenceService
+from rd_agent.orchestration.dag_service import DAGService
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.operator_guidance import build_finalization_guidance, render_operator_guidance_text
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.selection_service import SelectionService
 from tests.test_phase27_merge_synthesis import _CapturingMerger, _seed_run
 
 
@@ -167,7 +167,7 @@ def test_explore_round_result_accepts_optional_finalization_submission() -> None
 
 def test_validate_merge_holdout_removed() -> None:
     with pytest.raises(ImportError):
-        exec("from v3.algorithms.merge import validate_merge_holdout", {})
+        exec("from rd_agent.algorithms.merge import validate_merge_holdout", {})
 
 
 def test_merge_still_works_with_inline_comparison(tmp_path: Path) -> None:

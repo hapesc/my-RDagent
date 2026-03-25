@@ -5,9 +5,9 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from v3.algorithms.decay import category_entropy, cosine_decay
-from v3.contracts.branch import BranchScore
-from v3.contracts.exploration import (
+from rd_agent.algorithms.decay import category_entropy, cosine_decay
+from rd_agent.contracts.branch import BranchScore
+from rd_agent.contracts.exploration import (
     ApproachCategory,
     DAGEdgeSnapshot,
     DAGNodeSnapshot,
@@ -15,7 +15,7 @@ from v3.contracts.exploration import (
     HypothesisSpec,
     NodeMetrics,
 )
-from v3.contracts.run import RunBoardSnapshot, RunStatus
+from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
 
 
 def test_branch_score_defaults_remain_backward_compatible() -> None:

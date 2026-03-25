@@ -3,17 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import (
     BranchBoardSnapshot,
     ExplorationMode,
     FinalSubmissionSnapshot,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
 
 
 def _run(

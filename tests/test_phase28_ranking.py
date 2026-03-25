@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from v3.algorithms.holdout import collect_candidate_ids, filter_by_quality_threshold, rank_candidates
-from v3.contracts.exploration import (
+from rd_agent.algorithms.holdout import collect_candidate_ids, filter_by_quality_threshold, rank_candidates
+from rd_agent.contracts.exploration import (
     CandidateRankEntry,
     DAGEdgeSnapshot,
     DAGNodeSnapshot,

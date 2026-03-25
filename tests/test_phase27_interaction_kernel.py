@@ -5,16 +5,16 @@ import math
 
 import pytest
 
-from v3.contracts import exploration as exploration_module
-from v3.contracts.exploration import ComponentClass, NodeMetrics
-from v3.ports.embedding_port import EmbeddingPort, StubEmbeddingPort
-from v3.ports.state_store import StateStorePort
-from v3.algorithms.interaction_kernel import (
+from rd_agent.algorithms.interaction_kernel import (
     compute_interaction_potential,
     dynamic_sample_count,
     sample_branches,
     softmax_weights,
 )
+from rd_agent.contracts import exploration as exploration_module
+from rd_agent.contracts.exploration import ComponentClass, NodeMetrics
+from rd_agent.ports.embedding_port import EmbeddingPort, StubEmbeddingPort
+from rd_agent.ports.state_store import StateStorePort
 
 
 def test_component_class_members_and_exports() -> None:
@@ -113,7 +113,7 @@ def test_sample_branches_deduplicates_preserving_order(monkeypatch: pytest.Monke
         observed["k"] = k
         return ["a", "a"]
 
-    monkeypatch.setattr("v3.algorithms.interaction_kernel.random.choices", fake_choices)
+    monkeypatch.setattr("rd_agent.algorithms.interaction_kernel.random.choices", fake_choices)
 
     assert sample_branches([0.9, 0.1], ["a", "b"], k=2) == ["a"]
     assert observed["population"] == ["a", "b"]

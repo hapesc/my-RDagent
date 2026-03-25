@@ -3,22 +3,22 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.memory import MemoryKind, MemoryNamespace, MemoryPromotionSnapshot, MemoryRecordSnapshot
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchPathsGetRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_isolation_service import BranchIsolationService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.memory_state_store import MemoryStateStore
-from v3.tools.isolation_tools import rd_branch_paths_get
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.memory import MemoryKind, MemoryNamespace, MemoryPromotionSnapshot, MemoryRecordSnapshot
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchPathsGetRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_isolation_service import BranchIsolationService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.memory_state_store import MemoryStateStore
+from rd_agent.tools.isolation_tools import rd_branch_paths_get
 
 
 def test_branch_isolation_service_returns_branch_scoped_paths(tmp_path: Path) -> None:

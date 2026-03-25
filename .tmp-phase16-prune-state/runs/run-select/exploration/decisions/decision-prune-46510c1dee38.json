@@ -1,0 +1,14 @@
+{
+  "decision_id": "decision-prune-46510c1dee38",
+  "run_id": "run-select",
+  "branch_id": "branch-prune-b",
+  "kind": "prune",
+  "mode": "exploration",
+  "summary": "Pruned branch-prune-b label after falling below the multi-signal frontier cutoff.",
+  "rationale": "The branch fell below the V3 prune threshold while keeping at least one active branch.",
+  "resolution": "pruned",
+  "source_branch_id": null,
+  "affected_branch_ids": [
+    "branch-prune-b"
+  ]
+}

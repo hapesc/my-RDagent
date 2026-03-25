@@ -2,27 +2,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.entry.rd_code import rd_code
-from v3.entry.rd_evaluate import rd_evaluate
-from v3.entry.rd_execute import rd_execute
-from v3.entry.rd_propose import rd_propose
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.preflight_service import PreflightService
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.resume_planner import plan_resume_decision
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.recovery import RecoveryAssessment, RecoveryDisposition
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.entry.rd_code import rd_code
+from rd_agent.entry.rd_evaluate import rd_evaluate
+from rd_agent.entry.rd_execute import rd_execute
+from rd_agent.entry.rd_propose import rd_propose
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.preflight_service import PreflightService
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.resume_planner import plan_resume_decision
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import (
     ApproachCategory,
     BranchDecisionKind,
     EdgeType,
@@ -15,20 +15,25 @@ from v3.contracts.exploration import (
     MergeOutcomeSnapshot,
     NodeMetrics,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchFallbackResult, BranchMergeResult, ConvergeRoundRequest, ExploreRoundRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_merge_service import BranchMergeService
-from v3.orchestration.branch_share_service import BranchShareService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.convergence_service import ConvergenceService
-from v3.orchestration.dag_service import DAGService
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.selection_service import SelectionService
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import (
+    BranchFallbackResult,
+    BranchMergeResult,
+    ConvergeRoundRequest,
+    ExploreRoundRequest,
+)
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_merge_service import BranchMergeService
+from rd_agent.orchestration.branch_share_service import BranchShareService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.convergence_service import ConvergenceService
+from rd_agent.orchestration.dag_service import DAGService
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.selection_service import SelectionService
 
 
 def _stage() -> StageSnapshot:
@@ -68,7 +73,7 @@ class _StaticEmbeddingPort:
 
 class _ExplodingEmbeddingPort:
     def embed(self, texts: list[str]) -> list[list[float]]:
-        from v3.ports.embedding_port import EmbeddingUnavailableError
+        from rd_agent.ports.embedding_port import EmbeddingUnavailableError
 
         raise EmbeddingUnavailableError("embedding service unavailable")
 
@@ -371,7 +376,7 @@ def test_compute_sharing_candidates_uses_interaction_kernel_and_skips_self(tmp_p
         assert weights is not None
         return ["branch-peer"]
 
-    monkeypatch.setattr("v3.algorithms.interaction_kernel.random.choices", fake_choices)
+    monkeypatch.setattr("rd_agent.algorithms.interaction_kernel.random.choices", fake_choices)
 
     assert share_service.compute_sharing_candidates(
         run_id="run-share",

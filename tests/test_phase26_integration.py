@@ -6,34 +6,34 @@ from pathlib import Path
 
 import pytest
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import ApproachCategory, ExplorationMode, HypothesisSpec
-from v3.contracts.run import ExecutionMode
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchPruneResult, ExploreRoundRequest, RunStartRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_merge_service import BranchMergeService
-from v3.orchestration.branch_prune_service import BranchPruneService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.convergence_service import ConvergenceService
-from v3.orchestration.dag_service import DAGService
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.select_parents_service import SelectParentsService
-from v3.orchestration.selection_service import SelectionService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.ports.execution import ExecutionPort, ExecutionStartResult
-from v3.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import ApproachCategory, ExplorationMode, HypothesisSpec
+from rd_agent.contracts.run import ExecutionMode
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchPruneResult, ExploreRoundRequest, RunStartRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_merge_service import BranchMergeService
+from rd_agent.orchestration.branch_prune_service import BranchPruneService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.convergence_service import ConvergenceService
+from rd_agent.orchestration.dag_service import DAGService
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.select_parents_service import SelectParentsService
+from rd_agent.orchestration.selection_service import SelectionService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.ports.execution import ExecutionPort, ExecutionStartResult
+from rd_agent.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
 
 
 @dataclass
@@ -368,7 +368,7 @@ def test_duplicate_categories_are_allowed_after_first_round(tmp_path: Path) -> N
 
 
 def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: Path) -> None:
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
@@ -427,7 +427,7 @@ def test_rd_agent_accepts_hypothesis_specs_and_wires_phase26_services(tmp_path: 
 
 
 def test_rd_agent_rejects_mixed_hypothesis_inputs(tmp_path: Path) -> None:
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
@@ -462,7 +462,7 @@ def test_rd_agent_rejects_mixed_hypothesis_inputs(tmp_path: Path) -> None:
 
 
 def test_rd_agent_legacy_string_hypotheses_remain_side_effect_neutral(tmp_path: Path) -> None:
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())

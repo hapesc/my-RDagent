@@ -20,7 +20,7 @@ allowed-tools:
 Complete, replay, or review the build stage for an existing V3 run and branch.
 Hand off to rd-execute on success. Never starts the full loop — use rd-agent for that.
 
-Maps to `v3.entry.rd_code.rd_code`.
+Maps to `rd_agent.entry.rd_code.rd_code`.
 </objective>
 
 <execution_context>

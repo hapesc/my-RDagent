@@ -4,7 +4,7 @@ Shared rules for running direct CLI tools from any RD-Agent V3 skill.
 
 ## CLI invocation
 
-- Run `uv run rdagent-v3-tool ...` from the standalone V3 repo root or from the
+- Run `uv run rdagent-tool ...` from the standalone V3 repo root or from the
   installed standalone V3 runtime bundle root that owns this skill.
 - Do not run direct tools from the caller repo unless the caller repo is that
   standalone V3 runtime.
@@ -20,9 +20,9 @@ Shared rules for running direct CLI tools from any RD-Agent V3 skill.
 ## Common inspection commands
 
 ```bash
-uv run rdagent-v3-tool rd_run_get          # current run state
-uv run rdagent-v3-tool rd_branch_get       # current branch state
-uv run rdagent-v3-tool rd_stage_get        # current stage state
-uv run rdagent-v3-tool list                # tool catalog
-uv run rdagent-v3-tool describe <tool>     # tool details
+uv run rdagent-tool list                # tool catalog
+uv run rdagent-tool describe rd_run_get     # run-state tool schema
+uv run rdagent-tool describe rd_branch_get  # branch-state tool schema
+uv run rdagent-tool describe rd_stage_get   # stage-state tool schema
+uv run rdagent-tool describe <tool>         # any tool details
 ```

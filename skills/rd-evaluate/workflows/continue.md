@@ -16,7 +16,7 @@ Check required continuation fields: run_id, branch_id, summary, artifact_ids,
 recommendation.
 
 If any missing:
-1. Run `uv run rdagent-v3-tool rd_run_get` and `uv run rdagent-v3-tool rd_branch_get`
+1. Run `uv run rdagent-tool rd_run_get` and `uv run rdagent-tool rd_branch_get`
    to inspect current state
 2. Derive what can be derived from the response
 3. Surface exact missing field names and values already recovered
@@ -41,7 +41,7 @@ If not synthesize:
 Apply synthesize-stage transition:
 
 ```bash
-uv run rdagent-v3-tool rd_stage_publish \
+uv run rdagent-tool rd_stage_publish \
   --run-id "$RUN_ID" \
   --branch-id "$BRANCH_ID" \
   --stage synthesize \

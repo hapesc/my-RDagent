@@ -2,21 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.algorithms.prune import prune_branch_candidates
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import (
+from rd_agent.algorithms.prune import prune_branch_candidates
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import (
     ApproachCategory,
     ExplorationMode,
     HypothesisSpec,
     NodeMetrics,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchPruneRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_prune_service import BranchPruneService
-from v3.orchestration.dag_service import DAGService
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchPruneRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_prune_service import BranchPruneService
+from rd_agent.orchestration.dag_service import DAGService
 
 
 def test_signal4_exempts_branch_with_unique_components() -> None:

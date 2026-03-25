@@ -6,28 +6,21 @@ are correctly wired through the public rd_agent entrypoint.
 
 from __future__ import annotations
 
-from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
-import pytest
-
-from v3.contracts.exploration import (
+from rd_agent.contracts.exploration import (
     ApproachCategory,
-    ExplorationMode,
     HypothesisSpec,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_share_service import BranchShareService
-from v3.orchestration.holdout_validation_service import HoldoutValidationService
-from v3.orchestration.memory_state_store import MemoryStateStore
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
+from rd_agent.contracts.run import ExecutionMode
+from rd_agent.contracts.stage import StageKey
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_share_service import BranchShareService
+from rd_agent.orchestration.holdout_validation_service import HoldoutValidationService
+from rd_agent.orchestration.memory_state_store import MemoryStateStore
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
 
 
 def _make_execution_port():
@@ -123,7 +116,7 @@ def _base_kwargs(tmp_path, *, hypothesis_specs=None, branch_hypotheses=None):
 def test_multi_branch_receives_holdout_and_share_services(tmp_path, monkeypatch):
     """rd_agent with hypothesis_specs constructs MultiBranchService with non-None
     holdout_validation_service and branch_share_service."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     captured_kwargs = {}
     original_init = MultiBranchService.__init__
@@ -151,7 +144,7 @@ def test_multi_branch_receives_holdout_and_share_services(tmp_path, monkeypatch)
 def test_finalization_triggers_through_entry(tmp_path, monkeypatch):
     """When current_round >= max_rounds, the response structuredContent contains
     finalization_submission with winner_node_id and finalization_guidance with current_state."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     # The run starts with max_rounds=20 (default). We need max_rounds=1 so
     # finalization triggers after the first exploration round.
@@ -207,7 +200,7 @@ def test_finalization_triggers_through_entry(tmp_path, monkeypatch):
 def test_no_finalization_without_holdout_specs(tmp_path):
     """rd_agent without hypothesis_specs produces response with
     finalization_guidance=None and finalization_submission=None."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     kwargs = _base_kwargs(tmp_path, branch_hypotheses=["primary", "alt-a"])
     result = rd_agent(**kwargs)
@@ -243,7 +236,7 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
     """Full lifecycle: rd_agent with 3 hypothesis_specs, max_rounds=1,
     custom evaluation_port that returns known scores -- response contains
     finalization_submission with correct winner."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
 
@@ -313,7 +306,7 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
 
 def test_hypothesis_specs_without_holdout_evaluation_port_degrade_gracefully(tmp_path):
     """Structured hypothesis entry degrades gracefully when no holdout port is available."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     kwargs = _base_kwargs(tmp_path, hypothesis_specs=_hypothesis_specs_2())
     kwargs.pop("holdout_evaluation_port")
@@ -331,7 +324,7 @@ def test_hypothesis_specs_without_holdout_evaluation_port_degrade_gracefully(tmp
 
 def test_branch_share_service_injected(tmp_path, monkeypatch):
     """rd_agent with hypothesis_specs injects BranchShareService (covers P27-INJECT)."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     captured_kwargs = {}
     original_init = MultiBranchService.__init__
@@ -361,7 +354,7 @@ def test_branch_share_service_injected(tmp_path, monkeypatch):
 def test_global_best_injection_through_entry(tmp_path, monkeypatch):
     """rd_agent with hypothesis_specs and 2+ branches with different scores.
     Verifies BranchShareService.identify_global_best is callable on the injected service."""
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     captured_share_svc = {}
     original_init = MultiBranchService.__init__
@@ -399,8 +392,8 @@ def test_global_best_injection_through_entry(tmp_path, monkeypatch):
 def test_memory_store_is_dedicated_instance(tmp_path, monkeypatch):
     """Verify that MemoryService._store is a MemoryStateStore instance
     when memory_store is explicitly provided."""
-    from v3.entry.rd_agent import rd_agent
-    from v3.orchestration.memory_service import MemoryService
+    from rd_agent.entry.rd_agent import rd_agent
+    from rd_agent.orchestration.memory_service import MemoryService
 
     captured_store = {}
     original_init = MemoryService.__init__
@@ -430,8 +423,8 @@ def test_memory_store_is_dedicated_instance(tmp_path, monkeypatch):
 def test_memory_store_fallback_constructs_dedicated_instance(tmp_path, monkeypatch):
     """Verify that when memory_store=None (default), rd_agent constructs
     a MemoryStateStore from state_store._root."""
-    from v3.entry.rd_agent import rd_agent
-    from v3.orchestration.memory_service import MemoryService
+    from rd_agent.entry.rd_agent import rd_agent
+    from rd_agent.orchestration.memory_service import MemoryService
 
     captured_store = {}
     original_init = MemoryService.__init__

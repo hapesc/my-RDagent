@@ -18,7 +18,7 @@ allowed-tools:
 Decision-oriented skill for the standalone V3 CLI tool surface. Narrows a vague
 request to a concrete tool choice or routes back to the correct high-level skill.
 
-Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `describe` interface.
+Maps to `rd_agent.entry.tool_catalog` and the `rdagent-tool list` / `describe` interface.
 </objective>
 
 <execution_context>
@@ -44,8 +44,8 @@ Maps to `v3.entry.tool_catalog` and the `rdagent-v3-tool list` / `describe` inte
 
 CLI commands:
 ```bash
-uv run rdagent-v3-tool list
-uv run rdagent-v3-tool describe <tool>
+uv run rdagent-tool list
+uv run rdagent-tool describe <tool>
 ```
 </process>
 

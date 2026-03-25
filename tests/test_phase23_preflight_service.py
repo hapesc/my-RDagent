@@ -4,25 +4,25 @@ import importlib
 from pathlib import Path
 from typing import Any
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.recovery_service import RecoveryService
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.recovery_service import RecoveryService
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_preflight_symbols() -> tuple[Any, Any]:
-    contracts = importlib.import_module("v3.contracts.preflight")
-    service_module = importlib.import_module("v3.orchestration.preflight_service")
+    contracts = importlib.import_module("rd_agent.contracts.preflight")
+    service_module = importlib.import_module("rd_agent.orchestration.preflight_service")
     return contracts.PreflightBlockerCategory, service_module.PreflightService
 
 

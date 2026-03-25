@@ -2,22 +2,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import (
     BranchDecisionKind,
     BranchDecisionSnapshot,
     BranchResolution,
     ExplorationMode,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchForkRequest, BranchPruneRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_prune_service import BranchPruneService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.run_board_service import RunBoardService
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchForkRequest, BranchPruneRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_prune_service import BranchPruneService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.run_board_service import RunBoardService
 
 
 def _stage(stage_key: StageKey, summary: str) -> StageSnapshot:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from v3.algorithms.complementarity import (
+from rd_agent.algorithms.complementarity import (
     complementarity_score,
     component_coverage_distance,
     cosine_similarity,

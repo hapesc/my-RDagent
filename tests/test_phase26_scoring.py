@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from v3.orchestration.scoring_service import (
+from rd_agent.orchestration.scoring_service import (
     BranchSelectionSignal,
     compute_generalization_signals,
     project_branch_score,

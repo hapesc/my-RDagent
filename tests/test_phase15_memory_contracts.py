@@ -6,15 +6,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from v3.contracts.memory import (
+from rd_agent.contracts.memory import (
     MemoryKind,
     MemoryNamespace,
     MemoryPromotionSnapshot,
     MemoryRecordSnapshot,
 )
-from v3.contracts.stage import StageKey
-from v3.contracts.tool_io import MemoryCreateRequest, MemoryGetRequest, MemoryPromoteRequest
-from v3.ports import MemoryStorePort
+from rd_agent.contracts.stage import StageKey
+from rd_agent.contracts.tool_io import MemoryCreateRequest, MemoryGetRequest, MemoryPromoteRequest
+from rd_agent.ports import MemoryStorePort
 
 
 class _RecordingMemoryStore:
@@ -153,7 +153,7 @@ def test_memory_requests_accept_optional_scope_for_duplicate_disambiguation() ->
 
 
 def test_memory_state_store_writes_branch_local_and_shared_namespaces(tmp_path: Path) -> None:
-    from v3.orchestration.memory_state_store import MemoryStateStore
+    from rd_agent.orchestration.memory_state_store import MemoryStateStore
 
     store = MemoryStateStore(tmp_path / "state")
     record = MemoryRecordSnapshot(
@@ -251,7 +251,7 @@ def test_memory_contracts_reject_unsafe_memory_ids(unsafe_memory_id: str) -> Non
 
 @pytest.mark.parametrize("unsafe_memory_id", ["../escape", "memory/*"])
 def test_memory_state_store_rejects_unsafe_lookup_ids(tmp_path: Path, unsafe_memory_id: str) -> None:
-    from v3.orchestration.memory_state_store import MemoryStateStore
+    from rd_agent.orchestration.memory_state_store import MemoryStateStore
 
     store = MemoryStateStore(tmp_path / "state")
 

@@ -21,7 +21,7 @@ Complete, replay, review, or block the verify stage for an existing V3 run and
 branch. Hand off to rd-evaluate on success, or publish blocking reasons.
 Never starts the full loop — use rd-agent for that.
 
-Maps to `v3.entry.rd_execute.rd_execute`.
+Maps to `rd_agent.entry.rd_execute.rd_execute`.
 </objective>
 
 <execution_context>

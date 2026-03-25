@@ -2,21 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.resume_planner import plan_resume_decision
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.resume_planner import plan_resume_decision
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
 
 
 def _artifact(
@@ -170,7 +170,7 @@ def test_resume_planner_surfaces_review_disposition_for_blocked_stage(tmp_path: 
 
 
 def test_rd_code_reuses_completed_stage_instead_of_recomputing(tmp_path: Path) -> None:
-    from v3.entry.rd_code import rd_code
+    from rd_agent.entry.rd_code import rd_code
 
     state_store, _ = _seed_stage(
         tmp_path,
@@ -201,7 +201,7 @@ def test_rd_code_reuses_completed_stage_instead_of_recomputing(tmp_path: Path) -
 
 
 def test_rd_execute_stops_with_review_when_verify_stage_is_blocked(tmp_path: Path) -> None:
-    from v3.entry.rd_execute import rd_execute
+    from rd_agent.entry.rd_execute import rd_execute
 
     state_store, _ = _seed_stage(
         tmp_path,

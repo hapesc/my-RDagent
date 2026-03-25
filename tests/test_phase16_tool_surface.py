@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from v3.contracts.exploration import (
+from rd_agent.contracts.exploration import (
     BranchBoardSnapshot,
     BranchCardSnapshot,
     BranchDecisionKind,
@@ -10,7 +10,7 @@ from v3.contracts.exploration import (
     MergeOutcomeSnapshot,
     ShortlistEntrySnapshot,
 )
-from v3.contracts.tool_io import (
+from rd_agent.contracts.tool_io import (
     BranchBoardGetRequest,
     BranchBoardGetResult,
     BranchFallbackRequest,
@@ -34,7 +34,7 @@ from v3.contracts.tool_io import (
     ExploreRoundRequest,
     ExploreRoundResult,
 )
-from v3.entry.tool_catalog import list_cli_tools
+from rd_agent.entry.tool_catalog import list_cli_tools
 
 
 def test_phase16_registry_lists_full_rd_tool_surface() -> None:

@@ -5,29 +5,29 @@ from pathlib import Path
 
 import pytest
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import (
     ArtifactListRequest,
     StageBlockRequest,
     StageCompleteRequest,
     StageStartRequest,
     StageTransitionRequest,
 )
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.tools.artifact_tools import rd_artifact_list
-from v3.tools.stage_write_tools import (
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.tools.artifact_tools import rd_artifact_list
+from rd_agent.tools.stage_write_tools import (
     rd_stage_block,
     rd_stage_complete,
     rd_stage_replay,
@@ -351,7 +351,7 @@ def test_stage_publish_block_reports_v3_blocking_truth(tmp_path: Path) -> None:
 def test_importlinter_extends_forbidden_imports_to_stage_write_tools() -> None:
     config = Path(".importlinter").read_text()
 
-    assert "v3.tools.stage_write_tools" in config
+    assert "rd_agent.tools.stage_write_tools" in config
     assert "app.control_plane" in config
     assert "app.query_services" in config
     assert "app.runtime" in config
@@ -361,7 +361,7 @@ def test_importlinter_extends_forbidden_imports_to_stage_write_tools() -> None:
 
 
 def test_rd_propose_completes_framing_stage_via_v3_tools_only(tmp_path: Path) -> None:
-    from v3.entry.rd_propose import rd_propose
+    from rd_agent.entry.rd_propose import rd_propose
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -393,7 +393,7 @@ def test_rd_propose_completes_framing_stage_via_v3_tools_only(tmp_path: Path) ->
 
 
 def test_rd_code_completes_build_stage_via_v3_tools_only(tmp_path: Path) -> None:
-    from v3.entry.rd_code import rd_code
+    from rd_agent.entry.rd_code import rd_code
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -420,7 +420,7 @@ def test_rd_code_completes_build_stage_via_v3_tools_only(tmp_path: Path) -> None
 
 
 def test_v3_entry_exports_propose_and_code_stage_entrypoints() -> None:
-    from v3.entry import __all__ as exported_names
+    from rd_agent.entry import __all__ as exported_names
 
     assert "rd_propose" in exported_names
     assert "rd_code" in exported_names
@@ -429,7 +429,7 @@ def test_v3_entry_exports_propose_and_code_stage_entrypoints() -> None:
 
 
 def test_rd_execute_publishes_verify_completion_when_unblocked(tmp_path: Path) -> None:
-    from v3.entry.rd_execute import rd_execute
+    from rd_agent.entry.rd_execute import rd_execute
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -456,7 +456,7 @@ def test_rd_execute_publishes_verify_completion_when_unblocked(tmp_path: Path) -
 
 
 def test_rd_execute_publishes_verify_blocker_when_reasons_present(tmp_path: Path) -> None:
-    from v3.entry.rd_execute import rd_execute
+    from rd_agent.entry.rd_execute import rd_execute
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -483,7 +483,7 @@ def test_rd_execute_publishes_verify_blocker_when_reasons_present(tmp_path: Path
 
 
 def test_rd_evaluate_publishes_synthesis_summary_and_recommendation(tmp_path: Path) -> None:
-    from v3.entry.rd_evaluate import rd_evaluate
+    from rd_agent.entry.rd_evaluate import rd_evaluate
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -511,10 +511,10 @@ def test_rd_evaluate_publishes_synthesis_summary_and_recommendation(tmp_path: Pa
 
 
 def test_stage_entrypoints_are_independently_invokable_against_same_branch(tmp_path: Path) -> None:
-    from v3.entry.rd_code import rd_code
-    from v3.entry.rd_evaluate import rd_evaluate
-    from v3.entry.rd_execute import rd_execute
-    from v3.entry.rd_propose import rd_propose
+    from rd_agent.entry.rd_code import rd_code
+    from rd_agent.entry.rd_evaluate import rd_evaluate
+    from rd_agent.entry.rd_execute import rd_execute
+    from rd_agent.entry.rd_propose import rd_propose
 
     state_store, run_service, recovery_service, transition_service = _seed_stage_entry_context(tmp_path)
 
@@ -571,10 +571,10 @@ def test_stage_entrypoints_are_independently_invokable_against_same_branch(tmp_p
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "v3/entry/rd_propose.py",
-        "v3/entry/rd_code.py",
-        "v3/entry/rd_execute.py",
-        "v3/entry/rd_evaluate.py",
+        "rd_agent/entry/rd_propose.py",
+        "rd_agent/entry/rd_code.py",
+        "rd_agent/entry/rd_execute.py",
+        "rd_agent/entry/rd_evaluate.py",
     ],
 )
 def test_stage_entry_modules_avoid_legacy_runtime_imports(relative_path: str) -> None:

@@ -7,21 +7,21 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from v3.contracts.operator_guidance import OperatorGuidance
-from v3.contracts.preflight import (
+from rd_agent.contracts.operator_guidance import OperatorGuidance
+from rd_agent.contracts.preflight import (
     PreflightBlockerCategory,
     PreflightBlockersByCategory,
     PreflightReadiness,
     PreflightResult,
 )
-from v3.contracts.recovery import RecoveryDisposition
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.recovery import RecoveryDisposition
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
 
-rd_code_module = importlib.import_module("v3.entry.rd_code")
-rd_evaluate_module = importlib.import_module("v3.entry.rd_evaluate")
-rd_execute_module = importlib.import_module("v3.entry.rd_execute")
-rd_propose_module = importlib.import_module("v3.entry.rd_propose")
-from v3.orchestration.operator_guidance import (  # noqa: E402
+rd_code_module = importlib.import_module("rd_agent.entry.rd_code")
+rd_evaluate_module = importlib.import_module("rd_agent.entry.rd_evaluate")
+rd_execute_module = importlib.import_module("rd_agent.entry.rd_execute")
+rd_propose_module = importlib.import_module("rd_agent.entry.rd_propose")
+from rd_agent.orchestration.operator_guidance import (  # noqa: E402
     build_paused_run_guidance,
     render_operator_guidance_text,
 )

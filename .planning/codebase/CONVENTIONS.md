@@ -1,56 +1,94 @@
-# Coding Conventions
+# Codebase Conventions
 
-**Analysis Date:** 2026-03-21
+**Analysis Date:** 2026-03-25
+
+## Style Overview
+
+**Overall:** The repository is deliberately contract-first and layer-conscious. Public behavior is encoded through typed snapshots, small orchestration services, and narrow entrypoints rather than ad hoc dict plumbing spread across the tree.
+
+**Core Style Signals:**
+- Python modules almost always begin with a one-line module docstring and `from __future__ import annotations`; see `v3/entry/rd_agent.py`, `v3/orchestration/preflight_service.py`, and `v3/contracts/exploration.py`.
+- The repo standard is plain Python with strong typing, not metaprogramming-heavy magic. Public state is modeled with Pydantic `BaseModel` classes using `ConfigDict(extra="forbid", frozen=True)` in `v3/contracts/`.
+- Enum-like public vocabularies use `StrEnum` so serialized payloads stay stable and human-readable; examples include `StageKey` in `v3/contracts/stage.py` and `ExplorationMode` in `v3/contracts/exploration.py`.
+- Formatting expectations are codified in `pyproject.toml`: Ruff targets Python 3.11 and enforces a `line-length = 120`.
 
 ## Naming Patterns
 
-**Files:**
-- High-level modules stick to `snake_case` filenames that describe their responsibility, e.g. `v3/orchestration/run_board_service.py` for publishing run/branch truth and `tests/test_phase16_rd_agent.py` for surface-level regression guards (`v3/orchestration/run_board_service.py:30-105`, `tests/test_phase16_rd_agent.py:72-237`).
-- The `tests/` suite mirrors production phases with `test_phase13_*` through `test_phase18_*` plus dedicated CLI validation `tests/test_v3_tool_cli.py`, keeping each cross-cutting capability in a distinct file (`tests/test_phase13_v3_tools.py`, `tests/test_phase18_skill_installation.py`, `tests/test_v3_tool_cli.py`).
+**Files and modules:**
+- Python files use `snake_case.py`, for example `v3/orchestration/holdout_validation_service.py` and `v3/tools/stage_write_tools.py`.
+- Skill packages use hyphenated directory names with a required `SKILL.md`, for example `skills/rd-agent/SKILL.md` and `skills/rd-tool-catalog/SKILL.md`.
+- Tests use `tests/test_*.py`, with many files carrying the phase number that introduced or hardened the behavior, such as `tests/test_phase28_integration.py`.
 
-**Functions:**
-- Public helpers follow `snake_case` verbs that describe their action (`v3/entry/rd_agent.py:25-147`, `v3/orchestration/execution_policy.py:36-121`), while tests use the `test_*` prefix so `pytest` can auto-discover them (`tests/test_phase16_selection.py:59-170`).
+**Functions and constants:**
+- Public callable surfaces are consistently prefixed with `rd_`, for example `rd_agent`, `rd_code`, `rd_run_get`, and `rd_stage_complete`.
+- Stage entry modules expose `OWNED_STAGE_KEY` and, when applicable, `NEXT_STAGE_KEY`; see `v3/entry/rd_code.py`, `v3/entry/rd_execute.py`, and `v3/entry/rd_propose.py`.
+- Internal helpers use a leading underscore for non-exported functions such as `_tool_response`, `_minimum_continuation_skeleton`, and `_primary_blocker`.
 
-**Variables:**
-- Temporary values, loop indices, and dependency handles stay in `snake_case` (e.g., `current_iteration`, `branch_after`, `stage_after` in `SkillLoopService.run_single_branch`), avoiding single-letter names and keeping intent explicit (`v3/orchestration/skill_loop_service.py:58-235`).
+**Exports:**
+- Many packages define explicit `__all__` lists to mark the intended public surface; examples appear in `v3/entry/__init__.py`, `v3/ports/__init__.py`, and `v3/tools/stage_write_tools.py`.
+- Boundary packages sometimes publish a `BOUNDARY_ROLE` constant to make the intended layer explicit; see `v3/entry/__init__.py` and `v3/ports/__init__.py`.
 
-**Types:**
-- Pydantic models and enums use `PascalCase` to align with their contract semantics (`RunBoardSnapshot`, `StageSnapshot`, `MemoryRecordSnapshot` in `v3/contracts/run.py:12-62`, `v3/contracts/stage.py:10-44`, `v3/contracts/memory.py:14-82`).
+## Architectural Conventions
 
-## Code Style
+**Layering:**
+- `v3/contracts/` is the stable vocabulary layer and should not depend on orchestration or runtime wiring.
+- `v3/ports/` defines replaceable seams such as `StateStorePort`, `ExecutionPort`, `EmbeddingPort`, and `HoldoutSplitPort`.
+- `v3/orchestration/` owns stateful behavior and composes contracts, ports, and pure helpers from `v3/algorithms/`.
+- `v3/tools/` stays thin: it accepts typed requests, calls one service, and wraps the result into the response envelope.
+- `v3/entry/` is the public executable boundary for skills and CLI usage, not the place for deep business logic.
 
-- Every module begins with `from __future__ import annotations` so forward references stay simple and typing stays lightweight (`v3/orchestration/run_board_service.py:3-14`).
-- Formatting targets a 120-character line limit via `ruff` (`pyproject.toml:37-46`), while `pytest` files rely on standard indentation and short helper blocks (see `tests/test_phase14_skill_agent.py:72-141`).
-- Immutability is enforced through frozen dataclasses and `pydantic` configs: services expose `@dataclass(frozen=True)` wrappers like `RunBoardPublication`/`RunStartPublication`, and contracts use `ConfigDict(extra="forbid", frozen=True)` plus `model_copy` to emit updated snapshots without mutating originals (`v3/orchestration/run_board_service.py:16-103`, `v3/contracts/run.py:38-62`).
-- State transitions always create new copies (`model_copy(update=...)`) before writing to the `StateStore`, so no shared mutable structures leak out of the service layer (`v3/orchestration/run_board_service.py:66-103`).
+**Legacy isolation:**
+- Legacy compatibility is quarantined under `v3/compat/v2/`; current V3 code is expected to avoid direct legacy-runtime imports.
+- `.importlinter` enforces this boundary for `v3.entry`, `v3.orchestration`, and `v3.tools`.
 
-## Import Organization
+**Public response shape:**
+- Tool-style entrypoints consistently return a dict with `structuredContent` plus a human-readable `content` array; see `_tool_response` helpers in `v3/entry/rd_code.py` and `v3/tools/stage_write_tools.py`.
+- Operator-facing guidance is centralized through `OperatorGuidance` and formatter helpers in `v3/orchestration/operator_guidance.py` rather than handwritten response text in every module.
 
-- Modules import standard library helpers first, third-party packages next, and project-local targets last (e.g., `argparse`, `json`, `sys` precede `v3.*` imports in `v3/entry/tool_cli.py:5-45`).
-- The test suite enforces clean imports by parsing ASTs and asserting forbidden legacy modules are absent (`tests/test_phase13_v3_tools.py:60-233`, `tests/test_phase13_v3_tools.py:678-701`).
-- `.importlinter` defines the `v3.*` isolation rules so `v3.entry`, `v3.orchestration`, and `v3.tools` never reach legacy modules such as `service_contracts` or `exploration_manager` (`.importlinter:6-95`).
+## Contract and Typing Patterns
 
-## Error Handling
+**Immutable snapshots:**
+- Public state is represented as immutable snapshot objects, for example `RunBoardSnapshot`, `BranchSnapshot`, `StageSnapshot`, and `FinalSubmissionSnapshot`.
+- Request/result payloads for direct tools are centralized in `v3/contracts/tool_io.py`, then reused by `v3/tools/` and `v3/entry/tool_catalog.py`.
 
-- Services validate critical inputs early and raise descriptive `KeyError`/`ValueError` messages before proceeding (`v3/orchestration/run_board_service.py:41-103`, `v3/orchestration/branch_lifecycle_service.py:35-140`).
-- Tests assert those error signals are reflected in the public payloads or `structuredContent`, e.g., stop reasons and pause messages appear verbatim (`tests/test_phase16_rd_agent.py:75-237`, `tests/test_phase14_execution_policy.py:24-195`).
-- Missing stage inputs or workspace resources consistently produce fast failures (`v3/orchestration/skill_loop_service.py:68-141`), keeping the orchestration loop predictable.
+**Validation style:**
+- Fields are constrained at the model layer with `Field(...)` instead of post-hoc checks where possible.
+- Cross-field rules live in the contracts layer when they are structural and in services when they are behavioral.
 
-## Logging
+**Protocol-first seams:**
+- Replaceable dependencies are expressed as `Protocol`s in `v3/ports/`; concrete implementations are optional and injected from the outside.
+- Tests commonly provide deterministic stub implementations instead of mocking random internals.
 
-- Explicit logging frameworks are absent. Instead, modules return structured messages plus `result["content"]` text snippets that describe what happened; regression tests assert text contains key phrases like "advanced to build" and "operator review" (`tests/test_phase14_skill_agent.py:135-140`, `tests/test_phase16_rd_agent.py:135-137`).
+## State and Persistence Conventions
 
-## Comments
+**Canonical truth:**
+- The canonical runtime truth is file-backed JSON persisted through `StateStorePort` and the default `ArtifactStateStore` in `v3/orchestration/artifact_state_store.py`.
+- Branch-local workspaces and storage roots are derived through branch isolation helpers rather than hardcoded paths; see `v3/orchestration/branch_isolation_service.py` and `v3/orchestration/branch_workspace_manager.py`.
 
-- Every layer documents its purpose with module-level docstrings and doc comments to explain the public surface (`v3/orchestration/skill_loop_service.py:1-262`, `v3/entry/rd_agent.py:1-150`).
-- Tests also include inline verbs describing their scenario (e.g., "runs a multi-branch explore round"), helping future contributors understand why each guard exists (`tests/test_phase16_rd_agent.py:66-137`).
+**ID-oriented modeling:**
+- Entities are referenced by stable IDs (`run_id`, `branch_id`, `artifact_id`, `decision_id`, `node_id`) rather than by implicit positional state.
+- Decision artifacts are first-class persisted records, not ephemeral logs; see `BranchDecisionSnapshot` in `v3/contracts/exploration.py`.
 
-## Function Design
+## Error-Handling Conventions
 
-- Services lean on focused helpers such as `_run_stage`/`_ensure_stage_exists` inside `SkillLoopService`, so each function handles one orchestration concept before handing off to the next (`v3/orchestration/skill_loop_service.py:74-236`).
-- Entrypoints like `rd_agent` separate CLI argument validation, run start, multi-branch dispatch, and single-branch looping, returning a dict with `structuredContent` plus textual narration (`v3/entry/rd_agent.py:25-147`).
+**Hard invariant failures:**
+- Missing or inconsistent canonical state usually raises `KeyError` or `ValueError`; see `v3/orchestration/run_board_service.py`, `v3/orchestration/stage_transition_service.py`, and `v3/orchestration/dag_service.py`.
 
-## Module Design
+**Operator-visible blockers:**
+- Operator-facing execution blockers are encoded through `PreflightResult` and `OperatorGuidance` instead of silent fallbacks; see `v3/orchestration/preflight_service.py` and all stage entry modules in `v3/entry/`.
 
-- Public APIs expose a limited `__all__`, keeping only the intended classes/functions visible (`v3/orchestration/run_board_service.py:104-105`).
-- Contract modules (e.g., `v3/contracts/run.py`, `v3/contracts/stage.py`, `v3/contracts/memory.py`) focus solely on `pydantic` models/enums with frozen configs and validation helpers, cleanly separating data definitions from behaviors (`v3/contracts/run.py:12-62`, `v3/contracts/stage.py:10-44`, `v3/contracts/memory.py:14-82`).
+**No hidden downgrade path:**
+- The codebase generally prefers explicit `blocked`, `review`, `replay`, or `reuse` outcomes over pretending a stage can continue without evidence.
+
+## Testing Conventions
+
+**Isolation-first:**
+- Tests usually create a temporary filesystem state root with `tmp_path`, seed `ArtifactStateStore` or `MemoryStateStore`, and exercise public handlers end-to-end.
+- Deterministic helper ports are preferred over flaky live dependencies; see the `_DeterministicExecutionPort` pattern reused across `tests/test_phase14_*` and later integration suites.
+
+**Contract locking:**
+- Several tests validate documentation or skill contracts directly from disk, not just Python behavior; examples include `tests/test_phase20_stage_skill_contracts.py` and `tests/test_installed_skill_workflows.py`.
+
+---
+
+*Conventions analysis: 2026-03-25*

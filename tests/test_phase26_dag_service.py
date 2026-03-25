@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from v3.contracts.exploration import EdgeType, NodeMetrics
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.dag_service import DAGService
+from rd_agent.contracts.exploration import EdgeType, NodeMetrics
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.dag_service import DAGService
 
 
 def test_dag_service_creates_root_and_child_nodes(tmp_path: Path) -> None:
@@ -43,7 +43,7 @@ def test_dag_service_rejects_missing_and_self_referencing_parents(
     with pytest.raises(KeyError):
         service.create_node(run_id="r1", branch_id="b1", parent_node_ids=["missing"])
 
-    monkeypatch.setattr("v3.orchestration.dag_service.uuid4", lambda: SimpleNamespace(hex="abcdefabcdef1234"))
+    monkeypatch.setattr("rd_agent.orchestration.dag_service.uuid4", lambda: SimpleNamespace(hex="abcdefabcdef1234"))
     with pytest.raises(ValueError):
         service.create_node(run_id="r1", branch_id="b1", parent_node_ids=["dag-node-abcdefabcdef"])
 

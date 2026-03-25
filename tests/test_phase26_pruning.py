@@ -4,15 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from v3.algorithms.prune import prune_branch_candidates
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import BranchDecisionKind, BranchResolution, ExplorationMode
-from v3.contracts.run import RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchPruneRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_prune_service import BranchPruneService
+from rd_agent.algorithms.prune import prune_branch_candidates
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import BranchDecisionKind, BranchResolution, ExplorationMode
+from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchPruneRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_prune_service import BranchPruneService
 
 
 def _branch(
@@ -140,7 +140,7 @@ def test_branch_prune_service_passes_multi_signal_parameters(tmp_path: Path, mon
         seen.update(kwargs)
         return ["branch-b"]
 
-    monkeypatch.setattr("v3.orchestration.branch_prune_service.prune_branch_candidates", _fake_prune)
+    monkeypatch.setattr("rd_agent.orchestration.branch_prune_service.prune_branch_candidates", _fake_prune)
 
     result = service.prune(BranchPruneRequest(run_id="run-prune"))
     decisions = state_store.list_branch_decisions("run-prune", branch_id="branch-b")

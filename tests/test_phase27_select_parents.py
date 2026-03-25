@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.contracts.exploration import NodeMetrics
-from v3.contracts.run import RunBoardSnapshot, RunStatus
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.dag_service import DAGService
-from v3.orchestration.select_parents_service import SelectParentsService
+from rd_agent.contracts.exploration import NodeMetrics
+from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.dag_service import DAGService
+from rd_agent.orchestration.select_parents_service import SelectParentsService
 
 
 def _seed_run(state_store: ArtifactStateStore, *, current_round: int, max_rounds: int = 10) -> None:

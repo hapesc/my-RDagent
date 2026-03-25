@@ -9,13 +9,13 @@ test-quick:
 	uv run python -m pytest tests/test_v3_tool_cli.py tests/test_phase17_surface_convergence.py tests/test_phase18_skill_installation.py tests/test_phase18_planning_continuity.py -q
 
 lint:
-	uv run ruff check v3/ tests/ scripts/
+	uv run ruff check rd_agent/ tests/ scripts/
 
 lint-fix:
-	uv run ruff check --fix v3/ tests/ scripts/
+	uv run ruff check --fix rd_agent/ tests/ scripts/
 
 format:
-	uv run ruff format v3/ tests/ scripts/
+	uv run ruff format rd_agent/ tests/ scripts/
 
 verify: lint test
 

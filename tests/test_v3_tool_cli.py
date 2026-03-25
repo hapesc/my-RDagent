@@ -4,7 +4,7 @@ import json
 
 
 def test_v3_tool_cli_lists_catalog(capsys) -> None:
-    from v3.entry.tool_cli import main
+    from rd_agent.entry.tool_cli import main
 
     exit_code = main(["list"])
     captured = capsys.readouterr()
@@ -25,7 +25,7 @@ def test_v3_tool_cli_lists_catalog(capsys) -> None:
 
 
 def test_v3_tool_cli_describes_single_tool(capsys) -> None:
-    from v3.entry.tool_cli import main
+    from rd_agent.entry.tool_cli import main
 
     exit_code = main(["describe", "rd_run_start"])
     captured = capsys.readouterr()
@@ -37,7 +37,7 @@ def test_v3_tool_cli_describes_single_tool(capsys) -> None:
     assert payload["category"] == "orchestration"
     assert payload["subcategory"] is None
     assert payload["recommended_entrypoint"] == "rd-agent"
-    assert payload["command"] == "rdagent-v3-tool describe rd_run_start"
+    assert payload["command"] == "rdagent-tool describe rd_run_start"
     assert payload["examples"]
     assert payload["examples"][0]["label"] == "common_path"
     assert payload["when_to_use"]
@@ -50,7 +50,7 @@ def test_v3_tool_cli_describes_single_tool(capsys) -> None:
 
 
 def test_v3_tool_cli_rejects_unknown_tool(capsys) -> None:
-    from v3.entry.tool_cli import main
+    from rd_agent.entry.tool_cli import main
 
     exit_code = main(["describe", "missing-tool"])
     captured = capsys.readouterr()

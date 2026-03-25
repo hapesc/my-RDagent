@@ -1,0 +1,32 @@
+{
+  "branch_id": "branch-prune-b",
+  "run_id": "run-select",
+  "label": "branch-prune-b label",
+  "status": "superseded",
+  "resolution": "pruned",
+  "current_stage_key": "build",
+  "stages": [
+    {
+      "stage_key": "build",
+      "stage_iteration": 1,
+      "status": "completed",
+      "summary": "branch-prune-b completed build.",
+      "artifact_ids": [],
+      "blocking_reasons": [],
+      "next_stage_key": "verify"
+    }
+  ],
+  "score": {
+    "exploration_priority": 0.45,
+    "result_quality": 0.42,
+    "rationale": "branch-prune-b public score.",
+    "generalization_gap": 0.0,
+    "overfitting_risk": 0.0
+  },
+  "lineage": {
+    "parent_branch_id": null,
+    "child_branch_ids": [],
+    "source_summary": "Seeded for branch-prune-b."
+  },
+  "artifact_ids": []
+}

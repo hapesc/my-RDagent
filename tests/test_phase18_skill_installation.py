@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.devtools.skill_install import install_agent_skills, resolve_bundle_root, resolve_target_root
+from rd_agent.devtools.skill_install import install_agent_skills, resolve_bundle_root, resolve_target_root
 
 
 def _make_repo(tmp_path: Path) -> Path:
     repo_root = tmp_path / "repo"
     (repo_root / "skills").mkdir(parents=True)
-    (repo_root / "v3").mkdir()
+    (repo_root / "rd_agent").mkdir()
     (repo_root / "scripts").mkdir()
     (repo_root / "pyproject.toml").write_text("[project]\nname='fixture'\n", encoding="utf-8")
     (repo_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
     (repo_root / "README.md").write_text("# fixture\n", encoding="utf-8")
-    (repo_root / "v3" / "__init__.py").write_text("", encoding="utf-8")
+    (repo_root / "rd_agent" / "__init__.py").write_text("", encoding="utf-8")
     (repo_root / "scripts" / "install_agent_skills.py").write_text("#!/usr/bin/env python3\n", encoding="utf-8")
 
     for skill_name in ("alpha", "beta"):
@@ -35,7 +35,7 @@ def test_link_install_creates_runtime_bundle_and_generated_skills(tmp_path: Path
         bundle_root = resolve_bundle_root(runtime, "local", repo_root=repo_root)
         assert bundle_root.is_dir()
         assert (bundle_root / "pyproject.toml").is_symlink()
-        assert (bundle_root / "v3").is_symlink()
+        assert (bundle_root / "rd_agent").is_symlink()
         assert (bundle_root / ".rdagent-runtime-install.json").is_file()
 
         target_root = resolve_target_root(runtime, "local", repo_root=repo_root)
@@ -49,7 +49,7 @@ def test_link_install_creates_runtime_bundle_and_generated_skills(tmp_path: Path
             text = (destination / "SKILL.md").read_text(encoding="utf-8")
             assert f"# {skill_name}\n" in text
             assert str(bundle_root) in text
-            assert "uv run rdagent-v3-tool list" in text
+            assert "uv run rdagent-tool list" in text
 
 
 def test_rerun_is_idempotent(tmp_path: Path) -> None:
@@ -92,7 +92,7 @@ def test_copy_mode_creates_real_files(tmp_path: Path) -> None:
 
     bundle_root = resolve_bundle_root("claude", "local", repo_root=repo_root)
     assert bundle_root.is_dir()
-    assert not (bundle_root / "v3").is_symlink()
+    assert not (bundle_root / "rd_agent").is_symlink()
 
     target_root = resolve_target_root("claude", "local", repo_root=repo_root)
     for skill_name in ("alpha", "beta"):

@@ -1,10 +1,10 @@
-from v3.contracts.preflight import (
+from rd_agent.contracts.preflight import (
     PreflightBlockerCategory,
     PreflightBlockersByCategory,
     PreflightReadiness,
     PreflightResult,
 )
-from v3.entry import rd_agent as rd_agent_module
+from rd_agent.entry import rd_agent as rd_agent_module
 
 
 def _route_user_intent(*args, **kwargs):

@@ -5,25 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
-from v3.contracts.exploration import ApproachCategory, FinalSubmissionSnapshot, HypothesisSpec
-from v3.contracts.tool_io import BranchForkRequest, ExploreRoundRequest
-from v3.contracts.run import ExecutionMode
-from v3.contracts.tool_io import RunStartRequest
-from v3.contracts.stage import StageKey
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_share_service import BranchShareService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.memory_state_store import MemoryStateStore
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.operator_guidance import build_finalization_guidance
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.ports.embedding_port import EmbeddingUnavailableError
-from v3.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
+from rd_agent.contracts.exploration import ApproachCategory, FinalSubmissionSnapshot, HypothesisSpec
+from rd_agent.contracts.run import ExecutionMode
+from rd_agent.contracts.stage import StageKey
+from rd_agent.contracts.tool_io import BranchForkRequest, ExploreRoundRequest, RunStartRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_share_service import BranchShareService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.operator_guidance import build_finalization_guidance
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.ports.embedding_port import EmbeddingUnavailableError
+from rd_agent.ports.holdout_port import StubEvaluationPort, StubHoldoutSplitPort
 
 
 class _ExplodingEmbeddingPort:
@@ -169,7 +165,7 @@ def _build_share_service(
 
 
 def test_rd_agent_with_missing_holdout_port_does_not_raise(tmp_path):
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     result = rd_agent(**_base_rd_agent_kwargs(tmp_path))
 
@@ -177,7 +173,7 @@ def test_rd_agent_with_missing_holdout_port_does_not_raise(tmp_path):
 
 
 def test_rd_agent_without_holdout_port_injects_no_holdout_service(tmp_path, monkeypatch):
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     captured = {}
     original_init = MultiBranchService.__init__
@@ -194,7 +190,7 @@ def test_rd_agent_without_holdout_port_injects_no_holdout_service(tmp_path, monk
 
 
 def test_rd_agent_without_holdout_port_sets_finalization_skipped_true(tmp_path):
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     result = rd_agent(**_base_rd_agent_kwargs(tmp_path))
 
@@ -202,7 +198,7 @@ def test_rd_agent_without_holdout_port_sets_finalization_skipped_true(tmp_path):
 
 
 def test_rd_agent_with_holdout_port_sets_finalization_skipped_false(tmp_path, monkeypatch):
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     kwargs = _base_rd_agent_kwargs(tmp_path)
     state_store = kwargs["state_store"]

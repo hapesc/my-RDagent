@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import BranchDecisionKind, BranchResolution
-from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
-from v3.contracts.run import RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchPruneRequest, BranchSelectNextRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import BranchDecisionKind, BranchResolution
+from rd_agent.contracts.recovery import RecoveryAssessment, RecoveryDisposition
+from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchPruneRequest, BranchSelectNextRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
 
 
 def _branch(
@@ -63,7 +63,7 @@ def _recovery(
 
 
 def test_rd_branch_select_next_uses_v3_puct_adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from v3.tools.selection_tools import rd_branch_select_next
+    from rd_agent.tools.selection_tools import rd_branch_select_next
 
     state_store = ArtifactStateStore(tmp_path / "state")
     branch_a = _branch(
@@ -115,7 +115,7 @@ def test_rd_branch_select_next_uses_v3_puct_adapter(tmp_path: Path, monkeypatch:
         return branch_b.branch_id
 
     monkeypatch.setattr(
-        "v3.orchestration.selection_service.PuctSelectionAdapter.select_next_branch",
+        "rd_agent.orchestration.selection_service.PuctSelectionAdapter.select_next_branch",
         _fake_select_next_branch,
     )
 
@@ -133,9 +133,9 @@ def test_rd_branch_select_next_uses_v3_puct_adapter(tmp_path: Path, monkeypatch:
 
 
 def test_prune_policy_keeps_at_least_one_active_branch() -> None:
-    from v3.orchestration.branch_board_service import BranchBoardService
-    from v3.orchestration.branch_prune_service import BranchPruneService
-    from v3.tools.exploration_tools import rd_branch_prune
+    from rd_agent.orchestration.branch_board_service import BranchBoardService
+    from rd_agent.orchestration.branch_prune_service import BranchPruneService
+    from rd_agent.tools.exploration_tools import rd_branch_prune
 
     state_store = ArtifactStateStore(Path.cwd() / ".tmp-phase16-prune-state")
     branches = [

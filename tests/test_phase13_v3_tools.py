@@ -6,21 +6,21 @@ from pathlib import Path
 
 import pytest
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.recovery import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.recovery import (
     RecoveryAssessment,
     RecoveryDisposition,
     RecoveryReasonCode,
 )
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import (
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import (
     ArtifactListRequest,
     ArtifactListResult,
     BranchGetRequest,
@@ -43,8 +43,8 @@ from v3.contracts.tool_io import (
     StageGetRequest,
     StageGetResult,
 )
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.ports.execution import ExecutionStartResult
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.ports.execution import ExecutionStartResult
 
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_IMPORTS = {
@@ -165,7 +165,7 @@ def _seed_run_state(
     framing_artifact = _artifact("artifact-framing", primary_branch.branch_id, StageKey.FRAMING)
     build_artifact = _artifact("artifact-build", completed_branch.branch_id, StageKey.BUILD, kind=ArtifactKind.CODE)
 
-    from v3.contracts.run import RunBoardSnapshot, RunStatus
+    from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
 
     state_store.write_branch_snapshot(primary_branch)
     state_store.write_branch_snapshot(completed_branch)
@@ -220,7 +220,7 @@ def _seed_recovery_state(state_store: ArtifactStateStore) -> ArtifactSnapshot:
         reuse_level=ArtifactReuseLevel.REPLAY_REQUIRED,
     )
 
-    from v3.contracts.run import RunBoardSnapshot, RunStatus
+    from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
 
     state_store.write_branch_snapshot(branch)
     state_store.write_stage_snapshot(branch.branch_id, verify_stage)
@@ -294,11 +294,11 @@ def _seed_selection_state(state_store: ArtifactStateStore) -> tuple[BranchSnapsh
     state_store.write_artifact_snapshot(_artifact("artifact-framing-a", branch_a.branch_id, StageKey.FRAMING))
     state_store.write_artifact_snapshot(_artifact("artifact-build-b", branch_b.branch_id, StageKey.BUILD))
     state_store.write_run_snapshot(
-        __import__("v3.contracts.run", fromlist=["RunBoardSnapshot", "RunStatus"]).RunBoardSnapshot(
+        __import__("rd_agent.contracts.run", fromlist=["RunBoardSnapshot", "RunStatus"]).RunBoardSnapshot(
             run_id="run-select",
             title="Selection board",
             scenario_label="data_science",
-            status=__import__("v3.contracts.run", fromlist=["RunStatus"]).RunStatus.ACTIVE,
+            status=__import__("rd_agent.contracts.run", fromlist=["RunStatus"]).RunStatus.ACTIVE,
             primary_branch_id=branch_a.branch_id,
             branch_ids=[branch_a.branch_id, branch_b.branch_id],
             highlighted_artifact_ids=["artifact-build-b"],
@@ -333,8 +333,8 @@ def _seed_selection_state(state_store: ArtifactStateStore) -> tuple[BranchSnapsh
 
 
 def test_rd_run_start_creates_v3_run_truth_and_uses_execution_port(tmp_path: Path) -> None:
-    from v3.orchestration.run_board_service import RunBoardService
-    from v3.tools.run_tools import rd_run_start
+    from rd_agent.orchestration.run_board_service import RunBoardService
+    from rd_agent.tools.run_tools import rd_run_start
 
     state_store = ArtifactStateStore(tmp_path / "state")
     execution_port = SpyExecutionPort()
@@ -363,10 +363,10 @@ def test_rd_run_start_creates_v3_run_truth_and_uses_execution_port(tmp_path: Pat
 
 
 def test_rd_run_branch_and_stage_handlers_read_canonical_v3_snapshots_with_text_fallback(tmp_path: Path) -> None:
-    from v3.orchestration.run_board_service import RunBoardService
-    from v3.tools.branch_tools import rd_branch_get, rd_branch_list
-    from v3.tools.run_tools import rd_run_get
-    from v3.tools.stage_tools import rd_stage_get
+    from rd_agent.orchestration.run_board_service import RunBoardService
+    from rd_agent.tools.branch_tools import rd_branch_get, rd_branch_list
+    from rd_agent.tools.run_tools import rd_run_get
+    from rd_agent.tools.stage_tools import rd_stage_get
 
     state_store = ArtifactStateStore(tmp_path / "state")
     primary_branch, completed_branch, framing_artifact, _ = _seed_run_state(state_store)
@@ -393,7 +393,7 @@ def test_rd_run_branch_and_stage_handlers_read_canonical_v3_snapshots_with_text_
 
 
 def test_rd_artifact_list_reads_canonical_v3_artifact_metadata(tmp_path: Path) -> None:
-    from v3.tools.artifact_tools import rd_artifact_list
+    from rd_agent.tools.artifact_tools import rd_artifact_list
 
     state_store = ArtifactStateStore(tmp_path / "state")
     primary_branch, _, framing_artifact, _ = _seed_run_state(state_store)
@@ -417,8 +417,8 @@ def test_rd_artifact_list_reads_canonical_v3_artifact_metadata(tmp_path: Path) -
 
 
 def test_rd_recovery_assess_returns_structured_v3_recovery_content_with_text_fallback(tmp_path: Path) -> None:
-    from v3.orchestration.recovery_service import RecoveryService
-    from v3.tools.recovery_tools import rd_recovery_assess
+    from rd_agent.orchestration.recovery_service import RecoveryService
+    from rd_agent.tools.recovery_tools import rd_recovery_assess
 
     state_store = ArtifactStateStore(tmp_path / "state")
     artifact = _seed_recovery_state(state_store)
@@ -444,7 +444,7 @@ def test_rd_recovery_assess_returns_structured_v3_recovery_content_with_text_fal
 
 
 def test_rd_branch_select_next_returns_v3_recommendation_without_scheduler_leakage(tmp_path: Path) -> None:
-    from v3.tools.selection_tools import BranchSelectNextRequest, rd_branch_select_next
+    from rd_agent.tools.selection_tools import BranchSelectNextRequest, rd_branch_select_next
 
     state_store = ArtifactStateStore(tmp_path / "state")
     _, selected_branch = _seed_selection_state(state_store)
@@ -465,7 +465,7 @@ def test_rd_branch_select_next_returns_v3_recommendation_without_scheduler_leaka
 
 
 def test_phase13_minimal_tool_subset_remains_present_in_phase16_registry() -> None:
-    from v3.entry.tool_catalog import list_cli_tools
+    from rd_agent.entry.tool_catalog import list_cli_tools
 
     tools = {tool["name"] for tool in list_cli_tools()}
 
@@ -487,7 +487,7 @@ def test_phase13_minimal_tool_subset_remains_present_in_phase16_registry() -> No
 
 
 def test_phase13_registry_schemas_derive_from_phase13_pydantic_contracts() -> None:
-    from v3.entry.tool_catalog import list_cli_tools
+    from rd_agent.entry.tool_catalog import list_cli_tools
 
     tools = {tool["name"]: tool for tool in list_cli_tools()}
 
@@ -519,20 +519,20 @@ def test_phase13_registry_schemas_derive_from_phase13_pydantic_contracts() -> No
 
 
 def test_tool_structured_content_matches_advertised_response_models(tmp_path: Path) -> None:
-    from v3.entry.tool_catalog import RunStartToolResult
-    from v3.orchestration.branch_isolation_service import BranchIsolationService
-    from v3.orchestration.memory_service import MemoryService
-    from v3.orchestration.memory_state_store import MemoryStateStore
-    from v3.orchestration.recovery_service import RecoveryService
-    from v3.orchestration.run_board_service import RunBoardService
-    from v3.tools.artifact_tools import rd_artifact_list
-    from v3.tools.branch_tools import rd_branch_get, rd_branch_list
-    from v3.tools.isolation_tools import rd_branch_paths_get
-    from v3.tools.memory_tools import rd_memory_create, rd_memory_get, rd_memory_list, rd_memory_promote
-    from v3.tools.recovery_tools import rd_recovery_assess
-    from v3.tools.run_tools import rd_run_get, rd_run_start
-    from v3.tools.selection_tools import BranchSelectNextRequest, BranchSelectNextResult, rd_branch_select_next
-    from v3.tools.stage_tools import rd_stage_get
+    from rd_agent.entry.tool_catalog import RunStartToolResult
+    from rd_agent.orchestration.branch_isolation_service import BranchIsolationService
+    from rd_agent.orchestration.memory_service import MemoryService
+    from rd_agent.orchestration.memory_state_store import MemoryStateStore
+    from rd_agent.orchestration.recovery_service import RecoveryService
+    from rd_agent.orchestration.run_board_service import RunBoardService
+    from rd_agent.tools.artifact_tools import rd_artifact_list
+    from rd_agent.tools.branch_tools import rd_branch_get, rd_branch_list
+    from rd_agent.tools.isolation_tools import rd_branch_paths_get
+    from rd_agent.tools.memory_tools import rd_memory_create, rd_memory_get, rd_memory_list, rd_memory_promote
+    from rd_agent.tools.recovery_tools import rd_recovery_assess
+    from rd_agent.tools.run_tools import rd_run_get, rd_run_start
+    from rd_agent.tools.selection_tools import BranchSelectNextRequest, BranchSelectNextResult, rd_branch_select_next
+    from rd_agent.tools.stage_tools import rd_stage_get
 
     state_store = ArtifactStateStore(tmp_path / "state")
     execution_port = SpyExecutionPort()
@@ -642,7 +642,7 @@ def test_tool_structured_content_matches_advertised_response_models(tmp_path: Pa
 
 
 def test_registry_surface_stays_free_of_legacy_dto_names() -> None:
-    from v3.entry.tool_catalog import list_cli_tools
+    from rd_agent.entry.tool_catalog import list_cli_tools
 
     registry_text = str(list_cli_tools())
 
@@ -653,7 +653,7 @@ def test_registry_surface_stays_free_of_legacy_dto_names() -> None:
 
 
 def test_v3_tools_package_exports_phase15_public_handlers() -> None:
-    from v3 import tools as exported_tools
+    from rd_agent import tools as exported_tools
 
     assert exported_tools.rd_memory_create is not None
     assert exported_tools.rd_memory_get is not None
@@ -665,9 +665,9 @@ def test_v3_tools_package_exports_phase15_public_handlers() -> None:
 def test_importlinter_forbids_v3_tool_layer_fallbacks() -> None:
     config_text = (ROOT / ".importlinter").read_text(encoding="utf-8")
 
-    assert "[importlinter:v3_tools_are_isolated_from_legacy_runtime]" in config_text
+    assert "[importlinter:rd_agent_tools_are_isolated_from_legacy_runtime]" in config_text
     assert "source_modules =" in config_text
-    assert "v3.tools" in config_text
+    assert "rd_agent.tools" in config_text
     assert "forbidden_modules =" in config_text
     assert "service_contracts" in config_text
     assert "data_models" in config_text
@@ -680,15 +680,15 @@ def test_importlinter_forbids_v3_tool_layer_fallbacks() -> None:
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "v3/tools/run_tools.py",
-        "v3/tools/branch_tools.py",
-        "v3/tools/stage_tools.py",
-        "v3/tools/artifact_tools.py",
-        "v3/tools/recovery_tools.py",
-        "v3/tools/selection_tools.py",
-        "v3/tools/memory_tools.py",
-        "v3/tools/isolation_tools.py",
-        "v3/entry/tool_catalog.py",
+        "rd_agent/tools/run_tools.py",
+        "rd_agent/tools/branch_tools.py",
+        "rd_agent/tools/stage_tools.py",
+        "rd_agent/tools/artifact_tools.py",
+        "rd_agent/tools/recovery_tools.py",
+        "rd_agent/tools/selection_tools.py",
+        "rd_agent/tools/memory_tools.py",
+        "rd_agent/tools/isolation_tools.py",
+        "rd_agent/entry/tool_catalog.py",
     ],
 )
 def test_phase13_task1_tool_modules_do_not_import_legacy_runtime_surfaces(relative_path: str) -> None:

@@ -5,9 +5,9 @@ one of the stage skills.
 
 The source of truth for actual tool metadata remains:
 
-- `v3.entry.tool_catalog`
-- `rdagent-v3-tool list`
-- `rdagent-v3-tool describe <tool>`
+- `rd_agent.entry.tool_catalog`
+- `rdagent-tool list`
+- `rdagent-tool describe <tool>`
 
 This file is only a routing aid.
 

@@ -5,30 +5,30 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from v3.algorithms.merge import MergeDesign
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import (
+from rd_agent.algorithms.merge import MergeDesign
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import (
     ApproachCategory,
     EdgeType,
     ExplorationMode,
     HypothesisSpec,
     NodeMetrics,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchMergeRequest, BranchPruneRequest, ExploreRoundRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_lifecycle_service import BranchLifecycleService
-from v3.orchestration.branch_merge_service import BranchMergeService
-from v3.orchestration.branch_prune_service import BranchPruneService
-from v3.orchestration.branch_share_service import BranchShareService
-from v3.orchestration.branch_workspace_manager import BranchWorkspaceManager
-from v3.orchestration.convergence_service import ConvergenceService
-from v3.orchestration.dag_service import DAGService
-from v3.orchestration.multi_branch_service import MultiBranchService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.selection_service import SelectionService
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchMergeRequest, BranchPruneRequest, ExploreRoundRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_lifecycle_service import BranchLifecycleService
+from rd_agent.orchestration.branch_merge_service import BranchMergeService
+from rd_agent.orchestration.branch_prune_service import BranchPruneService
+from rd_agent.orchestration.branch_share_service import BranchShareService
+from rd_agent.orchestration.branch_workspace_manager import BranchWorkspaceManager
+from rd_agent.orchestration.convergence_service import ConvergenceService
+from rd_agent.orchestration.dag_service import DAGService
+from rd_agent.orchestration.multi_branch_service import MultiBranchService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.selection_service import SelectionService
 
 
 def _stage() -> StageSnapshot:
@@ -193,7 +193,7 @@ class TestSharingIntegration:
             current_round=1,
         )
         monkeypatch.setattr(
-            "v3.algorithms.interaction_kernel.random.choices",
+            "rd_agent.algorithms.interaction_kernel.random.choices",
             lambda population, *, weights=None, k=1: [population[0]],
         )
 
@@ -290,7 +290,7 @@ class TestFullLifecycleIntegration:
             current_round=1,
         )
         monkeypatch.setattr(
-            "v3.algorithms.interaction_kernel.random.choices",
+            "rd_agent.algorithms.interaction_kernel.random.choices",
             lambda population, *, weights=None, k=1: [population[0]],
         )
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from v3.entry.tool_catalog import get_cli_tool, list_cli_tools
+from rd_agent.entry.tool_catalog import get_cli_tool, list_cli_tools
 
 
 def test_tool_catalog_examples_cover_every_tool() -> None:

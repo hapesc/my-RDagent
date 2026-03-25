@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from v3.contracts.memory import MemoryKind, MemoryNamespace, MemoryPromotionSnapshot, MemoryRecordSnapshot
-from v3.contracts.stage import StageKey
-from v3.contracts.tool_io import MemoryCreateRequest, MemoryGetRequest, MemoryListRequest, MemoryPromoteRequest
-from v3.orchestration.memory_service import MemoryService
-from v3.orchestration.memory_state_store import MemoryStateStore
-from v3.tools.memory_tools import rd_memory_create, rd_memory_get, rd_memory_list, rd_memory_promote
+from rd_agent.contracts.memory import MemoryKind, MemoryNamespace, MemoryPromotionSnapshot, MemoryRecordSnapshot
+from rd_agent.contracts.stage import StageKey
+from rd_agent.contracts.tool_io import MemoryCreateRequest, MemoryGetRequest, MemoryListRequest, MemoryPromoteRequest
+from rd_agent.orchestration.memory_service import MemoryService
+from rd_agent.orchestration.memory_state_store import MemoryStateStore
+from rd_agent.tools.memory_tools import rd_memory_create, rd_memory_get, rd_memory_list, rd_memory_promote
 
 
 def _record(
@@ -271,14 +271,14 @@ def test_memory_tools_round_trip_without_cross_branch_duplication(tmp_path) -> N
 
 
 def test_phase16_share_apply_uses_phase15_memory_contract_without_cross_branch_duplication(tmp_path) -> None:
-    from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-    from v3.contracts.run import RunBoardSnapshot, RunStatus
-    from v3.contracts.stage import StageSnapshot, StageStatus
-    from v3.contracts.tool_io import BranchShareApplyRequest
-    from v3.orchestration.artifact_state_store import ArtifactStateStore
-    from v3.orchestration.branch_board_service import BranchBoardService
-    from v3.orchestration.branch_share_service import BranchShareService
-    from v3.tools.exploration_tools import rd_branch_share_apply
+    from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+    from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
+    from rd_agent.contracts.stage import StageSnapshot, StageStatus
+    from rd_agent.contracts.tool_io import BranchShareApplyRequest
+    from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+    from rd_agent.orchestration.branch_board_service import BranchBoardService
+    from rd_agent.orchestration.branch_share_service import BranchShareService
+    from rd_agent.tools.exploration_tools import rd_branch_share_apply
 
     store = MemoryStateStore(tmp_path / "memory")
     service = MemoryService(store)

@@ -21,7 +21,7 @@ Complete or replay the synthesize stage for an existing V3 run and branch.
 Return the branch decision as continue (back to rd-propose) or stop.
 Never starts the full loop — use rd-agent for that.
 
-Maps to `v3.entry.rd_evaluate.rd_evaluate`.
+Maps to `rd_agent.entry.rd_evaluate.rd_evaluate`.
 </objective>
 
 <execution_context>

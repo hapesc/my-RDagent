@@ -1,14 +1,14 @@
 [importlinter]
 root_packages =
-    v3
+    rd_agent
 include_external_packages = True
 
-[importlinter:v3_core_isolation]
-name = V3 core avoids direct V2 runtime imports
+[importlinter:rd_agent_core_isolation]
+name = RDAgent core avoids direct V2 runtime imports
 type = forbidden
 source_modules =
-    v3.entry
-    v3.orchestration
+    rd_agent.entry
+    rd_agent.orchestration
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -18,11 +18,11 @@ forbidden_modules =
     data_models
     exploration_manager
 
-[importlinter:v3_tools_are_isolated_from_legacy_runtime]
-name = V3 tools avoid legacy runtime, query, DTO, and graph modules
+[importlinter:rd_agent_tools_are_isolated_from_legacy_runtime]
+name = RDAgent tools avoid legacy runtime, query, DTO, and graph modules
 type = forbidden
 source_modules =
-    v3.tools
+    rd_agent.tools
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -36,7 +36,7 @@ forbidden_modules =
 name = Phase 14 stage write tools avoid legacy runtime, control plane, query, DTO, and graph modules
 type = forbidden
 source_modules =
-    v3.tools.stage_write_tools
+    rd_agent.tools.stage_write_tools
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -46,11 +46,11 @@ forbidden_modules =
     data_models
     exploration_manager
 
-[importlinter:v3_entry_avoids_legacy_query_and_dto_modules]
-name = V3 entry avoids legacy query and DTO modules
+[importlinter:rd_agent_entry_avoids_legacy_query_and_dto_modules]
+name = RDAgent entry avoids legacy query and DTO modules
 type = forbidden
 source_modules =
-    v3.entry
+    rd_agent.entry
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -60,11 +60,11 @@ forbidden_modules =
     data_models
     exploration_manager
 
-[importlinter:phase14_v3_entry_skill_modules_avoid_legacy_runtime]
-name = Phase 14 v3.entry skill modules avoid legacy runtime, control plane, and DTO imports
+[importlinter:phase14_rd_agent_entry_skill_modules_avoid_legacy_runtime]
+name = Phase 14 rd_agent.entry skill modules avoid legacy runtime, control plane, and DTO imports
 type = forbidden
 source_modules =
-    v3.entry
+    rd_agent.entry
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -74,14 +74,14 @@ forbidden_modules =
     data_models
     exploration_manager
 
-[importlinter:phase15_v3_memory_modules_avoid_legacy_runtime_and_memory]
-name = Phase 15 V3 memory modules avoid legacy runtime, DTO, query, control-plane, and legacy memory imports
+[importlinter:phase15_rd_agent_memory_modules_avoid_legacy_runtime_and_memory]
+name = Phase 15 RDAgent memory modules avoid legacy runtime, DTO, query, control-plane, and legacy memory imports
 type = forbidden
 source_modules =
-    v3.contracts
-    v3.ports
-    v3.orchestration
-    v3.tools
+    rd_agent.contracts
+    rd_agent.ports
+    rd_agent.orchestration
+    rd_agent.tools
 forbidden_modules =
     app.control_plane
     app.query_services
@@ -92,26 +92,26 @@ forbidden_modules =
     memory_service
     exploration_manager
 
-[importlinter:phase15_v3_branch_isolation_modules_avoid_legacy_runtime_and_memory]
-name = Phase 15 V3 branch isolation modules avoid legacy runtime, DTO, query, control-plane, and legacy memory imports
+[importlinter:phase15_rd_agent_branch_isolation_modules_avoid_legacy_runtime_and_memory]
+name = Phase 15 RDAgent branch isolation modules avoid legacy runtime, DTO, query, control-plane, and legacy memory imports
 type = forbidden
 source_modules =
-    v3.orchestration
-    v3.tools
+    rd_agent.orchestration
+    rd_agent.tools
 forbidden_modules =
     service_contracts
     data_models
     memory_service
     exploration_manager
 
-[importlinter:phase16_v3_public_surface_avoids_legacy_orchestration_authority]
-name = Phase 16 V3 contracts, orchestration, tools, and entry avoid legacy orchestration authority
+[importlinter:phase16_rd_agent_public_surface_avoids_legacy_orchestration_authority]
+name = Phase 16 RDAgent contracts, orchestration, tools, and entry avoid legacy orchestration authority
 type = forbidden
 source_modules =
-    v3.contracts
-    v3.orchestration
-    v3.tools
-    v3.entry
+    rd_agent.contracts
+    rd_agent.orchestration
+    rd_agent.tools
+    rd_agent.entry
 forbidden_modules =
     service_contracts
     data_models

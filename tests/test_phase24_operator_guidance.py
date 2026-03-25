@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import importlib
 
-from v3.contracts.preflight import (
+from rd_agent.contracts.preflight import (
     PreflightBlockerCategory,
     PreflightBlockersByCategory,
     PreflightReadiness,
     PreflightResult,
 )
-from v3.entry.rd_agent import route_user_intent
+from rd_agent.entry.rd_agent import route_user_intent
 
 
 def _paused_state(*, stage_key: str, branch_id: str = "branch-001") -> dict[str, object]:
@@ -55,7 +55,7 @@ def _preflight_result(*, readiness: PreflightReadiness, stage_key: str = "build"
 
 
 def _operator_guidance_module():
-    return importlib.import_module("v3.orchestration.operator_guidance")
+    return importlib.import_module("rd_agent.orchestration.operator_guidance")
 
 
 def test_paused_build_route_uses_human_first_state_summary_and_preserves_ids() -> None:

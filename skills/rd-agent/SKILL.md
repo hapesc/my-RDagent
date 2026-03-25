@@ -22,7 +22,7 @@ Primary orchestration entry for standalone V3. Routes plain-language intent to
 the correct stage skill (rd-propose, rd-code, rd-execute, rd-evaluate) or
 detects and continues paused runs. Never executes stage logic directly.
 
-Maps to `v3.entry.rd_agent.rd_agent`.
+Maps to `rd_agent.entry.rd_agent.rd_agent`.
 </objective>
 
 ## Required fields
@@ -49,7 +49,7 @@ Continue path:
 
 ## Tool execution context
 
-Use `uv run rdagent-v3-tool ...` only from the installed standalone V3 runtime bundle root or a checked-out standalone V3 repo root; do not search other repos or `HOME` for a plausible state directory.
+Use `uv run rdagent-tool ...` only from the installed standalone V3 runtime bundle root or a checked-out standalone V3 repo root; do not search other repos or `HOME` for a plausible state directory.
 
 ## When to route to rd-tool-catalog
 

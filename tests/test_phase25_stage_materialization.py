@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
 
 
 def _seed_branch(

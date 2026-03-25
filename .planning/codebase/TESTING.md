@@ -1,55 +1,102 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-21
+**Analysis Date:** 2026-03-25
 
 ## Test Framework
 
-**Runner:** `pytest>=7.4.0` as defined under `[tool.pytest.ini_options]` in `pyproject.toml:30-35`, with discovery limited to `tests/test_*.py` plus verbose short traceback formatting.
+**Primary runner:**
+- `pytest` is the canonical test runner, configured in `pyproject.toml` under `[tool.pytest.ini_options]` with `testpaths = ["tests"]`, `python_files = "test_*.py"`, and verbose short tracebacks.
 
-**Assertion Library:** built-in `pytest` assertions paired with dataclass helpers (`tests/test_phase13_v3_tools.py:71-144`).
+**Supporting verification tools:**
+- `hypothesis` is available as an optional test dependency in `pyproject.toml`, though the current suite is still dominated by deterministic example-based tests.
+- `import-linter` is part of the test extra and enforces architectural boundaries from `.importlinter`.
+- Ruff is used separately for lint/format verification through `make lint`, not as a pytest plugin.
 
-**Run Commands:** quick verification gates in `README.md:157-169` execute `uv run python -m pytest` with targeted suites, followed by `uv run lint-imports` (via `.importlinter:1-95`) for boundary checks.
+**Primary commands:**
+- `make test` runs `uv run python -m pytest tests/ -q`.
+- `make lint` runs `uv run ruff check v3/ tests/ scripts/`.
+- `make verify` composes lint plus the full pytest suite.
+- `scripts/setup_env.sh` offers a smaller quick gate and a wider full gate for install/setup validation.
 
-## Test File Organization
+## Test Suite Organization
 
-- Phase-aligned modules live under `tests/` as `test_phase13_*` through `test_phase18_*`, each capturing the semantics of the corresponding iteration (`tests/test_phase13_v3_tools.py:1-644`, `tests/test_phase18_skill_installation.py:22-94`).
-- Tool surface and CLI regressions live in `tests/test_v3_tool_cli.py:6-55`, ensuring the catalog entrypoints behave end-to-end.
-- The suite mirrors the V3 product layers so changes in `v3.entry`, `v3.orchestration`, or `v3.tools` trigger targeted files rather than one bloated file.
+**Top-level layout:**
+- The suite lives entirely under `tests/`.
+- Files are organized mostly by phase/regression slice rather than by Python package, which mirrors how the repository evolved and makes it obvious which shipped milestone a test protects.
+
+**Current coverage bands:**
+- Baseline tool and stage behavior: `tests/test_phase13_v3_tools.py`, `tests/test_phase14_stage_skills.py`, `tests/test_phase14_execution_policy.py`
+- Memory, isolation, and selection: `tests/test_phase15_*`, `tests/test_phase16_*`
+- Public-surface and documentation contracts: `tests/test_phase18_planning_continuity.py`, `tests/test_phase20_rd_agent_skill_contract.py`, `tests/test_phase20_stage_skill_contracts.py`, `tests/test_phase21_public_surface_narrative.py`
+- Preflight and operator guidance: `tests/test_phase22_intent_routing.py`, `tests/test_phase23_*`, `tests/test_phase24_*`, `tests/test_phase25_*`
+- Multi-branch graph, pruning, merge, sharing, and finalization: `tests/test_phase26_*`, `tests/test_phase27_*`, `tests/test_phase28_*`, `tests/test_phase29_entry_wiring.py`, `tests/test_phase31_*`
+- CLI contract coverage: `tests/test_v3_tool_cli.py`
+- Installed-skill workflow validation: `tests/test_installed_skill_workflows.py`
 
 ## Test Structure
 
-Most tests follow a deterministic arrange-act-assert pattern: seed `ArtifactStateStore`/`MemoryStateStore`, call the public handler, then assert both `structuredContent` and human-readable `content` text. For example, `tests/test_phase14_skill_agent.py:72-141` starts a single-branch rd-agent flow, writes snapshots, and verifies `result["content"]` contains the expected stage progression messages.
+**Typical pattern:**
+- Build a temporary state root with `tmp_path`
+- Seed `ArtifactStateStore` or `MemoryStateStore`
+- Compose the minimal services needed for the public handler
+- Call the public function (`rd_agent`, `rd_code`, `rd_stage_complete`, `rd_branch_select_next`, etc.)
+- Assert both machine payloads and operator-facing text
 
-```
-# snippet from tests/test_phase14_skill_agent.py:72
-state_store = ArtifactStateStore(tmp_path / "state")
-run_service = RunBoardService(state_store=state_store, execution_port=_DeterministicExecutionPort())
-result = rd_agent(...)
-assert result["structuredContent"]["history"][0]["stage_key"] == "framing"
-```
+**Representative examples:**
+- `tests/test_phase14_skill_agent.py` and `tests/test_phase16_rd_agent.py` drive end-to-end orchestration using deterministic execution ports.
+- `tests/test_phase24_operator_guidance.py` and `tests/test_phase24_stage_next_step_guidance.py` lock the exact public wording and routing shape of operator guidance.
+- `tests/test_phase20_stage_skill_contracts.py` and `tests/test_installed_skill_workflows.py` treat skill docs and installed workflow files as testable artifacts, not informal prose.
+- `tests/test_phase28_integration.py` and `tests/test_phase31_integration.py` cover DAG/finalization and graceful-degradation paths across multiple collaborating services.
 
-State seeds often include helper factories `_branch`, `_artifact`, `_recovery` to keep data realistic (`tests/test_phase13_v3_tools.py:70-333`, `tests/test_phase16_selection.py:16-99`).
+## Mocking and Fakes
 
-## Mocking
+**Preferred strategy:**
+- The codebase favors deterministic fake ports or tiny helper classes over broad monkeypatching of internal implementation details.
 
-`pytest.MonkeyPatch` appears in selection tests to replace the PUCT adapter and observe candidate ordering without hitting the real scheduler (`tests/test_phase16_selection.py:59-127`). Adapters and `ExecutionPort` implementations are swapped with deterministic dataclasses (`tests/test_phase14_execution_policy.py:115-161`).
+**Common doubles:**
+- `_DeterministicExecutionPort` patterns appear throughout the phase 14/16 tests to keep run startup predictable.
+- Stub holdout ports such as `StubEvaluationPort` and `StubHoldoutSplitPort` from `v3/ports/holdout_port.py` are used in finalization tests.
+- `pytest.MonkeyPatch` is used selectively when the test needs to observe adapter wiring or override one narrow behavior, for example in `tests/test_phase16_selection.py`, `tests/test_phase26_dag_service.py`, and `tests/test_phase31_integration.py`.
+- `unittest.mock.MagicMock` appears in newer integration tests where the dependency is intentionally optional or only a small subset of behavior matters.
 
-## Fixtures and Factories
+## What the Suite Protects Well
 
-Reusable fixtures include `_DeterministicExecutionPort` dataclasses (e.g., `tests/test_phase14_skill_agent.py:23-69`, `tests/test_phase18_planning_continuity.py:17-63`) and helper constructors like `_branch`/`_artifact` that bundle `StageSnapshot`, `BranchSnapshot`, and `ArtifactSnapshot` objects.
+**Public contracts:**
+- The repository is unusually strong at locking public shape. Tests cover CLI list/describe output, stage-entry payloads, operator-guidance wording, skill-document requirements, and installed workflow artifacts.
 
-## Coverage
+**State transitions:**
+- Stage completion, replay, blocking, reuse/review decisions, and next-stage materialization are all covered by focused regression files such as `tests/test_phase14_stage_skills.py`, `tests/test_phase25_stage_materialization.py`, and `tests/test_phase25_outcome_consistency.py`.
 
-The README’s quick and full gates (`README.md:157-169`) describe the regression targets, while `.importlinter:1-95` keeps architectural constraints in scope. There is no separate coverage command, so focus remains on exercising the documented entrypoints and ensuring `import-linter` enforces module boundaries.
+**Multi-branch flow:**
+- Branch selection, pruning, sharing, DAG topology, complementarity, and holdout-backed finalization are all exercised across `tests/test_phase26_*`, `tests/test_phase27_*`, and `tests/test_phase28_*`.
 
-## Test Types
+**Wiring regressions:**
+- `tests/test_phase29_entry_wiring.py`, `tests/test_phase31_tools.py`, and `tests/test_phase31_integration.py` protect the high-risk service wiring and graceful-degradation paths added in later milestones.
 
-- **Unit tests:** Service-level behaviors for run boards, execution policies, and stage transitions appear across `tests/test_phase14_execution_policy.py:24-195` and `tests/test_phase16_convergence.py:56-125`.
-- **Integration tests:** Multi-stage flows in `tests/test_phase16_rd_agent.py:66-237` chain orchestrator services with `StageTransitionService`/`RunBoardService` to validate stop reasons and shared state.
-- **E2E tests:** `tests/test_v3_tool_cli.py:6-55` invokes the CLI entrypoint via `capsys` to assert tool listings and error handling, while module-level suites (`tests/test_phase18_skill_installation.py:22-94`) run installer scripts against temporary repositories.
+## CI and Local Verification
 
-## Common Patterns
+**CI matrix:**
+- `.github/workflows/ci.yml` runs on `ubuntu-latest` and `macos-latest` with Python 3.11 and 3.12.
+- CI installs dependencies with `uv sync --extra test --extra lint`, then runs `make lint` and `make test`.
 
-- `tmp_path` roots and `ArtifactStateStore`/`MemoryStateStore` ensure filesystem isolation for snapshot persistence (`tests/test_phase16_rd_agent.py:66-237`, `tests/test_phase17_surface_convergence.py:8-124`).
-- Tests validate both `structuredContent` (JSON payloads) and narrative `content` text to guard against leaking legacy terminology (`tests/test_phase16_rd_agent.py:163-165`, `tests/test_phase13_v3_tools.py:643-701`).
-- Every pipeline test checks that forbidden legacy modules are absent by AST inspection (`tests/test_phase13_v3_tools.py:60-701`), reinforcing `.importlinter` configuration and the requirement that `v3.*` modules never touch `service_contracts` or `app.runtime`.
+**Local developer flow:**
+- `Makefile` is the simplest local interface for lint/test/verify.
+- `scripts/setup_env.sh` adds install-flow validation because the repo’s public surface is not just Python modules, but also generated skill/runtime bundles under `.claude/` and `.codex/`.
+
+## Notable Gaps
+
+**No coverage metric in the default workflow:**
+- The repo does not currently run `coverage.py` or publish a coverage threshold. Confidence comes from focused regression breadth rather than a numeric coverage gate.
+
+**No concurrency or stress testing:**
+- The filesystem-backed stores and workspace manager are exercised functionally, but there is no dedicated suite for concurrent writers, large state trees, or repeated branch-fork churn.
+
+**No real external backend tests:**
+- External seams such as `ExecutionPort`, `EmbeddingPort`, and holdout evaluation are mostly validated through stubs/fakes, not through live integrations.
+
+**No Windows CI lane:**
+- CI currently covers macOS and Linux only. Given the Bash-heavy setup flow and filesystem-oriented installer behavior, Windows-specific issues would not be caught automatically.
+
+---
+
+*Testing analysis: 2026-03-25*

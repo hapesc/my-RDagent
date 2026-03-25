@@ -5,8 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from v3.contracts.exploration import FinalSubmissionSnapshot
-from v3.contracts.tool_io import (
+from rd_agent.contracts.exploration import FinalSubmissionSnapshot
+from rd_agent.contracts.tool_io import (
     FinalizeEarlyRequest,
     FinalizeEarlyResult,
     ShouldFinalizeRequest,
@@ -29,7 +29,7 @@ def _submission() -> FinalSubmissionSnapshot:
 
 
 def test_list_cli_tools_includes_rd_should_finalize():
-    from v3.entry.tool_catalog import list_cli_tools
+    from rd_agent.entry.tool_catalog import list_cli_tools
 
     names = {tool["name"] for tool in list_cli_tools()}
 
@@ -38,7 +38,7 @@ def test_list_cli_tools_includes_rd_should_finalize():
 
 
 def test_list_cli_tools_includes_rd_finalize_early():
-    from v3.entry.tool_catalog import list_cli_tools
+    from rd_agent.entry.tool_catalog import list_cli_tools
 
     names = {tool["name"] for tool in list_cli_tools()}
 
@@ -47,7 +47,7 @@ def test_list_cli_tools_includes_rd_finalize_early():
 
 
 def test_get_cli_tool_rd_should_finalize_is_inspection():
-    from v3.entry.tool_catalog import get_cli_tool
+    from rd_agent.entry.tool_catalog import get_cli_tool
 
     tool = get_cli_tool("rd_should_finalize")
 
@@ -56,7 +56,7 @@ def test_get_cli_tool_rd_should_finalize_is_inspection():
 
 
 def test_get_cli_tool_rd_finalize_early_is_primitives():
-    from v3.entry.tool_catalog import get_cli_tool
+    from rd_agent.entry.tool_catalog import get_cli_tool
 
     tool = get_cli_tool("rd_finalize_early")
 
@@ -113,7 +113,7 @@ def test_finalize_early_result_validates_payload():
 
 
 def test_rd_finalize_early_calls_multi_branch_service_and_returns_submission():
-    from v3.tools.finalization_tools import rd_finalize_early
+    from rd_agent.tools.finalization_tools import rd_finalize_early
 
     multi_branch_service = MagicMock()
     multi_branch_service.finalize_early.return_value = _submission()
@@ -133,7 +133,7 @@ def test_rd_finalize_early_calls_multi_branch_service_and_returns_submission():
 
 
 def test_rd_should_finalize_calls_multi_branch_service_and_returns_result():
-    from v3.tools.finalization_tools import rd_should_finalize
+    from rd_agent.tools.finalization_tools import rd_should_finalize
 
     multi_branch_service = MagicMock()
     multi_branch_service.should_finalize.return_value = True
@@ -159,7 +159,7 @@ def test_rd_should_finalize_calls_multi_branch_service_and_returns_result():
 
 
 def test_rd_should_finalize_reports_holdout_availability_even_when_not_ready():
-    from v3.tools.finalization_tools import rd_should_finalize
+    from rd_agent.tools.finalization_tools import rd_should_finalize
 
     multi_branch_service = MagicMock()
     multi_branch_service.should_finalize.return_value = False

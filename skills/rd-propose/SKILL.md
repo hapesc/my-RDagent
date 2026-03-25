@@ -20,7 +20,7 @@ allowed-tools:
 Complete, replay, or review the framing stage for an existing V3 run and branch.
 Hand off to rd-code on success. Never starts the full loop — use rd-agent for that.
 
-Maps to `v3.entry.rd_propose.rd_propose`.
+Maps to `rd_agent.entry.rd_propose.rd_propose`.
 </objective>
 
 <execution_context>

@@ -118,7 +118,7 @@ uv run python scripts/install_agent_skills.py \
   --mode "$mode"
 
 echo "==> Checking CLI surface"
-uv run rdagent-v3-tool list >/dev/null
+uv run rdagent-tool list >/dev/null
 
 case "$verification" in
   quick)
@@ -159,4 +159,4 @@ fi
 if [[ "$runtime" == "codex" || "$runtime" == "all" ]]; then
   echo "  Codex: \$rd-agent"
 fi
-echo "  CLI catalog: uv run rdagent-v3-tool list"
+echo "  CLI catalog: uv run rdagent-tool list"

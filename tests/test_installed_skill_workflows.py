@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from v3.devtools.skill_install import discover_repo_root, install_agent_skills
+from rd_agent.devtools.skill_install import discover_repo_root, install_agent_skills
 
 
 def test_installed_skills_resolve_workflows_and_references() -> None:

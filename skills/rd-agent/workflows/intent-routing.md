@@ -15,7 +15,7 @@ never executes stage logic directly.
 Check for existing persisted V3 state:
 
 ```bash
-uv run rdagent-v3-tool rd_run_get 2>/dev/null
+uv run rdagent-tool rd_run_get 2>/dev/null
 ```
 
 Track: has_active_run, current_stage, run_id, branch_id.

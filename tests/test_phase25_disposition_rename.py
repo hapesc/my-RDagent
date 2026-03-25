@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from v3.contracts.recovery import RecoveryAssessment, RecoveryDisposition
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.orchestration.resume_planner import ResumeDecision, plan_resume_decision
+from rd_agent.contracts.recovery import RecoveryAssessment, RecoveryDisposition
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.orchestration.resume_planner import ResumeDecision, plan_resume_decision
 
 
 def _assessment(

@@ -1,0 +1,15 @@
+{
+  "bundle_paths": [
+    "pyproject.toml",
+    "uv.lock",
+    "README.md",
+    "scripts",
+    "skills",
+    "rd_agent"
+  ],
+  "managed_by": "rd_agent.devtools.skill_install",
+  "mode": "link",
+  "repo_root": "/Users/michael-liang/Code/my-RDagent-V3",
+  "runtime": "claude",
+  "scope": "local"
+}

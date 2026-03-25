@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from v3.contracts.exploration import ExplorationMode
-from v3.contracts.tool_io import RunStartRequest
-from v3.entry.tool_catalog import get_cli_tool
-from v3.orchestration.operator_guidance import (
+from rd_agent.contracts.exploration import ExplorationMode
+from rd_agent.contracts.tool_io import RunStartRequest
+from rd_agent.entry.tool_catalog import get_cli_tool
+from rd_agent.orchestration.operator_guidance import (
     _generate_branch_hypotheses,
     build_start_new_run_guidance,
 )

@@ -3,34 +3,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.preflight import (
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.preflight import (
     PreflightBlocker,
     PreflightBlockerCategory,
     PreflightBlockersByCategory,
     PreflightReadiness,
     PreflightResult,
 )
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import RunStartRequest
-from v3.entry.rd_agent import route_user_intent
-from v3.entry.rd_code import rd_code
-from v3.entry.rd_execute import rd_execute
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.preflight_service import PreflightService
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.skill_loop_service import SkillLoopService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.ports.execution import ExecutionPort, ExecutionStartResult
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import RunStartRequest
+from rd_agent.entry.rd_agent import route_user_intent
+from rd_agent.entry.rd_code import rd_code
+from rd_agent.entry.rd_execute import rd_execute
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.preflight_service import PreflightService
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.skill_loop_service import SkillLoopService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.ports.execution import ExecutionPort, ExecutionStartResult
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from v3.algorithms.dag import get_ancestors, get_depth, get_descendants, get_frontier
-from v3.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot
-from v3.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.algorithms.dag import get_ancestors, get_depth, get_descendants, get_frontier
+from rd_agent.contracts.exploration import DAGEdgeSnapshot, DAGNodeSnapshot
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
 
 
 def test_get_ancestors_returns_all_upstream_nodes() -> None:

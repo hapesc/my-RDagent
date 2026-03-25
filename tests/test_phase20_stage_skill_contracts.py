@@ -126,7 +126,7 @@ def test_stage_skills_keep_tool_catalog_as_agent_side_escalation_only() -> None:
     assert "## When to route to rd-tool-catalog" in shared_raw
     assert "agent-side escalation path" in shared
     assert "manual tool browsing" in shared
-    assert "uv run rdagent-v3-tool" in tool_context
+    assert "uv run rdagent-tool" in tool_context
     assert "installed standalone V3 runtime bundle root" in tool_context
 
 

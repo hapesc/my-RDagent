@@ -3,22 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from v3.contracts.artifact import (
+from rd_agent.contracts.artifact import (
     ArtifactKind,
     ArtifactLocator,
     ArtifactProvenance,
     ArtifactReuseLevel,
     ArtifactSnapshot,
 )
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus, RunStopReason
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import RunStartRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.recovery_service import RecoveryService
-from v3.orchestration.run_board_service import RunBoardService
-from v3.orchestration.stage_transition_service import StageTransitionService
-from v3.ports.execution import ExecutionPort, ExecutionStartResult
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.run import ExecutionMode, RunBoardSnapshot, RunStatus, RunStopReason
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import RunStartRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.recovery_service import RecoveryService
+from rd_agent.orchestration.run_board_service import RunBoardService
+from rd_agent.orchestration.stage_transition_service import StageTransitionService
+from rd_agent.ports.execution import ExecutionPort, ExecutionStartResult
 
 
 def test_run_contract_exposes_execution_mode_iteration_ceiling_and_stop_reason() -> None:
@@ -162,7 +162,7 @@ class _DeterministicExecutionPort(ExecutionPort):
 
 
 def test_execution_policy_returns_v3_pause_and_ceiling_decisions() -> None:
-    from v3.orchestration.execution_policy import AgentExecutionPolicy, evaluate_stage_boundary
+    from rd_agent.orchestration.execution_policy import AgentExecutionPolicy, evaluate_stage_boundary
 
     gated_decision = evaluate_stage_boundary(
         policy=AgentExecutionPolicy(mode=ExecutionMode.GATED, max_stage_iterations=2),
@@ -193,7 +193,7 @@ def test_execution_policy_returns_v3_pause_and_ceiling_decisions() -> None:
 
 
 def test_rd_agent_gated_mode_pauses_at_stage_boundary_and_persists_stop_reason(tmp_path: Path) -> None:
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(
@@ -238,7 +238,7 @@ def test_rd_agent_gated_mode_pauses_at_stage_boundary_and_persists_stop_reason(t
 
 
 def test_rd_agent_unattended_mode_enforces_hard_iteration_ceiling(tmp_path: Path) -> None:
-    from v3.entry.rd_agent import rd_agent
+    from rd_agent.entry.rd_agent import rd_agent
 
     state_store = ArtifactStateStore(tmp_path / "state")
     run_service = RunBoardService(

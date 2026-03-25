@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from v3.algorithms.merge import LLMTraceMerger, MergeDesign, SimpleTraceMerger
-from v3.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
-from v3.contracts.exploration import EdgeType
-from v3.contracts.run import RunBoardSnapshot, RunStatus
-from v3.contracts.stage import StageKey, StageSnapshot, StageStatus
-from v3.contracts.tool_io import BranchMergeRequest
-from v3.orchestration.artifact_state_store import ArtifactStateStore
-from v3.orchestration.branch_board_service import BranchBoardService
-from v3.orchestration.branch_merge_service import BranchMergeService
-from v3.orchestration.convergence_service import ConvergenceService
-from v3.orchestration.dag_service import DAGService
+from rd_agent.algorithms.merge import LLMTraceMerger, MergeDesign, SimpleTraceMerger
+from rd_agent.contracts.branch import BranchLineage, BranchScore, BranchSnapshot, BranchStatus
+from rd_agent.contracts.exploration import EdgeType
+from rd_agent.contracts.run import RunBoardSnapshot, RunStatus
+from rd_agent.contracts.stage import StageKey, StageSnapshot, StageStatus
+from rd_agent.contracts.tool_io import BranchMergeRequest
+from rd_agent.orchestration.artifact_state_store import ArtifactStateStore
+from rd_agent.orchestration.branch_board_service import BranchBoardService
+from rd_agent.orchestration.branch_merge_service import BranchMergeService
+from rd_agent.orchestration.convergence_service import ConvergenceService
+from rd_agent.orchestration.dag_service import DAGService
 
 
 def _branch(branch_id: str, *, quality: float) -> BranchSnapshot:

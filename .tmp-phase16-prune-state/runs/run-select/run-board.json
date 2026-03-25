@@ -1,0 +1,24 @@
+{
+  "run_id": "run-select",
+  "title": "Prune board",
+  "scenario_label": null,
+  "status": "active",
+  "current_stage_iteration": 1,
+  "execution_mode": "gated",
+  "max_stage_iterations": 1,
+  "completed_stage_iterations": 0,
+  "stop_reason": null,
+  "exploration_mode": "exploration",
+  "primary_branch_id": "branch-prune-a",
+  "branch_ids": [
+    "branch-prune-a",
+    "branch-prune-b"
+  ],
+  "highlighted_artifact_ids": [],
+  "latest_branch_decision_id": "decision-prune-000b32bfdae5",
+  "latest_merge_outcome_id": null,
+  "latest_branch_board_id": null,
+  "summary": "Prune summary.",
+  "current_round": 0,
+  "max_rounds": 20
+}

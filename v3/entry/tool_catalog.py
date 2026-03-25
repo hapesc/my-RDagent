@@ -48,6 +48,8 @@ from v3.contracts.tool_io import (
     ConvergeRoundResult,
     ExploreRoundRequest,
     ExploreRoundResult,
+    FinalizeEarlyRequest,
+    FinalizeEarlyResult,
     MemoryCreateRequest,
     MemoryGetRequest,
     MemoryGetResult,
@@ -59,6 +61,8 @@ from v3.contracts.tool_io import (
     RunGetRequest,
     RunGetResult,
     RunStartRequest,
+    ShouldFinalizeRequest,
+    ShouldFinalizeResult,
     StageGetRequest,
     StageGetResult,
 )
@@ -75,6 +79,7 @@ from v3.tools.exploration_tools import (
     rd_branch_share_assess,
     rd_branch_shortlist,
 )
+from v3.tools.finalization_tools import rd_finalize_early, rd_should_finalize
 from v3.tools.isolation_tools import rd_branch_paths_get
 from v3.tools.memory_tools import rd_memory_create, rd_memory_get, rd_memory_list, rd_memory_promote
 from v3.tools.orchestration_tools import rd_converge_round, rd_explore_round
@@ -791,6 +796,46 @@ _TOOL_SPECS: tuple[_ToolSpec, ...] = (
         request_model=BranchPathsGetRequest,
         response_model=BranchPathsGetResult,
         dependency_names=("service",),
+    ),
+    _ToolSpec(
+        name="rd_should_finalize",
+        title="Check V3 Finalization Readiness",
+        description="Query whether a V3 run is ready for holdout finalization based on round budget.",
+        category="inspection",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
+        examples=(_example({"run_id": "run-001"}, category="inspection"),),
+        when_to_use=_when_to_use("inspection"),
+        when_not_to_use=_when_not_to_use("inspection"),
+        follow_up=_follow_up(
+            "Finalization readiness has been evaluated.",
+            "rd-agent",
+            "If should_finalize is True, trigger finalization through rd_finalize_early, or continue exploration if more rounds are desired.",
+        ),
+        handler=rd_should_finalize,
+        request_model=ShouldFinalizeRequest,
+        response_model=ShouldFinalizeResult,
+        dependency_names=("multi_branch_service", "state_store"),
+    ),
+    _ToolSpec(
+        name="rd_finalize_early",
+        title="Trigger V3 Early Finalization",
+        description="Request early holdout finalization before the exploration budget is exhausted.",
+        category="primitives",
+        subcategory=None,
+        recommended_entrypoint="rd-tool-catalog",
+        examples=(_example({"run_id": "run-001"}, category="primitives"),),
+        when_to_use=_when_to_use("primitives"),
+        when_not_to_use=_when_not_to_use("primitives"),
+        follow_up=_follow_up(
+            "Early finalization has been triggered.",
+            "rd-agent",
+            "Inspect the finalization submission result or continue with rd-agent.",
+        ),
+        handler=rd_finalize_early,
+        request_model=FinalizeEarlyRequest,
+        response_model=FinalizeEarlyResult,
+        dependency_names=("multi_branch_service",),
     ),
     _ToolSpec(
         name="rd_explore_round",

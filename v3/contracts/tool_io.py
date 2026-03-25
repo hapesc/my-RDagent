@@ -272,6 +272,35 @@ class ConvergeRoundResult(BaseModel):
     merge_summary: str = Field(min_length=1)
 
 
+class ShouldFinalizeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str = Field(min_length=1)
+
+
+class ShouldFinalizeResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    should_finalize: bool
+    current_round: int = Field(ge=0)
+    max_rounds: int = Field(ge=0)
+    holdout_available: bool
+
+
+class FinalizeEarlyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str = Field(min_length=1)
+
+
+class FinalizeEarlyResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    finalized: bool
+    run_id: str = Field(min_length=1)
+    exploration_mode: str = Field(min_length=1)
+
+
 class StageGetRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -496,6 +525,8 @@ __all__ = [
     "ConvergeRoundResult",
     "ExploreRoundRequest",
     "ExploreRoundResult",
+    "FinalizeEarlyRequest",
+    "FinalizeEarlyResult",
     "BranchSelectNextRecommendation",
     "BranchSelectNextRequest",
     "BranchSelectNextResult",
@@ -517,6 +548,8 @@ __all__ = [
     "RecoveryAssessmentRequest",
     "RecoveryAssessmentResponse",
     "RunBoardRequest",
+    "ShouldFinalizeRequest",
+    "ShouldFinalizeResult",
     "RunBoardResponse",
     "RunGetRequest",
     "RunGetResult",

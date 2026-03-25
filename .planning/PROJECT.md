@@ -58,6 +58,12 @@ playbook.
 - Phase 30 is complete: Phases 26 and 28 now have formal verification reports,
   and the remaining v1.3 convergence traceability debt is fully closed in
   `.planning/REQUIREMENTS.md`.
+- Phase 31 is complete: finalization is now an explicit public state via
+  `ExplorationMode.FINALIZED`, default holdout/evaluation/embedding ports exist,
+  entry wiring degrades gracefully without a holdout evaluator, and finalization
+  readiness / mutation are exposed through direct CLI tools.
+- v1.3 milestone execution is complete and ready for milestone audit / archive
+  work.
 
 ## Current Milestone: v1.3 Pipeline Experience Hardening
 
@@ -101,6 +107,7 @@ next-step guidance.
 - ✓ User-facing progress and next-step guidance now stay aligned with persisted state and preflight truth for paused-run and stage-entry surfaces — validated in Phase 23 / v1.3
 - ✓ User can ask what to do next and receive a concise answer that states the current state, the reason, and the exact next action without orchestration jargon — validated in Phase 24 / v1.3
 - ✓ Phase 26 and Phase 28 convergence work now has formal verification artifacts and fully closed requirement traceability — validated in Phase 30 / v1.3
+- ✓ Downstream callers can now distinguish exploration from finalization and rely on default external dependency ports without bespoke holdout or embedding boilerplate — validated in Phase 31 / v1.3
 
 ### Active
 
@@ -163,4 +170,4 @@ None — v1.3 active requirements are complete.
 | Prioritize intent routing and preflight over exposing raw stage mechanics | A user should not need to reason about orchestration internals before the pipeline becomes useful | Intent routing validated in Phase 22; preflight and state-truth hardening validated in Phase 23 |
 
 ---
-*Last updated: 2026-03-24 after completing Phase 30*
+*Last updated: 2026-03-25 after completing Phase 31*

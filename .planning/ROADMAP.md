@@ -120,7 +120,7 @@ Plans:
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
 | 29. Entry-layer service wiring | 0/1 | Complete    | 2026-03-24 |
 | 30. Verification and traceability closure | 1/1 | Complete    | 2026-03-24 |
-| 31. Finalization state interface enhancement and default external ports | 2/2 | Complete   | 2026-03-25 |
+| 31. Finalization state interface enhancement and default external ports | 2/2 | Complete    | 2026-03-25 |
 
 ## Planning Defaults
 

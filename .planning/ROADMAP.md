@@ -49,7 +49,7 @@ state-aware guidance.
   Wire HoldoutValidationService, BranchShareService, and finalization guidance into rd_agent entry.
 - [x] **Phase 30: Verification and traceability closure** - (completed 2026-03-24)
   Generate VERIFICATION.md for Phase 26 and 28, close 13 REQUIREMENTS.md checkboxes.
-- [ ] **Phase 31: Finalization state interface enhancement and default external ports** -
+- [x] **Phase 31: Finalization state interface enhancement and default external ports** - (completed 2026-03-25)
   Clarify the downstream finalization-vs-exploration state surface and add
   default implementations for external dependency ports such as holdout and
   embedding.
@@ -120,7 +120,7 @@ Plans:
 | 28. Aggregated validation with holdout calibration | 4/4 | Complete   | 2026-03-24 |
 | 29. Entry-layer service wiring | 0/1 | Complete    | 2026-03-24 |
 | 30. Verification and traceability closure | 1/1 | Complete    | 2026-03-24 |
-| 31. Finalization state interface enhancement and default external ports | 1/2 | In Progress|  |
+| 31. Finalization state interface enhancement and default external ports | 2/2 | Complete   | 2026-03-25 |
 
 ## Planning Defaults
 
@@ -311,8 +311,8 @@ ports such as holdout and embedding.
   5. CLI tools rd_should_finalize and rd_finalize_early are registered in
      the tool catalog.
   6. Round progress appears in operator guidance text.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 31-01-PLAN.md — FINALIZED enum + mode write + should_finalize + default ports (P31-MODE, P31-DEFAULTS)
-- [ ] 31-02-PLAN.md — Entry degradation + hybrid sharing + CLI tools + round progress (P31-DEGRADE, P31-HYBRID, P31-CLI, P31-PROGRESS)
+- [x] 31-01-PLAN.md — FINALIZED enum + mode write + should_finalize + default ports (P31-MODE, P31-DEFAULTS)
+- [x] 31-02-PLAN.md — Entry degradation + hybrid sharing + CLI tools + round progress (P31-DEGRADE, P31-HYBRID, P31-CLI, P31-PROGRESS)

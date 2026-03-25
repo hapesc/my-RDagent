@@ -61,6 +61,8 @@ def test_phase16_registry_lists_full_rd_tool_surface() -> None:
         "rd_memory_list",
         "rd_memory_promote",
         "rd_branch_paths_get",
+        "rd_should_finalize",
+        "rd_finalize_early",
         "rd_explore_round",
         "rd_converge_round",
     }

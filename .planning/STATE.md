@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-current_phase: 30
-current_phase_name: verification-and-traceability-closure
+current_phase: 31
+current_phase_name: finalization-state-interface-enhancement-and-default-external-ports
 current_plan: Not started
-status: completed
-stopped_at: Phase 30 passed verification; milestone complete
-last_updated: "2026-03-24T15:10:46.751Z"
+status: planning
+stopped_at: Phase 31 context gathered
+last_updated: "2026-03-25T02:53:03.572Z"
 last_activity: 2026-03-24
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
   total_plans: 25
   completed_plans: 25
-  percent: 100
+  percent: 90
 ---
 
 # Session State
@@ -26,24 +26,24 @@ See: `.planning/PROJECT.md`
 **Core value:** A developer can use a self-contained V3 skill and CLI surface
 on top of V3-owned contracts and orchestration, without reading source code
 just to discover how to start, pause, resume, or continue the loop.
-**Current focus:** Milestone complete — Phase 30 finished
+**Current focus:** Phase 31 added — ready for planning
 
 ## Position
 
-**Current Phase:** 30
-**Current Phase Name:** verification-and-traceability-closure
-**Total Phases:** 7
+**Current Phase:** 31
+**Current Phase Name:** finalization-state-interface-enhancement-and-default-external-ports
+**Total Phases:** 10
 **Current Plan:** Not started
-**Total Plans in Phase:** 1
+**Total Plans in Phase:** 0
 **Milestone:** v1.3 pipeline experience hardening  
-**Roadmap span:** Phases 22-28
-**Next phase:** Milestone complete
-**Status:** Milestone complete
+**Roadmap span:** Phases 22-31
+**Next phase:** Plan Phase 31
+**Status:** Ready for planning
 **Canonical continuity entrypoint:** `.planning/STATE.md`
 
 **Last activity:** 2026-03-24
-Phase 30 passed verification and the milestone is complete.
-**Progress:** [██████████] 100%
+Phase 31 was added to the roadmap; planning has not started yet.
+**Progress:** [█████████░] 90%
 
 ## Performance Metrics
 
@@ -51,7 +51,7 @@ Phase 30 passed verification and the milestone is complete.
 - Last shipped milestone phases: 3
 - Last shipped milestone plans: 5 completed
 - Latest completed plan: Phase 30 completed with 1/1 summarized plan(s)
-- Current milestone execution trend: v1.3 is complete
+- Current milestone execution trend: v1.3 reopened with Phase 31 pending planning
 
 ## Accumulated Context
 
@@ -107,18 +107,24 @@ Phase 30 passed verification and the milestone is complete.
 
 ### Pending Todos
 
-- Plan Phase 27 using the verified Phase 26 DAG/diversity contracts as the baseline.
-- Keep `26-UAT.md` as the regression baseline for future Phase 26/27 behavior changes.
+- Plan Phase 31 with an explicit finalization/exploration state contract and
+  default external dependency ports for holdout, embedding, and related
+  integrations.
+
+- Keep `26-UAT.md` as a regression baseline for future
+  exploration/finalization behavior changes.
 
 ### Roadmap Evolution
 
 - Phase 25 added: Fix QA-discovered operator guidance and multi-branch UX gaps
 - Phase 27/28 details updated: added canonical refs and Phase 26 constraint sections from 26-CONTEXT.md discussion
 - Phase 26 marked verified complete after rerunning UAT against the 26-05/26-06 gap closures.
+- Phase 31 added: Finalization state interface enhancement and default external ports
 
 ### Blockers/Concerns
 
-- No active Phase 26 blocker remains. The next dependency is a concrete Phase 27 plan.
+- No active implementation blocker remains. The next dependency is a concrete
+  Phase 31 plan that defines the state interface and default port boundaries.
 
 ### Quick Tasks Completed
 
@@ -140,6 +146,6 @@ Phase 30 passed verification and the milestone is complete.
 
 ## Session Continuity
 
-Last session: 2026-03-24T15:07:48.514Z
-Stopped at: Phase 30 passed verification; milestone complete
-Resume file: None
+Last session: 2026-03-25T02:53:03.567Z
+Stopped at: Phase 31 context gathered
+Resume file: .planning/phases/31-finalization-state-interface-enhancement-and-default-external-ports/31-CONTEXT.md

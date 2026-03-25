@@ -96,7 +96,10 @@ class MultiBranchService:
         )
 
         sharing_candidate_ids, sharing_by_target, global_best_branch_id = self._compute_sharing(
-            request.run_id, run, dispatched_branch_ids,
+            request.run_id,
+            run,
+            dispatched_branch_ids,
+            agent_branch_list=request.branch_list or None,
         )
 
         self._dispatch_branches(
@@ -206,6 +209,7 @@ class MultiBranchService:
         run_id: str,
         run: Any,
         dispatched_branch_ids: list[str],
+        agent_branch_list: list[str] | None = None,
     ) -> tuple[list[str], dict[str, list[str]], str | None]:
         """Compute cross-branch sharing candidates from the share service."""
         sharing_candidate_ids: list[str] = []
@@ -225,6 +229,7 @@ class MultiBranchService:
                         target_branch_id=branch_id,
                         current_round=run.current_round,
                         budget_ratio=budget_ratio,
+                        agent_branch_list=agent_branch_list,
                     )
                 )
                 deduped = list(dict.fromkeys(candidate for candidate in candidates if candidate != branch_id))

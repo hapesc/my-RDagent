@@ -174,10 +174,15 @@ class BranchShareService:
         target_branch_id: str,
         current_round: int,
         budget_ratio: float,
+        agent_branch_list: list[str] | None = None,
     ) -> list[str]:
         """Sample peer branches for sharing via the interaction kernel."""
 
-        if current_round == 0 or self._embedding_port is None or self._dag_service is None:
+        if current_round == 0:
+            return []
+        if self._embedding_port is None or self._dag_service is None:
+            if agent_branch_list:
+                return list(dict.fromkeys(candidate for candidate in agent_branch_list if candidate != target_branch_id))
             return []
 
         run = self._state_store.load_run_snapshot(run_id)
@@ -204,10 +209,12 @@ class BranchShareService:
             embeddings = self._embedding_port.embed([target_branch.label, *peer_labels])
         except EmbeddingUnavailableError:
             logging.getLogger(__name__).debug(
-                "Embedding port unavailable for branch %s; skipping sharing",
+                "Embedding port unavailable for branch %s; skipping kernel sharing",
                 target_branch_id,
                 exc_info=True,
             )
+            if agent_branch_list:
+                return list(dict.fromkeys(candidate for candidate in agent_branch_list if candidate != target_branch_id))
             return []
 
         if len(embeddings) != len(peer_ids) + 1:
@@ -231,7 +238,9 @@ class BranchShareService:
                 )
             )
 
-        return sample_branches(potentials, peer_ids, dynamic_sample_count(budget_ratio))
+        kernel_candidates = sample_branches(potentials, peer_ids, dynamic_sample_count(budget_ratio))
+        all_candidates = [*kernel_candidates, *(agent_branch_list or [])]
+        return list(dict.fromkeys(candidate for candidate in all_candidates if candidate != target_branch_id))
 
     def _load_branch(self, run_id: str, branch_id: str):
         branch = self._state_store.load_branch_snapshot(branch_id)

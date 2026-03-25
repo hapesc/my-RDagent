@@ -237,6 +237,7 @@ class ExploreRoundRequest(BaseModel):
     hypotheses: list[str] = Field(default_factory=list)
     hypothesis_specs: list[HypothesisSpec] | None = None
     auto_prune: bool = Field(default=True)
+    branch_list: list[str] = Field(default_factory=list)
 
 
 class ExploreRoundResult(BaseModel):

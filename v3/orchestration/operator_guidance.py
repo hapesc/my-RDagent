@@ -96,7 +96,23 @@ def build_stage_operator_guidance(
     )
 
 
-def build_finalization_guidance(*, submission: FinalSubmissionSnapshot) -> OperatorGuidance:
+def _round_progress_text(current_round: int, max_rounds: int) -> str:
+    """Format exploration round progress for operator display."""
+    return f"exploring round {current_round}/{max_rounds}"
+
+
+
+def build_exploration_progress_text(current_round: int, max_rounds: int) -> str:
+    return _round_progress_text(current_round, max_rounds)
+
+
+
+def build_finalization_guidance(
+    *,
+    submission: FinalSubmissionSnapshot,
+    current_round: int | None = None,
+    max_rounds: int | None = None,
+) -> OperatorGuidance:
     ranking_lines = [
         (
             f"- rank={entry.rank} node_id={entry.node_id} branch_id={entry.branch_id} "
@@ -105,12 +121,17 @@ def build_finalization_guidance(*, submission: FinalSubmissionSnapshot) -> Opera
         for entry in submission.ranked_candidates
     ]
     ranking_detail = "\n".join(ranking_lines) if ranking_lines else "- no ranked candidates recorded"
+    round_progress = (
+        f"{_round_progress_text(current_round, max_rounds)}; "
+        if current_round is not None and max_rounds is not None
+        else ""
+    )
     return OperatorGuidance(
         recommended_next_skill="rd-evaluate",
         current_state=(
-            "Current state: finalization complete for "
-            f"run {submission.run_id}; winner {submission.winner_node_id} "
-            f"from branch {submission.winner_branch_id}."
+            "Current state: "
+            f"{round_progress}finalization complete for run {submission.run_id}; "
+            f"winner {submission.winner_node_id} from branch {submission.winner_branch_id}."
         ),
         routing_reason=(
             "Reason: the run now has a holdout-backed final ranking, so the operator should review the "
@@ -251,6 +272,7 @@ def build_paused_run_guidance(
 __all__ = [
     "STAGE_TO_NEXT_SKILL",
     "_generate_branch_hypotheses",
+    "build_exploration_progress_text",
     "build_finalization_guidance",
     "build_stage_guidance_response",
     "build_stage_operator_guidance",

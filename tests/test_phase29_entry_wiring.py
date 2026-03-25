@@ -311,15 +311,17 @@ def test_e2e_rd_agent_to_winner(tmp_path, monkeypatch):
     assert "dispatches" in sc
 
 
-def test_hypothesis_specs_require_holdout_evaluation_port(tmp_path):
-    """Structured hypothesis entry requires an evaluation port for holdout finalization."""
+def test_hypothesis_specs_without_holdout_evaluation_port_degrade_gracefully(tmp_path):
+    """Structured hypothesis entry degrades gracefully when no holdout port is available."""
     from v3.entry.rd_agent import rd_agent
 
     kwargs = _base_kwargs(tmp_path, hypothesis_specs=_hypothesis_specs_2())
     kwargs.pop("holdout_evaluation_port")
 
-    with pytest.raises(ValueError, match="holdout_evaluation_port is required when hypothesis_specs is provided"):
-        rd_agent(**kwargs)
+    result = rd_agent(**kwargs)
+
+    assert result["structuredContent"]["finalization_skipped"] is True
+    assert result["structuredContent"]["finalization_submission"] is None
 
 
 # ------------------------------------------------------------------

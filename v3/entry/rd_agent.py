@@ -36,6 +36,8 @@ from v3.orchestration.select_parents_service import SelectParentsService
 from v3.orchestration.selection_service import SelectionService
 from v3.orchestration.skill_loop_service import SkillLoopService, StagePayload
 from v3.orchestration.stage_transition_service import StageTransitionService
+from v3.ports.defaults import DefaultEmbeddingPort
+from v3.ports.embedding_port import EmbeddingPort
 from v3.ports.holdout_port import EvaluationPort, HoldoutSplitPort, StratifiedKFoldSplitter
 from v3.ports.memory_store import MemoryStorePort
 from v3.ports.state_store import StateStorePort
@@ -256,6 +258,7 @@ def rd_agent(
     memory_store: MemoryStorePort | None = None,
     holdout_split_port: HoldoutSplitPort | None = None,
     holdout_evaluation_port: EvaluationPort | None = None,
+    embedding_port: EmbeddingPort | None = None,
 ) -> dict[str, Any]:
     """Public orchestration entrypoint for single-branch and multi-branch V3 runs.
 
@@ -326,23 +329,13 @@ def rd_agent(
             memory_store = MemoryStateStore(memory_store_root)
         memory_service = MemoryService(memory_store)
 
-        # holdout_evaluation_port is REQUIRED when hypothesis_specs is provided.
-        # Without a real evaluator, HoldoutValidationService.finalize() would crash
-        # with AttributeError (None.evaluate()), and _try_finalize only catches
-        # ValueError/KeyError -- so the error propagates destructively.
-        if hypothesis_specs is not None and holdout_evaluation_port is None:
-            raise ValueError(
-                "holdout_evaluation_port is required when hypothesis_specs is provided. "
-                "Pass a real EvaluationPort for holdout finalization, or use "
-                "StubEvaluationPort() for testing."
-            )
-
         branch_share_service = (
             BranchShareService(
                 state_store,
                 memory_service,
                 board_service=board_service,
                 dag_service=dag_service,
+                embedding_port=embedding_port or DefaultEmbeddingPort(),
             )
             if hypothesis_specs is not None and dag_service is not None
             else None
@@ -354,7 +347,9 @@ def rd_agent(
                 split_port=holdout_split_port or StratifiedKFoldSplitter(),
                 evaluation_port=holdout_evaluation_port,
             )
-            if hypothesis_specs is not None and dag_service is not None
+            if hypothesis_specs is not None
+            and dag_service is not None
+            and holdout_evaluation_port is not None
             else None
         )
         multi_branch_service = MultiBranchService(
@@ -385,6 +380,7 @@ def rd_agent(
                 hypotheses=derived_hypotheses or [],
                 hypothesis_specs=hypothesis_specs,
                 auto_prune=auto_prune,
+                branch_list=[],
             )
         )
         finalization_guidance = None
@@ -395,7 +391,11 @@ def rd_agent(
         merge_summary = "Exploration round completed; convergence not yet evaluated."
         if explore_round.finalization_submission is not None:
             submission = explore_round.finalization_submission
-            fg = build_finalization_guidance(submission=submission)
+            fg = build_finalization_guidance(
+                submission=submission,
+                current_round=run_snapshot.current_round,
+                max_rounds=run_snapshot.max_rounds,
+            )
             finalization_guidance = operator_guidance_to_dict(fg)
             finalization_submission_data = submission.model_dump(mode="json")
             selected_branch_id = submission.winner_branch_id
@@ -428,6 +428,9 @@ def rd_agent(
                 "merge_summary": merge_summary,
                 "finalization_guidance": finalization_guidance,
                 "finalization_submission": finalization_submission_data,
+                "finalization_skipped": (
+                    explore_round.finalization_submission is None and holdout_evaluation_port is None
+                ),
             },
             "content": [
                 {

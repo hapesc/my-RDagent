@@ -12,7 +12,6 @@ RUNTIME_MANAGED_MARKER = ".rdagent-runtime-install.json"
 RUNTIME_BUNDLE_NAME = "rd-agent"
 RUNTIMES = ("codex", "claude")
 SCOPES = ("local", "global")
-MODES = ("link", "copy")
 CONFIG_ROOTS = {
     ("codex", "local"): Path(".codex"),
     ("claude", "local"): Path(".claude"),
@@ -95,13 +94,9 @@ def install_agent_skills(
     *,
     runtime: str = "all",
     scope: str = "local",
-    mode: str = "link",
     repo_root: Path | None = None,
     home: Path | None = None,
 ) -> list[InstallRecord]:
-    if mode not in MODES:
-        raise ValueError(f"unsupported mode: {mode}")
-
     root = discover_repo_root(repo_root)
     runtimes = _expand_selection(runtime, RUNTIMES, "runtime")
     scopes = _expand_selection(scope, SCOPES, "scope")
@@ -116,7 +111,6 @@ def install_agent_skills(
             _install_runtime_bundle(
                 runtime=runtime_name,
                 scope=scope_name,
-                mode=mode,
                 repo_root=root,
                 bundle_root=bundle_root,
             )
@@ -127,7 +121,6 @@ def install_agent_skills(
                     _install_skill_dir(
                         runtime=runtime_name,
                         scope=scope_name,
-                        mode=mode,
                         source_dir=source_dir,
                         destination=destination,
                         bundle_root=bundle_root,
@@ -149,7 +142,6 @@ def _install_runtime_bundle(
     *,
     runtime: str,
     scope: str,
-    mode: str,
     repo_root: Path,
     bundle_root: Path,
 ) -> None:
@@ -163,21 +155,16 @@ def _install_runtime_bundle(
     for relative_path in RUNTIME_BUNDLE_PATHS:
         source = repo_root / relative_path
         destination = bundle_root / relative_path
-        _install_bundle_path(source=source, destination=destination, mode=mode)
+        _install_bundle_path(source=source, destination=destination)
     _write_runtime_marker(
         destination=bundle_root,
         repo_root=repo_root,
         runtime=runtime,
         scope=scope,
-        mode=mode,
     )
 
 
-def _install_bundle_path(*, source: Path, destination: Path, mode: str) -> None:
-    if mode == "link":
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.symlink_to(source, target_is_directory=source.is_dir())
-        return
+def _install_bundle_path(*, source: Path, destination: Path) -> None:
     if source.is_dir():
         shutil.copytree(
             source,
@@ -193,7 +180,6 @@ def _install_skill_dir(
     *,
     runtime: str,
     scope: str,
-    mode: str,
     source_dir: Path,
     destination: Path,
     bundle_root: Path,
@@ -206,7 +192,7 @@ def _install_skill_dir(
             return InstallRecord(
                 runtime=runtime,
                 scope=scope,
-                mode=mode,
+                mode="copy",
                 skill_name=source_dir.name,
                 source=source_dir,
                 destination=destination,
@@ -214,7 +200,7 @@ def _install_skill_dir(
             )
 
     destination.mkdir(parents=True, exist_ok=True)
-    _install_skill_support_files(source_dir=source_dir, destination=destination, mode=mode)
+    _install_skill_support_files(source_dir=source_dir, destination=destination)
     (destination / "SKILL.md").write_text(
         _render_installed_skill(
             source_text=(source_dir / "SKILL.md").read_text(encoding="utf-8"),
@@ -229,29 +215,24 @@ def _install_skill_dir(
         bundle_root=bundle_root,
         runtime=runtime,
         scope=scope,
-        mode=mode,
     )
-    action = "linked" if mode == "link" else "copied"
 
     return InstallRecord(
         runtime=runtime,
         scope=scope,
-        mode=mode,
+        mode="copy",
         skill_name=source_dir.name,
         source=source_dir,
         destination=destination,
-        action=action,
+        action="copied",
     )
 
 
-def _install_skill_support_files(*, source_dir: Path, destination: Path, mode: str) -> None:
+def _install_skill_support_files(*, source_dir: Path, destination: Path) -> None:
     for child in sorted(source_dir.iterdir()):
         if child.name == "SKILL.md":
             continue
         target = destination / child.name
-        if mode == "link":
-            target.symlink_to(child, target_is_directory=child.is_dir())
-            continue
         if child.is_dir():
             shutil.copytree(
                 child,
@@ -263,20 +244,20 @@ def _install_skill_support_files(*, source_dir: Path, destination: Path, mode: s
 
 
 def _render_installed_skill(*, source_text: str, bundle_root: Path, source_dir: Path) -> str:
+    abs_bundle = bundle_root.resolve()
     suffix = f"""
 
 ## Installed runtime bundle
 
-- This installed skill is bound to the standalone runtime bundle at `{bundle_root}`.
-- Run direct CLI tools from that bundle root, not from the caller repo unless the caller repo is this bundle.
+- This installed skill is bound to the standalone runtime bundle at `{abs_bundle}`.
+- Run direct CLI tools using the absolute bundle path, not from the caller repo.
 - The canonical direct-tool path is:
-  - `cd {bundle_root}`
-  - `uv run rdagent-tool list`
-  - `uv run rdagent-tool describe <tool>`
+  - `uv run --directory {abs_bundle} rdagent-tool list`
+  - `uv run --directory {abs_bundle} rdagent-tool describe <tool>`
 - Keep state inspection scoped to the current working repo's canonical state or an explicitly provided state root.
 - If the current working repo has no canonical state, do not scan other repos
   or `HOME`; stay on the fresh-start or minimum-contract path.
-- Relative resources for this installed skill still resolve inside `{bundle_root / "skills" / source_dir.name}`.
+- Relative resources for this installed skill still resolve inside `{abs_bundle / "skills" / source_dir.name}`.
 """
     return source_text.rstrip() + suffix
 
@@ -306,7 +287,6 @@ def _write_skill_marker(
     bundle_root: Path,
     runtime: str,
     scope: str,
-    mode: str,
 ) -> None:
     marker = destination / SKILL_MANAGED_MARKER
     marker.write_text(
@@ -317,7 +297,6 @@ def _write_skill_marker(
                 "bundle_root": str(bundle_root),
                 "runtime": runtime,
                 "scope": scope,
-                "mode": mode,
             },
             indent=2,
             sort_keys=True,
@@ -333,7 +312,6 @@ def _write_runtime_marker(
     repo_root: Path,
     runtime: str,
     scope: str,
-    mode: str,
 ) -> None:
     marker = destination / RUNTIME_MANAGED_MARKER
     marker.write_text(
@@ -343,7 +321,6 @@ def _write_runtime_marker(
                 "repo_root": str(repo_root),
                 "runtime": runtime,
                 "scope": scope,
-                "mode": mode,
                 "bundle_paths": [str(path) for path in RUNTIME_BUNDLE_PATHS],
             },
             indent=2,

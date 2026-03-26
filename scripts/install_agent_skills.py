@@ -30,12 +30,6 @@ def build_parser() -> argparse.ArgumentParser:
         default="local",
         help="Which install scope to target.",
     )
-    parser.add_argument(
-        "--mode",
-        choices=("link", "copy"),
-        default="link",
-        help="Install mode. Link is the default and canonical path.",
-    )
     return parser
 
 
@@ -47,7 +41,6 @@ def main(argv: list[str] | None = None) -> int:
         records = install_agent_skills(
             runtime=args.runtime,
             scope=args.scope,
-            mode=args.mode,
             repo_root=REPO_ROOT,
         )
     except Exception as exc:
@@ -56,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for record in records:
         line = (
-            f"runtime={record.runtime} scope={record.scope} mode={record.mode} "
+            f"runtime={record.runtime} scope={record.scope} "
             f"skill={record.skill_name} action={record.action} destination={record.destination}"
         )
         if record.action == "preserved":

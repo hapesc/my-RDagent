@@ -25,17 +25,19 @@ def _make_repo(tmp_path: Path) -> Path:
     return repo_root
 
 
-def test_link_install_creates_runtime_bundle_and_generated_skills(tmp_path: Path) -> None:
+def test_copy_install_creates_runtime_bundle_and_generated_skills(tmp_path: Path) -> None:
     repo_root = _make_repo(tmp_path)
 
-    records = install_agent_skills(runtime="all", scope="local", mode="link", repo_root=repo_root)
+    records = install_agent_skills(runtime="all", scope="local", repo_root=repo_root)
 
     assert len(records) == 4
     for runtime in ("codex", "claude"):
         bundle_root = resolve_bundle_root(runtime, "local", repo_root=repo_root)
         assert bundle_root.is_dir()
-        assert (bundle_root / "pyproject.toml").is_symlink()
-        assert (bundle_root / "rd_agent").is_symlink()
+        assert (bundle_root / "pyproject.toml").is_file()
+        assert not (bundle_root / "pyproject.toml").is_symlink()
+        assert (bundle_root / "rd_agent").is_dir()
+        assert not (bundle_root / "rd_agent").is_symlink()
         assert (bundle_root / ".rdagent-runtime-install.json").is_file()
 
         target_root = resolve_target_root(runtime, "local", repo_root=repo_root)
@@ -45,18 +47,19 @@ def test_link_install_creates_runtime_bundle_and_generated_skills(tmp_path: Path
             assert destination.is_dir()
             assert not destination.is_symlink()
             assert (destination / ".rdagent-skill-install.json").is_file()
-            assert (destination / "notes.txt").is_symlink()
+            assert (destination / "notes.txt").is_file()
+            assert not (destination / "notes.txt").is_symlink()
             text = (destination / "SKILL.md").read_text(encoding="utf-8")
             assert f"# {skill_name}\n" in text
             assert str(bundle_root) in text
-            assert "uv run rdagent-tool list" in text
+            assert "uv run" in text
 
 
 def test_rerun_is_idempotent(tmp_path: Path) -> None:
     repo_root = _make_repo(tmp_path)
 
-    install_agent_skills(runtime="codex", scope="local", mode="link", repo_root=repo_root)
-    install_agent_skills(runtime="codex", scope="local", mode="link", repo_root=repo_root)
+    install_agent_skills(runtime="codex", scope="local", repo_root=repo_root)
+    install_agent_skills(runtime="codex", scope="local", repo_root=repo_root)
 
     target_root = resolve_target_root("codex", "local", repo_root=repo_root)
     assert sorted(path.name for path in target_root.iterdir()) == ["alpha", "beta"]
@@ -66,43 +69,19 @@ def test_rerun_is_idempotent(tmp_path: Path) -> None:
     )
 
 
-def test_broken_link_is_repaired(tmp_path: Path) -> None:
+def test_copied_files_are_independent(tmp_path: Path) -> None:
     repo_root = _make_repo(tmp_path)
 
-    install_agent_skills(runtime="codex", scope="local", mode="link", repo_root=repo_root)
-    notes_link = resolve_target_root("codex", "local", repo_root=repo_root) / "alpha" / "notes.txt"
-    notes_link.unlink()
-    notes_link.symlink_to(repo_root / "skills" / "missing-alpha" / "notes.txt")
-    assert notes_link.is_symlink()
-    assert not notes_link.exists()
+    install_agent_skills(runtime="codex", scope="local", repo_root=repo_root)
 
-    install_agent_skills(runtime="codex", scope="local", mode="link", repo_root=repo_root)
+    target_root = resolve_target_root("codex", "local", repo_root=repo_root)
+    installed_notes = target_root / "alpha" / "notes.txt"
+    assert installed_notes.is_file()
+    assert not installed_notes.is_symlink()
 
-    assert notes_link.is_symlink()
-    assert notes_link.resolve() == repo_root / "skills" / "alpha" / "notes.txt"
-
-
-def test_copy_mode_creates_real_files(tmp_path: Path) -> None:
-    repo_root = _make_repo(tmp_path)
-
-    records = install_agent_skills(runtime="claude", scope="local", mode="copy", repo_root=repo_root)
-
-    copied = [record for record in records if record.action == "copied"]
-    assert len(copied) == 2
-
-    bundle_root = resolve_bundle_root("claude", "local", repo_root=repo_root)
-    assert bundle_root.is_dir()
-    assert not (bundle_root / "rd_agent").is_symlink()
-
-    target_root = resolve_target_root("claude", "local", repo_root=repo_root)
-    for skill_name in ("alpha", "beta"):
-        destination = target_root / skill_name
-        assert destination.is_dir()
-        assert not destination.is_symlink()
-        assert not (destination / "notes.txt").is_symlink()
-        text = (destination / "SKILL.md").read_text(encoding="utf-8")
-        assert f"# {skill_name}\n" in text
-        assert str(bundle_root) in text
+    # Modify source — installed copy should be unaffected
+    (repo_root / "skills" / "alpha" / "notes.txt").write_text("changed\n", encoding="utf-8")
+    assert installed_notes.read_text(encoding="utf-8") == "alpha\n"
 
 
 def test_unrelated_targets_are_preserved(tmp_path: Path) -> None:
@@ -112,10 +91,10 @@ def test_unrelated_targets_are_preserved(tmp_path: Path) -> None:
     preserved_target.mkdir(parents=True)
     (preserved_target / "custom.txt").write_text("keep me\n", encoding="utf-8")
 
-    records = install_agent_skills(runtime="codex", scope="local", mode="link", repo_root=repo_root)
+    records = install_agent_skills(runtime="codex", scope="local", repo_root=repo_root)
 
     actions = {record.skill_name: record.action for record in records}
-    assert actions == {"alpha": "preserved", "beta": "linked"}
+    assert actions == {"alpha": "preserved", "beta": "copied"}
     assert preserved_target.is_dir()
     assert not preserved_target.is_symlink()
     assert (preserved_target / "custom.txt").read_text(encoding="utf-8") == "keep me\n"

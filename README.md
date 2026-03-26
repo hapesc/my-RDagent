@@ -30,20 +30,20 @@ bash scripts/setup_env.sh --all --scope-all --full-verify  # everything
 
 ## Agent Skill Setup
 
-The installer links canonical `skills/` packages into Claude/Codex runtime
+The installer copies canonical `skills/` packages into Claude/Codex runtime
 roots and creates a managed runtime bundle for CLI tool execution.
 
 ```bash
 # Local install (repo-scoped)
-uv run python scripts/install_agent_skills.py --runtime claude --scope local --mode link
-uv run python scripts/install_agent_skills.py --runtime codex --scope local --mode link
+uv run python scripts/install_agent_skills.py --runtime claude --scope local
+uv run python scripts/install_agent_skills.py --runtime codex --scope local
 
 # Global install (home-scoped)
-uv run python scripts/install_agent_skills.py --runtime claude --scope global --mode link
-uv run python scripts/install_agent_skills.py --runtime codex --scope global --mode link
+uv run python scripts/install_agent_skills.py --runtime claude --scope global
+uv run python scripts/install_agent_skills.py --runtime codex --scope global
 ```
 
-`link` is the default — the repo stays the single source of truth.
+Files are copied — the install is self-contained and independent of the source repo.
 
 The installer writes:
 

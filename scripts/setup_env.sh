@@ -18,10 +18,6 @@ Location selection:
   --global        Install into home-directory runtime roots
   --scope-all     Install into both local and global runtime roots
 
-Install mode:
-  --link          Symlink skills into the target root (default)
-  --copy          Copy skills into the target root
-
 Verification:
   --quick-verify  Run the quick verification suite (default)
   --full-verify   Run the full verification suite
@@ -31,7 +27,7 @@ Other:
   -h, --help      Show this help text
 
 Defaults:
-  --claude --local --link --quick-verify
+  --claude --local --quick-verify
 
 Examples:
   bash scripts/setup_env.sh
@@ -52,7 +48,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 runtime="claude"
 scope="local"
-mode="link"
 verification="quick"
 
 while (($# > 0)); do
@@ -74,12 +69,6 @@ while (($# > 0)); do
       ;;
     --scope-all)
       scope="all"
-      ;;
-    --link)
-      mode="link"
-      ;;
-    --copy)
-      mode="copy"
       ;;
     --quick-verify)
       verification="quick"
@@ -114,8 +103,7 @@ uv sync --extra test
 echo "==> Installing repo-local skills"
 uv run python scripts/install_agent_skills.py \
   --runtime "$runtime" \
-  --scope "$scope" \
-  --mode "$mode"
+  --scope "$scope"
 
 echo "==> Checking CLI surface"
 uv run rdagent-tool list >/dev/null
